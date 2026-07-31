@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Besh Super Admin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+        :root { --grad: linear-gradient(180deg, #4158D0, #C850C0); --bg: #f4f7f6; }
+        body { font-family: 'Outfit', sans-serif; background: var(--bg); margin: 0; display: flex; height: 100vh; overflow: hidden; }
+        .sidebar { width: 250px; background: var(--grad); color: white; padding: 20px; display: flex; flex-direction: column; overflow-y: auto; }
+        .sidebar h2 { margin-bottom: 30px; text-align: center; }
+        .nav-link { padding: 12px; margin-bottom: 5px; cursor: pointer; border-radius: 8px; transition: 0.2s; display: flex; align-items: center; gap: 10px; }
+        .nav-link:hover, .nav-link.active { background: rgba(255,255,255,0.2); font-weight: 600; }
+        .main { flex: 1; padding: 30px; overflow-y: auto; }
+        .card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        h3 { border-bottom: 2px solid #eee; padding-bottom: 10px; margin-top: 20px; color: #4158D0; }
+        label { display: block; margin-top: 10px; font-size: 0.9rem; font-weight: 600; color: #555; }
+        input, select, textarea { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-family: 'Outfit'; }
+        button { padding: 12px 20px; background: #4158D0; color: white; border: none; border-radius: 8px; cursor: pointer; margin-top: 15px; }
+        button:hover { opacity: 0.9; }
+        .btn-red { background: #ff7675; } .btn-green { background: #00b894; } .btn-warn { background: #fdcb6e; color: #333; }
+        .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .stat-card { background: #f8f9fa; padding: 20px; border-radius: 12px; text-align: center; }
+        .stat-num { font-size: 2rem; font-weight: 700; color: #4158D0; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>Admin Panel</h2>
+        <div class="nav-link active" onclick="nav('dashboard')"><i class="fa-solid fa-chart-line"></i> Dashboard</div>
+        <div class="nav-link" onclick="nav('config')"><i class="fa-solid fa-sliders"></i> Configuration</div>
+        <div class="nav-link" onclick="nav('users')"><i class="fa-solid fa-users"></i> Users</div>
+        <div class="nav-link" onclick="nav('tasks')"><i class="fa-solid fa-list-check"></i> Tasks</div>
+        <div class="nav-link" onclick="nav('withdrawals')"><i class="fa-solid fa-money-bill-transfer"></i> Withdrawals</div>
+        <div class="nav-link" onclick="nav('broadcast')"><i class="fa-solid fa-bullhorn"></i> Broadcast</div>
+    </div>
+
+    <div class="main">
+        <div class="card" style="background: #eef2ff; border: 1px solid #4158D0;">
+            <label style="margin:0;">🔑 Admin Password</label>
+            <input type="password" id="adminSecret" placeholder="Enter password to save/edit...">
+        </div>
+
+        <div id="dashboard" class="page">
+            <div class="card">
+                <h2>Overview</h2>
+                <div class="stat-grid">
+                    <div class="stat-card"><div class="stat-num" id="statUsers">-</div><div>Users</div></div>
+                    <div class="stat-card"><div class="stat-num" id="statWith">-</div><div>Pending Requests</div></div>
+                    <div class="stat-card"><div class="stat-num" id="statPoints">-</div><div>Points Issued</div></div>
+                </div>
+                <button onclick="loadStats()">Refresh Stats</button>
+            </div>
+        </div>
+
+        <div id="config" class="page hidden">
+            <div class="card">
+                <h2>Core Configuration</h2>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;"><div><label>Currency Name</label><input type="text" id="cfgCurr"></div><div><label>Min Withdraw</label><input type="number" id="cfgMin"></div></div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;"><div><label>Ads Per Day</label><input type="number" id="cfgAds"></div><div><label>Reward per Ad</label><input type="number" id="cfgPts"></div></div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;"><div><label>Referrer Bonus</label><input type="number" id="cfgRef1"></div><div><label>Referee Bonus</label><input type="number" id="cfgRef2"></div></div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;"><div><label>Req Referrals</label><input type="number" id="cfgReqRef"></div><div><label>Req Ads</label><input type="number" id="cfgReqAds"></div></div>
+                <label>Admin Chat ID</label><input type="text" id="cfgChatId">
+                <label>Bot Link</label><input type="text" id="cfgBot">
+                <label>Mini App URL</label><input type="text" id="cfgUrl">
+                <button onclick="saveFullConfig()" class="btn-green" style="width:100%;">Save Settings</button>
+            </div>
+        </div>
+
+        <div id="users" class="page hidden">
+            <div class="card">
+                <h2>User Management</h2>
+                <input type="text" id="findId" placeholder="User ID">
+                <button onclick="findUser()">Search</button>
+                <div id="userResult" style="margin-top:20px; padding:15px; background:#f9f9f9; border-radius:8px; display:none;">
+                    <h3 id="uName"></h3>
+                    <p>Points: <b id="uPoints"></b></p>
+                    <button class="btn-green" onclick="act('update-balance')">Update Balance</button> 
+                    <input type="number" id="newBal" placeholder="New Balance" style="width:100px; display:inline-block;">
+                    <br><br>
+                    <button class="btn-warn" onclick="act('reset-ads')">Reset Ads</button>
+                    <button class="btn-red" onclick="act('toggle-ban')">Ban User</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="tasks" class="page hidden">
+            <div class="card">
+                <h2>Manage Tasks</h2>
+                <input type="hidden" id="taskId">
+                <input type="text" id="tName" placeholder="Task Name">
+                <input type="number" id="tRew" placeholder="Reward">
+                <input type="text" id="tChan" placeholder="Channel ID (-100...)">
+                <input type="text" id="tLink" placeholder="Link">
+                <input type="text" id="tIcon" placeholder="Icon (fa-brands fa-telegram)">
+                <div style="display:flex; gap:10px;">
+                    <button onclick="addTask()" id="addBtn" class="btn-green">Add Task</button>
+                    <button onclick="cancelEdit()" class="btn-warn" style="display:none;" id="cancelBtn">Cancel</button>
+                </div>
+            </div>
+             <div class="card"><h3>Existing Tasks</h3><div id="taskList"></div></div>
+        </div>
+
+        <div id="withdrawals" class="page hidden">
+            <div class="card"><h2>Pending Withdrawals</h2><button onclick="loadWithdrawals()">Load</button><div id="withList" style="margin-top:20px;"></div></div>
+        </div>
+        
+        <div id="broadcast" class="page hidden">
+            <div class="card">
+                <h2>📢 Broadcast</h2>
+                <label>Target</label><select id="bcType" onchange="toggleBcTarget()"><option value="all">All Users</option><option value="single">Specific User/Group</option></select>
+                <div id="bcTargetDiv" style="display:none;"><label>Target ID</label><input type="text" id="bcTargetId"></div>
+                <label>Message</label><textarea id="bcMsg" rows="4"></textarea>
+                <label>Image URL (Optional)</label><input type="text" id="bcImg">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;"><div><label>Btn Text</label><input type="text" id="bcBtnTxt"></div><div><label>Btn Link</label><input type="text" id="bcBtnUrl"></div></div>
+                <button onclick="act('broadcast')" class="btn-green">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API = '';
+        let editingTaskId = null;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            try { const res = await fetch(`${API}/api/config`); fillConfigInputs(await res.json()); } catch {}
+        });
+
+        function nav(p) {
+            document.querySelectorAll('.page').forEach(x => x.classList.add('hidden'));
+            document.getElementById(p).classList.remove('hidden');
+            document.querySelectorAll('.nav-link').forEach(x => x.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+            if(p==='tasks') loadTasks();
+        }
+
+        async function post(endpoint, data) {
+            data.secret = document.getElementById('adminSecret').value;
+            const res = await fetch(`${API}/api/admin/${endpoint}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
+            return await res.json();
+        }
+
+        function fillConfigInputs(c) {
+            document.getElementById('cfgCurr').value = c.currencyName || 'Points';
+            document.getElementById('cfgAds').value = c.adsPerDay||0;
+            document.getElementById('cfgPts').value = c.pointsPerAd||0;
+            document.getElementById('cfgMin').value = c.minWithdraw||0;
+            document.getElementById('cfgRef1').value = c.referralBonusReferrer||0;
+            document.getElementById('cfgRef2').value = c.referralBonusReferee||0;
+            document.getElementById('cfgReqRef').value = c.requiredReferrals||0;
+            document.getElementById('cfgReqAds').value = c.requiredAds||0;
+            document.getElementById('cfgChatId').value = c.telegramChatId||'';
+            document.getElementById('cfgUrl').value = c.webAppUrl||'';
+            document.getElementById('cfgBot').value = c.botLink||'';
+        }
+
+        async function loadStats() {
+            const data = await post('stats', {});
+            if(data.error) return alert("Wrong Password");
+            document.getElementById('statUsers').innerText = data.users;
+            document.getElementById('statWith').innerText = data.withdrawals;
+            document.getElementById('statPoints').innerText = data.points;
+            fillConfigInputs(data.config);
+        }
+
+        async function saveFullConfig() {
+            const newConfig = {
+                currencyName: document.getElementById('cfgCurr').value,
+                adsPerDay: +document.getElementById('cfgAds').value,
+                pointsPerAd: +document.getElementById('cfgPts').value,
+                minWithdraw: +document.getElementById('cfgMin').value,
+                referralBonusReferrer: +document.getElementById('cfgRef1').value,
+                referralBonusReferee: +document.getElementById('cfgRef2').value,
+                requiredReferrals: +document.getElementById('cfgReqRef').value,
+                requiredAds: +document.getElementById('cfgReqAds').value,
+                telegramChatId: document.getElementById('cfgChatId').value,
+                webAppUrl: document.getElementById('cfgUrl').value,
+                botLink: document.getElementById('cfgBot').value
+            };
+            const res = await post('config-update', { fullConfig: newConfig });
+            alert(res.success ? "Saved!" : "Error");
+        }
+
+        function toggleBcTarget() { document.getElementById('bcTargetDiv').style.display = document.getElementById('bcType').value === 'single' ? 'block' : 'none'; }
+
+        async function findUser() {
+            const u = await post('find-user', {userId: document.getElementById('findId').value});
+            if(u) {
+                document.getElementById('userResult').style.display='block';
+                document.getElementById('uName').innerText = u.username;
+                document.getElementById('uPoints').innerText = u.points;
+                document.getElementById('newBal').value = u.points;
+            } else alert("Not found");
+        }
+
+        async function act(action) {
+            let body = { userId: document.getElementById('findId').value, action };
+            if(action === 'update-balance') body.newBalance = document.getElementById('newBal').value;
+            if(action === 'broadcast') {
+                body.targetType = document.getElementById('bcType').value;
+                body.targetId = document.getElementById('bcTargetId').value;
+                body.message = document.getElementById('bcMsg').value;
+                body.photoUrl = document.getElementById('bcImg').value;
+                body.btnText = document.getElementById('bcBtnTxt').value;
+                body.btnUrl = document.getElementById('bcBtnUrl').value;
+            }
+            const res = await post('action', body);
+            alert(res.success ? "Success" : "Failed");
+        }
+
+        // --- TASK EDITING ---
+        async function addTask() {
+            const task = {
+                id: editingTaskId, // If null, backend creates new ID
+                name: document.getElementById('tName').value,
+                reward: +document.getElementById('tRew').value,
+                channelId: document.getElementById('tChan').value,
+                link: document.getElementById('tLink').value,
+                icon: document.getElementById('tIcon').value
+            };
+            await post('tasks', { task }); 
+            alert(editingTaskId ? "Updated" : "Added"); 
+            cancelEdit(); loadTasks();
+        }
+
+        function startEdit(id, name, rew, chan, link, icon) {
+            editingTaskId = id;
+            document.getElementById('tName').value = name;
+            document.getElementById('tRew').value = rew;
+            document.getElementById('tChan').value = chan;
+            document.getElementById('tLink').value = link;
+            document.getElementById('tIcon').value = icon;
+            document.getElementById('addBtn').textContent = "Update Task";
+            document.getElementById('cancelBtn').style.display = "inline-block";
+        }
+
+        function cancelEdit() {
+            editingTaskId = null;
+            ['tName','tRew','tChan','tLink','tIcon'].forEach(i => document.getElementById(i).value = '');
+            document.getElementById('addBtn').textContent = "Add Task";
+            document.getElementById('cancelBtn').style.display = "none";
+        }
+
+        async function loadTasks() {
+            const res = await fetch(`${API}/api/tasks`); const tasks = await res.json();
+            document.getElementById('taskList').innerHTML = Object.values(tasks).map(t => `
+                <div style="padding:10px; border-bottom:1px solid #eee; display:flex; justify-content:space-between;">
+                    <span>${t.name} (${t.reward})</span>
+                    <div>
+                        <button class="btn-warn" onclick="startEdit('${t.id}','${t.name}',${t.reward},'${t.channelId}','${t.link}','${t.icon}')">Edit</button>
+                        <button class="btn-red" onclick="delTask('${t.id}')">Del</button>
+                    </div>
+                </div>`).join('');
+        }
+        async function delTask(id) { await post('tasks/delete', { taskId: id }); loadTasks(); }
+
+        async function loadWithdrawals() {
+            const list = await post('get-withdrawals', {});
+            document.getElementById('withList').innerHTML = list.map(w => `<div style="border-bottom:1px solid #eee; padding:10px; display:flex; justify-content:space-between; align-items:center;"><div><b>${w.accountName}</b> (${w.amount})<br>${w.method} - ${w.account}</div><div><button class="btn-green" onclick="wAction('${w.id}', 'approve')">✔</button></div></div>`).join('') || 'None';
+        }
+        async function wAction(wid, type) { await post('withdraw-action', { id: wid, type }); loadWithdrawals(); }
+    </script>
+</body>
+</html>

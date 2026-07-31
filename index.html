@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Besh Besh</title>
+    
+    <!-- MONETAG AD SDK -->
+    <script src='//libtl.com/sdk.js' data-zone='10024038' data-sdk='show_10024038'></script>
+
+    <!-- ADSGRAM SDK -->
+    <script src="https://api.adsgram.ai/js/adsgram.js?blockId=int-20922"></script>
+
+    <!-- FONTS & ICONS -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    
+    <!-- EXTERNAL CSS -->
+    <link rel="stylesheet" href="index.css">
+
+    <!-- TELEGRAM WEB APP -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- LOADING SCREEN -->
+        <div id="loading-overlay">
+            <div class="spinner"></div>
+            <h3 style="margin-top:15px; background: var(--gradient-main); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Besh Besh</h3>
+        </div>
+
+        <!-- HEADER (Home) -->
+        <div id="homeHeader" class="home-header">
+            <h1 style="font-size: 2rem; font-weight:700;">Besh Besh</h1>
+        </div>
+
+        <!-- HEADER (Pages) -->
+        <div id="pageHeader" class="page-header">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <div class="profile-pic" style="width:40px; height:40px; position:static; transform:none; border:2px solid var(--accent-color);"></div>
+                <div>
+                    <div style="font-weight:700;" id="pageHeaderName">User</div>
+                    <div style="font-size:0.8rem; color:#888;">Welcome back</div>
+                </div>
+            </div>
+            <div style="font-weight:700; color:var(--primary-bg);"><i class="fa-solid fa-coins"></i> <span id="pageHeaderBalance">0</span></div>
+        </div>
+
+        <!-- PROFILE SECTION (Home Only) -->
+        <div id="profileSection" class="profile-section">
+            <div class="profile-card">
+                <div class="profile-pic"></div>
+                <h2 id="profileNameDisplay" style="margin-top: 10px;">User</h2>
+                <div id="userPointsDisplay" class="points-display"><i class="fa-solid fa-coins"></i> 0 Points</div>
+            </div>
+        </div>
+
+        <!-- CONTENT AREA -->
+        <div id="mainContent" class="content-section"></div>
+
+        <!-- NAVIGATION -->
+        <div class="bottom-nav">
+            <a href="javascript:void(0)" class="nav-item active" data-page="home"><i class="fa-solid fa-house"></i><span>Home</span></a>
+            <a href="javascript:void(0)" class="nav-item" data-page="tasks"><i class="fa-solid fa-list-check"></i><span>Tasks</span></a>
+            <a href="javascript:void(0)" class="nav-item" data-page="leaderboard"><i class="fa-solid fa-trophy"></i><span>Top</span></a>
+            <a href="javascript:void(0)" class="nav-item" data-page="referral"><i class="fa-solid fa-user-group"></i><span>Invite</span></a>
+            <a href="javascript:void(0)" class="nav-item" data-page="withdraw"><i class="fa-solid fa-wallet"></i><span>Pay</span></a>
+        </div>
+
+        <div id="toast" class="toast"></div>
+    </div>
+
+    <script>
+        const API_BASE_URL = ''; 
+        let AppConfig = {}, BonusTasks = [], currentUser = null, userId = null, LeaderboardData = null, startParam = null;
+        let userPhotoUrl = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+        
+        // --- ADSGRAM INITIALIZATION ---
+        let AdController;
+        try {
+            AdController = window.Adsgram.init({ blockId: "int-20922" });
+        } catch(e) { console.log("Adsgram init error", e); }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const tg = window.Telegram.WebApp;
+            tg.expand();
+
+            // --- ADSGRAM AUTO LOGIC ---
+            if(AdController) {
+                // 1. Show Ad immediately on Open (No Reward)
+                AdController.show().catch((e)=>{ console.log("Open Ad skipped/err"); });
+                // 2. Show Ad every 60 seconds (No Reward)
+                setInterval(() => {
+                    AdController.show().catch((e)=>{ console.log("Interval Ad skipped"); });
+                }, 60000); 
+            }
+            
+            const tgUser = tg.initDataUnsafe?.user;
+            userId = tgUser?.id?.toString() || new URLSearchParams(window.location.search).get('userId');
+            startParam = tg.initDataUnsafe?.start_param || null; // Capture startapp param
+            
+            if(tgUser?.photo_url) userPhotoUrl = tgUser.photo_url;
+            let realName = "User";
+            if(tgUser) realName = tgUser.username || (tgUser.first_name + (tgUser.last_name ? " " + tgUser.last_name : ""));
+
+            if (!userId) {
+                // Testing purposes
+                userId = "test_user_1";
+                console.log("No User ID, using Test ID");
+            }
+
+            try {
+                await loadAppConfig();
+                await loadOrRegisterUser(realName, startParam);
+                setupApp();
+            } catch (e) {
+                document.getElementById('loading-overlay').innerHTML = `<p style="color:red; text-align:center; padding:20px;">${e.message}</p>`;
+            }
+        });
+
+        async function loadAppConfig() {
+            try {
+                const [c, t] = await Promise.all([fetch(`${API_BASE_URL}/api/config`), fetch(`${API_BASE_URL}/api/tasks`)]);
+                AppConfig = await c.json();
+                BonusTasks = Object.values(await t.json() || {});
+            } catch (error) {
+                AppConfig = { adsPerDay: 20, pointsPerAd: 50 };
+            }
+            if(AppConfig.maintenanceMode) throw new Error("⚠️ App is in Maintenance Mode.");
+        }
+
+        // --- UPDATED USER LOADING (Auto-Register Direct Links) ---
+        async function loadOrRegisterUser(realName, refCode) {
+            try {
+                // 1. Try to get user
+                let res = await fetch(`${API_BASE_URL}/api/user/${userId}?name=${encodeURIComponent(realName)}`);
+                if(!res.ok) {
+                    // 2. User doesn't exist -> Call Ensure/Create Endpoint
+                    console.log("User not found, registering...");
+                    res = await fetch(`${API_BASE_URL}/api/ensure-user`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ userId, username: realName, refParam: refCode })
+                    });
+                    if(!res.ok) throw new Error("Registration Failed");
+                    // 3. Retry get user
+                    res = await fetch(`${API_BASE_URL}/api/user/${userId}`);
+                }
+                currentUser = await res.json();
+                
+                if(currentUser.isBanned) throw new Error("⛔ ACCOUNT BANNED");
+                currentUser.username = realName;
+            } catch (e) { throw e; }
+        }
+
+        function setupApp() {
+            document.querySelectorAll('.profile-pic').forEach(el => el.style.backgroundImage = `url('${userPhotoUrl}')`);
+
+            // FIXED NAVIGATION
+            document.querySelectorAll('.nav-item').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault(); 
+                    const page = link.getAttribute('data-page');
+                    navigateTo(page);
+                });
+            });
+
+            updateUI();
+            navigateTo('home');
+            document.getElementById('loading-overlay').style.display = 'none';
+        }
+
+        function updateUI() {
+            const cur = AppConfig.currencyName || 'Points';
+            const pts = currentUser.points || 0;
+            document.getElementById('profileNameDisplay').textContent = currentUser.username;
+            document.getElementById('userPointsDisplay').innerHTML = `<i class="fa-solid fa-coins"></i> ${pts} ${cur}`;
+            document.getElementById('pageHeaderName').textContent = currentUser.username;
+            document.getElementById('pageHeaderBalance').innerText = pts;
+        }
+
+        function navigateTo(page) {
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            document.querySelector(`.nav-item[data-page="${page}"]`).classList.add('active');
+            
+            const isHome = page === 'home';
+            document.getElementById('homeHeader').style.display = isHome ? 'flex' : 'none';
+            document.getElementById('profileSection').style.display = isHome ? 'block' : 'none';
+            
+            if(isHome) {
+                document.getElementById('pageHeader').style.display = 'none';
+            } else {
+                document.getElementById('pageHeader').style.display = 'flex';
+            }
+
+            const content = document.getElementById('mainContent');
+            content.innerHTML = ''; 
+
+            if(page === 'home') renderHome(content);
+            if(page === 'tasks') renderTasks(content);
+            if(page === 'referral') renderReferral(content);
+            if(page === 'leaderboard') renderLeaderboard(content);
+            if(page === 'withdraw') renderWithdraw(content);
+        }
+
+        // --- RENDERERS ---
+
+        function renderHome(container) {
+            const adsLeft = (AppConfig.adsPerDay || 20) - (currentUser.adsWatchedToday || 0);
+            const rank = currentUser.rank ? `#${currentUser.rank}` : '#N/A'; 
+            
+            container.innerHTML = `
+                <div class="card">
+                    <h2 class="section-title">Welcome, ${currentUser.username}!</h2>
+                    <p style="color:#666;">Earn rewards by completing tasks.</p>
+                    <div class="home-actions">
+                        <button class="btn btn-primary" onclick="handlePostStory()"><i class="fa-solid fa-camera"></i> Post Story</button>
+                        <button class="btn btn-secondary" onclick="navigateTo('withdraw')"><i class="fa-solid fa-wallet"></i> Withdraw</button>
+                    </div>
+                </div>
+                
+                <div class="card home-stats">
+                    <div class="home-stat"><div class="label">Referrals</div><div class="value">${currentUser.referredUsers?.length || 0}</div></div>
+                    <div class="home-stat"><div class="label">Global Rank</div><div class="value">${rank}</div></div>
+                    <div class="home-stat"><div class="label">Total Ads</div><div class="value">${currentUser.totalAdsWatchedLifetime || 0}</div></div>
+                    <div class="home-stat"><div class="label">Ads Left</div><div class="value">${adsLeft < 0 ? 0 : adsLeft}</div></div>
+                    <div class="home-stat"><div class="label">Tasks</div><div class="value">${currentUser.claimedBonuses?.length || 0}</div></div>
+                    <div class="home-stat"><div class="label">Withdrawn</div><div class="value">${currentUser.totalWithdrawn || 0}</div></div>
+                </div>`;
+        }
+
+        // --- UPDATED RENDER TASKS (SIDE BY SIDE) ---
+        function renderTasks(container) {
+             const adsLeft = (AppConfig.adsPerDay || 20) - (currentUser.adsWatchedToday || 0);
+             const pts = (AppConfig.pointsPerAd || 50) * (AppConfig.globalMultiplier || 1);
+             const cur = AppConfig.currencyName || 'Pts';
+             
+             let html = `
+                <!-- SIDE BY SIDE BUTTONS CONTAINER -->
+                <div class="card">
+                    <h3 class="section-title">Daily Earning</h3>
+                    <div class="task-grid-buttons">
+                        
+                        <!-- 1. Monetag Button -->
+                        <div class="ad-btn-card btn-monetag" onclick="${adsLeft > 0 ? 'watchAd()' : ''}" style="opacity:${adsLeft<=0?0.5:1}">
+                            <i class="fa-brands fa-youtube" style="font-size:24px; margin-bottom:5px;"></i>
+                            <div style="font-weight:700;">Watch Ad</div>
+                            <div style="font-size:0.8rem;">+${pts} ${cur}</div>
+                            ${adsLeft<=0 ? '<div style="font-size:0.7rem; color:red;">Limit</div>' : ''}
+                        </div>
+
+                        <!-- 2. Adsgram Button -->
+                        <div class="ad-btn-card btn-adsgram" onclick="claimAdsgramReward()">
+                            <i class="fa-solid fa-fire" style="font-size:24px; margin-bottom:5px;"></i>
+                            <div style="font-weight:700;">Special</div>
+                            <div style="font-size:0.8rem;">+10 ${cur}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card"><div class="section-title"><i class="fa-solid fa-star" style="color:var(--accent-color);"></i> Bonus Tasks</div>`;
+             
+             html += BonusTasks.map(t => {
+                 const done = currentUser.claimedBonuses?.includes(t.id);
+                 return `
+                    <div class="channel-item">
+                        <div style="display:flex; align-items:center;">
+                            <div class="icon-box"><i class="${t.icon || 'fa-brands fa-telegram'}"></i></div>
+                            <div>
+                                <div style="font-weight:600;">${t.name}</div>
+                                <div style="font-size:0.8rem; color:var(--primary-bg);">+${t.reward} ${cur}</div>
+                            </div>
+                        </div>
+                        <button class="btn" style="width:auto; padding:6px 15px; font-size:0.8rem; background:${done?'#eee':'var(--success-color)'}; color:${done?'#888':'white'};"
+                             onclick="doTask('${t.id}','${t.channelId}',${t.reward},'${t.link}')" ${done?'disabled':''}>
+                             ${done ? 'Done' : 'Start'}
+                        </button>
+                    </div>`;
+             }).join('');
+             container.innerHTML = html + '</div>';
+        }
+
+        async function renderLeaderboard(container) {
+            container.innerHTML = '<div class="card"><p>Loading...</p></div>';
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/leaderboard/${userId}`);
+                LeaderboardData = await res.json();
+                
+                container.innerHTML = `
+                    <div class="card">
+                        <div class="leaderboard-tabs">
+                            <div class="leaderboard-tab active" id="tabPoints" onclick="switchBoard('points')">By Points</div>
+                            <div class="leaderboard-tab" id="tabRefs" onclick="switchBoard('refs')">By Invite</div>
+                        </div>
+                        <div id="boardContent"></div>
+                    </div>`;
+                switchBoard('points');
+            } catch(e) {
+                container.innerHTML = '<div class="card"><p>Failed to load leaderboard.</p></div>';
+            }
+        }
+
+        // --- UPDATED LEADERBOARD PODIUM LOGIC ---
+        function switchBoard(type) {
+            document.querySelectorAll('.leaderboard-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(type === 'points' ? 'tabPoints' : 'tabRefs').classList.add('active');
+            
+            const list = type === 'points' ? LeaderboardData.byPoints : LeaderboardData.byReferrals;
+            const unit = type === 'points' ? (AppConfig.currencyName || 'pts') : 'Ref';
+            
+            let html = '';
+
+            // Helper for generated avatars if photoUrl is missing
+            const pfpStyle = (u) => u.photoUrl ? `background-image:url('${u.photoUrl}')` : `background:linear-gradient(45deg, #4158D0, #C850C0); display:flex; align-items:center; justify-content:center; color:white; font-size:1.2rem;`;
+            const getInitials = (n) => n ? n.substring(0,2).toUpperCase() : '??';
+
+            // PODIUM (Top 3)
+            if(list.length >= 3) {
+                 const p1 = list[0], p2 = list[1], p3 = list[2];
+                 const v1 = type==='points'?p1.points:(p1.referredUsers?.length||0);
+                 const v2 = type==='points'?p2.points:(p2.referredUsers?.length||0);
+                 const v3 = type==='points'?p3.points:(p3.referredUsers?.length||0);
+
+                 html += `
+                    <div class="top-3-container">
+                        <!-- Rank 2 -->
+                        <div class="leaderboard-podium rank-2">
+                            <div class="pfp" style="${pfpStyle(p2)}">${!p2.photoUrl ? getInitials(p2.username) : ''}</div>
+                            <div style="font-size:0.8rem; font-weight:bold; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">${p2.username}</div>
+                            <div style="font-size:0.9rem;">${v2}</div>
+                            <div class="rank-badge">2</div>
+                        </div>
+                        <!-- Rank 1 -->
+                        <div class="leaderboard-podium rank-1">
+                            <div class="crown"><i class="fa-solid fa-crown"></i></div>
+                            <div class="pfp" style="${pfpStyle(p1)}">${!p1.photoUrl ? getInitials(p1.username) : ''}</div>
+                            <div style="font-size:0.8rem; font-weight:bold; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">${p1.username}</div>
+                            <div style="font-size:1rem; font-weight:900;">${v1}</div>
+                            <div class="rank-badge">1</div>
+                        </div>
+                        <!-- Rank 3 -->
+                        <div class="leaderboard-podium rank-3">
+                            <div class="pfp" style="${pfpStyle(p3)}">${!p3.photoUrl ? getInitials(p3.username) : ''}</div>
+                            <div style="font-size:0.8rem; font-weight:bold; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">${p3.username}</div>
+                            <div style="font-size:0.9rem;">${v3}</div>
+                            <div class="rank-badge">3</div>
+                        </div>
+                    </div>`;
+            }
+
+            // LIST (Rank 4+)
+            html += list.slice(3, 20).map((u, i) => {
+                const val = type === 'points' ? (u.points||0) : (u.referredUsers?.length || 0);
+                return `
+                <div class="leaderboard-list-item">
+                    <div class="rank-circle">${i+4}</div>
+                    <div style="flex:1; font-weight:600;">${u.username}</div>
+                    <div style="color:var(--primary-bg); font-weight:bold;">${val} ${unit}</div>
+                </div>`;
+            }).join('');
+            
+            document.getElementById('boardContent').innerHTML = html || '<p style="text-align:center">No data.</p>';
+        }
+
+        async function renderReferral(container) {
+            container.innerHTML = '<div class="card"><p>Loading...</p></div>';
+            
+            // --- UPDATED LINK FORMAT ---
+            let botUser = "myfabirr_robot"; 
+            if(AppConfig.botLink) botUser = AppConfig.botLink.replace('https://t.me/', '').replace('/', '');
+            const link = `https://t.me/${botUser}/earn?startapp=${userId}`;
+            const cur = AppConfig.currencyName || 'Points';
+            
+            // FETCH REFERRER NAMES
+            let usersHtml = '<p style="text-align:center;color:#999;">No invites yet.</p>';
+            if(currentUser.referredUsers?.length > 0) {
+                 const reqs = currentUser.referredUsers.map(id => fetch(`${API_BASE_URL}/api/referrer/${id}`).then(r=>r.json()).catch(()=>({username:'Unknown'})));
+                 const users = await Promise.all(reqs);
+                 usersHtml = users.map(u => `
+                    <div class="referral-list-item">
+                        <i class="fa-solid fa-user-check" style="color:var(--success-color); margin-right:10px;"></i>
+                        <div style="flex:1;"><b>${u.username}</b></div>
+                    </div>`).join('');
+            }
+
+            container.innerHTML = `
+                <div class="card" style="text-align:center;">
+                    <img src="https://cdn-icons-png.flaticon.com/512/3893/3893269.png" width="80" style="margin-bottom:15px;">
+                    <h2>Invite & Earn</h2>
+                    <p style="color:#666; margin-bottom:20px;">Earn <b>${AppConfig.referralBonusReferrer || 0} ${cur}</b> for every friend.</p>
+                    <div style="background:#f0f0f0; padding:15px; border-radius:10px; word-break:break-all; font-family:monospace; margin-bottom:15px; font-size:0.8rem;">${link}</div>
+                    <div style="display:flex; gap:10px;">
+                        <button class="btn btn-primary" onclick="navigator.clipboard.writeText('${link}'); showToast('Copied!')">
+                            <i class="fa-regular fa-copy"></i> Copy Link
+                        </button>
+                        <button class="btn btn-secondary" onclick="shareLink('${link}')">
+                            <i class="fa-solid fa-share"></i> Share
+                        </button>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="section-title">My Invites (${currentUser.referredUsers?.length||0})</div>
+                    ${usersHtml}
+                </div>`;
+        }
+
+        function renderWithdraw(container) {
+            const reqs = { 
+                ref: AppConfig.requiredReferrals || 5, 
+                ads: AppConfig.requiredAds || 10, 
+                bonus: BonusTasks.length 
+            };
+            const stats = currentUser.lastWithdrawalStats || { referrals: 0, ads: 0, bonuses: 0 };
+            
+            const curRef = (currentUser.referredUsers?.length || 0) - stats.referrals;
+            const curAds = (currentUser.totalAdsWatchedLifetime || 0) - stats.ads;
+            
+            const totalDone = currentUser.claimedBonuses?.length || 0;
+            const totalAvail = BonusTasks.length;
+            const bonusMet = totalDone >= totalAvail; 
+            
+            const refMet = curRef >= reqs.ref; 
+            const adsMet = curAds >= reqs.ads; 
+            const unlocked = refMet && adsMet && bonusMet;
+
+            if(unlocked) {
+                container.innerHTML = `
+                    <div class="card">
+                        <div style="text-align:center; margin-bottom:20px;">
+                            <i class="fa-solid fa-lock-open" style="font-size:3rem; color:var(--success-color);"></i>
+                            <h2 style="color:var(--success-color);">Withdraw Unlocked!</h2>
+                        </div>
+                        <input type="number" id="wAmount" class="input-field" placeholder="Amount (Min: ${AppConfig.minWithdraw || 5000})">
+                        <select id="wMethod" class="input-field"><option>Telebirr</option><option>CBE</option><option>BOA</option></select>
+                        <input type="text" id="wPhone" class="input-field" placeholder="Phone / Account Number">
+                        <input type="text" id="wName" class="input-field" placeholder="Account Holder Name">
+                        <button class="btn btn-primary" onclick="submitWithdraw()">Submit Withdrawal</button>
+                    </div>`;
+            } else {
+                const row = (lbl, cur, req, met) => `<li><span>${lbl} (${cur}/${req})</span> <span class="status ${met?'met':'not-met'}">${met?'✔':'✘'}</span></li>`;
+                
+                container.innerHTML = `
+                    <div class="card">
+                        <div class="section-title">Requirements for Next Withdraw</div>
+                        <ul class="requirements-list">
+                            ${row('Invites', curRef, reqs.ref, refMet)}
+                            ${row('Ads Watched', curAds, reqs.ads, adsMet)}
+                            ${row('Bonus Tasks', totalDone, totalAvail, bonusMet)}
+                        </ul>
+                        <button class="btn" disabled>Locked</button>
+                    </div>`;
+            }
+        }
+
+        // --- ACTIONS ---
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        // --- ADSGRAM REWARD LOGIC ---
+        function claimAdsgramReward() {
+            if(!AdController) return alert("Ad not ready yet. Please wait.");
+            
+            // Show ad
+            AdController.show().then((result) => {
+                fetch(`${API_BASE_URL}/api/claim-ad-reward`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ userId: userId })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if(data.success) {
+                        currentUser.points += 10;
+                        updateUI();
+                        showToast("+10 Reward Claimed!");
+                    }
+                });
+            }).catch((e) => {
+                console.error(e);
+                alert("Ad failed to load or closed too early.");
+            });
+        }
+
+        function watchAd() {
+            if(typeof show_10024038 === 'function') {
+                show_10024038().then(() => {
+                    fetch(`${API_BASE_URL}/api/watch-ad`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userId}) });
+                    const pts = (AppConfig.pointsPerAd || 50) * (AppConfig.globalMultiplier || 1);
+                    currentUser.points += pts; currentUser.adsWatchedToday++; currentUser.totalAdsWatchedLifetime++;
+                    updateUI(); renderTasks(document.getElementById('mainContent')); showToast(`+${pts} Points`);
+                });
+            } else alert("Ad not loaded. Please refresh.");
+        }
+
+        async function doTask(id, cid, rew, link) {
+            window.open(link, '_blank');
+            setTimeout(async () => {
+                const res = await fetch(`${API_BASE_URL}/api/verify-membership`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userId, taskId:id, channelId:cid, reward:rew})});
+                const d = await res.json();
+                if(d.success) {
+                    currentUser.points = d.points; 
+                    if(!currentUser.claimedBonuses) currentUser.claimedBonuses = [];
+                    currentUser.claimedBonuses.push(id);
+                    updateUI(); renderTasks(document.getElementById('mainContent')); showToast(`+${rew} Points`);
+                } else alert(d.error);
+            }, 5000);
+        }
+
+        async function submitWithdraw() {
+            const amt = document.getElementById('wAmount').value;
+            const acc = document.getElementById('wPhone').value;
+            const name = document.getElementById('wName').value;
+            const method = document.getElementById('wMethod').value;
+            if(!amt || !acc || !name) return alert("Fill all fields");
+            
+            await fetch(`${API_BASE_URL}/api/request-withdrawal`, {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({userId, amount:amt, method, account:acc, accountName:name})
+            });
+            alert("Success! Request sent."); location.reload();
+        }
+        
+        function shareLink(link) {
+            window.Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=Join%20me!`);
+        }
+
+        async function handlePostStory() {
+            // Build format: https://t.me/botname/earn?startapp=userId
+            let botUser = "myfabirr_robot"; 
+            if(AppConfig.botLink) botUser = AppConfig.botLink.replace('https://t.me/', '').replace('/', '');
+            const link = `https://t.me/${botUser}/earn?startapp=${userId}`;
+
+            if(window.Telegram.WebApp.shareToStory) {
+                // Using DIRECT IMAGE LINK (.jpg)
+                window.Telegram.WebApp.shareToStory("https://i.ibb.co/3ykz8Jq/8gKPR1wn.jpg", {text: `Join me on Besh Besh! \n${link}`});
+            } else alert("Not supported.");
+        }
+    </script>
+</body>
+</html>

@@ -4,16 +4,22 @@ import cors from 'cors';
 import fetch from 'node-fetch';
 
 // =================================================================
-// 1. CONFIGURATION
+// 1. CONFIGURATION (HARDCODED)
 // =================================================================
-const DB_BASE_URL = "https://data-myfa.vercel.app/api/db/warningbot"; 
-const DB_SECRET_KEY = "IOtJTi_L3F-7Je8Y";
+const firebaseConfig = {
+  apiKey: "AIzaSyADDpimqoG8PDeSgzd6XeI8bahZZRTRqRM",
+  authDomain: "besh-81e22.firebaseapp.com",
+  databaseURL: "https://besh-81e22-default-rtdb.firebaseio.com",
+  projectId: "besh-81e22",
+  storageBucket: "besh-81e22.firebasestorage.app",
+  messagingSenderId: "324768534552",
+  appId: "1:324768534552:web:dcfc91e34509c3e104336d"
+};
 
-// Direct Image Link
-const WELCOME_IMG = "https://i.ibb.co/GQxC1zDf/Resized-Image-2026-01-11-09-14-06-1.png"; 
+const BOT_TOKEN = '8509274087:AAFm2BTuXcgaY7KNoihTKnVgK8sNBces9p0';
+const ADMIN_SECRET = "Yichu123";
+const WELCOME_IMG = "https://i.ibb.co/GQxC1zDf/Resized-Image-2026-01-11-09-14-06-1.png";
 const IMAGE_API_URL = "https://welcomeapi.vercel.app/api";
-const BOT_TOKEN = process.env.BOT_TOKEN || '8509274087:AAFm2BTuXcgaY7KNoihTKnVgK8sNBces9p0'; 
-const ADMIN_SECRET = process.env.ADMIN_SECRET_KEY || "Yichu123";
 
 // Polling must be false for Serverless/Vercel
 const bot = new TelegramBot(BOT_TOKEN, { polling: false }); 
@@ -25,12 +31,12 @@ app.use(cors());
 // =================================================================
 // 2. DATABASE HELPER FUNCTIONS
 // =================================================================
-async function dbCall(endpoint, method, data = null) {
+async function dbCall(path, method, data = null) {
     try {
-        const url = `${DB_BASE_URL}/${endpoint}`;
+        const url = `${firebaseConfig.databaseURL}/${path}.json`;
         const options = {
             method: method,
-            headers: { "Content-Type": "application/json", "x-secret-key": DB_SECRET_KEY }
+            headers: { "Content-Type": "application/json" }
         };
         if (data) options.body = JSON.stringify(data);
 
@@ -44,18 +50,14 @@ async function dbCall(endpoint, method, data = null) {
         if (!response.ok) return null;
         return await response.json();
     } catch (error) {
-        console.error(`DB Error (${endpoint}):`, error.message);
+        console.error(`DB Error (${path}):`, error.message);
         return null;
     }
 }
 
 async function dbGet(path) { return await dbCall(path, 'GET'); }
-async function dbSet(path, data) { return await dbCall(path, 'POST', data); }
-async function dbUpdate(path, partialData) {
-    const currentData = await dbGet(path) || {};
-    const mergedData = { ...(typeof currentData === 'object' ? currentData : {}), ...partialData };
-    return await dbSet(path, mergedData);
-}
+async function dbSet(path, data) { return await dbCall(path, 'PUT', data); }
+async function dbUpdate(path, partialData) { return await dbCall(path, 'PATCH', partialData); }
 async function dbRemove(path) { return await dbCall(path, 'DELETE'); }
 
 function logUserAction(user, actionStr) {

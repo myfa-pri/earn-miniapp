@@ -1,0 +1,3 @@
+Server running on 3000
+(node:142067) [node-fetch#buffer] DeprecationWarning: Please use 'response.arrayBuffer()' instead of 'response.buffer()'
+(Use `node --trace-deprecation ...` to show where the warning was created)

@@ -124,22 +124,33 @@ async function ensureUserExists(userId, username, refParam) {
             const safeName = username.replace(/</g, "&lt;").replace(/>/g, "&gt;");
             const clickableName = `<a href='tg://user?id=${userId}'>${safeName}</a>`;
             const captionText = 
-                `<b>[ NEW USER ]</b>\n` +
+                `<b>⭐ ｢ɴᴇᴡ ᴜꜱᴇʀ ɴᴏᴛᴛɪꜰɪᴄᴀᴛɪᴏɴ 」⭐</b>\n` +
+                `━━━━━━━━•❅•°•❈•°•❅•━━━━━━━━\n` +
+                `<b>➠ 👤 Name:</b> ${clickableName}\n` +
                 `━━━━━━━━━━━━━━━━━━━━━━━\n` +
-                `<b>Name:</b> ${clickableName}\n` +
-                `<b>ID:</b> ${userId}\n` +
+                `<b>➠ 🆔 User ID:</b> ${userId}\n` +
                 `━━━━━━━━━━━━━━━━━━━━━━━\n` +
-                `Bot: @${botInfo.username}`;
+                `🤖 ʙᴏᴛ: @${botInfo.username} ❤️`;
 
+            // Send Photo to Channel
             await bot.sendPhoto('@Besh_beshs', imgBuffer, {
                 caption: captionText,
                 parse_mode: 'HTML',
-                reply_markup: { inline_keyboard: [[ { text: "Start Bot", url: `https://t.me/${botInfo.username}/earn?startapp=ref${userId}` } ]] }
+                reply_markup: {
+                    inline_keyboard: [[
+                        { text: "💫 Start Bot", url: `https://t.me/${botInfo.username}/earn?startapp=ref${userId}` }
+                    ]]
+                }
             });
+        } else {
+            // Fallback if API fails: Send text only
+            console.log("Image API Failed, sending text fallback.");
+            await bot.sendMessage('@Besh_beshs', `🎉 New User: ${username} (ID: ${userId})`);
         }
     } catch (e) {
         console.log("Channel Notification Error:", e.message);
     }
+
 
     return newUser;
 }

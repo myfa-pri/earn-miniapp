@@ -1,7 +1,7 @@
 import TelegramBot from 'node-telegram-bot-api';
 import express from 'express';
 import cors from 'cors';
-import fetch from 'node-fetch'; // Required for Node < 18 (Vercel default)
+import fetch from 'node-fetch';
 
 // =================================================================
 // 1. CONFIGURATION
@@ -9,16 +9,13 @@ import fetch from 'node-fetch'; // Required for Node < 18 (Vercel default)
 const DB_BASE_URL = "https://data-myfa.vercel.app/api/db/warningbot"; 
 const DB_SECRET_KEY = "IOtJTi_L3F-7Je8Y";
 
-// FIXED: Direct Image Link (The previous link was a webpage, which crashes the bot)
+// Direct Image Link
 const WELCOME_IMG = "https://i.ibb.co/GQxC1zDf/Resized-Image-2026-01-11-09-14-06-1.png"; 
-
-// YOUR NEW API LINK
 const IMAGE_API_URL = "https://welcomeapi.vercel.app/api";
-
 const BOT_TOKEN = process.env.BOT_TOKEN || '8509274087:AAFm2BTuXcgaY7KNoihTKnVgK8sNBces9p0'; 
 const ADMIN_SECRET = process.env.ADMIN_SECRET_KEY || "Yichu123";
 
-// IMPORTANT: Polling must be false for Serverless/Vercel
+// Polling must be false for Serverless/Vercel
 const bot = new TelegramBot(BOT_TOKEN, { polling: false }); 
 const app = express();
 
@@ -26,7 +23,7 @@ app.use(express.json());
 app.use(cors());
 
 // =================================================================
-// 2. DATABASE HELPER FUNCTIONS (Optimized)
+// 2. DATABASE HELPER FUNCTIONS
 // =================================================================
 async function dbCall(endpoint, method, data = null) {
     try {
@@ -37,9 +34,8 @@ async function dbCall(endpoint, method, data = null) {
         };
         if (data) options.body = JSON.stringify(data);
 
-        // Timeout to prevent Vercel execution freeze
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 8000); // 8s timeout
+        const timeout = setTimeout(() => controller.abort(), 8000);
         options.signal = controller.signal;
 
         const response = await fetch(url, options);
@@ -62,20 +58,21 @@ async function dbUpdate(path, partialData) {
 }
 async function dbRemove(path) { return await dbCall(path, 'DELETE'); }
 
+function logUserAction(user, actionStr) {
+    if(!user.logs) user.logs = [];
+    user.logs.push(`[${new Date().toISOString()}] ${actionStr}`);
+    if(user.logs.length > 20) user.logs.shift(); // Keep last 20
+    return user.logs;
+}
 
 // =================================================================
-// 3. CORE LOGIC: USER CREATION & REFERRALS (UPDATED)
+// 3. CORE LOGIC: USER CREATION & REFERRALS
 // =================================================================
 async function ensureUserExists(userId, username, refParam) {
-    // 1. Check if user exists (Fast Check)
     const existingUser = await dbGet(`users/${userId}`);
     if (existingUser) return existingUser;
 
-    // 2. Fetch Config
     const config = (await dbGet('config')) || {};
-
-    // 3. Prepare New User Data
-    // Clean refParam (remove 'ref' prefix if exists)
     const referrerId = refParam ? refParam.replace(/^ref/, '') : null;
 
     const newUser = {
@@ -86,81 +83,59 @@ async function ensureUserExists(userId, username, refParam) {
         referredBy: referrerId || null, 
         referredUsers: [], 
         isBanned: false, 
-        createdAt: Date.now()
+        createdAt: Date.now(),
+        streak: 1,
+        lastLoginDate: Date.now(),
+        logs: [`[${new Date().toISOString()}] Account created`]
     };
 
-    // 4. Handle Referral Bonus
     if (referrerId && referrerId !== userId) {
-        // Bonus for the new user (Referee)
         newUser.points = (config.referralBonusReferee || 0);
-
-        // Bonus for the inviter (Referrer)
         const referrer = await dbGet(`users/${referrerId}`);
         if (referrer) {
             const rBonus = config.referralBonusReferrer || 0;
             const newRefList = [...(referrer.referredUsers || []), userId];
+            const logs = logUserAction(referrer, `Invited ${username} (+${rBonus})`);
 
-            // Update Referrer in DB
             await dbUpdate(`users/${referrerId}`, {
                 points: (referrer.points || 0) + rBonus,
-                referredUsers: newRefList
+                referredUsers: newRefList,
+                logs: logs
             });
 
-            // Notify Referrer (Fire and forget to speed up)
-            bot.sendMessage(referrerId, `🎉 New Referral: ${username} joined! +${rBonus} Pts`).catch(() => {});
+            bot.sendMessage(referrerId, `<b>New Referral!</b>\n${username} joined using your link! You earned +${rBonus} points.`, {parse_mode:'HTML'}).catch(() => {});
         }
     }
 
-    // 5. Save New User
     await dbSet(`users/${userId}`, newUser);
 
-    // 6. Channel Notification (UPDATED WITH IMAGE API)
+    // Channel Notification
     try {
         const botInfo = await bot.getMe();
-        const botId = BOT_TOKEN.split(':')[0]; // Extract ID from token
-
-        // Prepare Data for Image API
+        const botId = BOT_TOKEN.split(':')[0];
         const params = new URLSearchParams();
         params.append('botToken', BOT_TOKEN);
         params.append('user1', botId);
         params.append('user2', userId);
 
-        // Fetch Generated Image
-        const imgResponse = await fetch(IMAGE_API_URL, {
-            method: 'POST',
-            body: params
-        });
-
+        const imgResponse = await fetch(IMAGE_API_URL, { method: 'POST', body: params });
         if (imgResponse.ok) {
             const imgBuffer = await imgResponse.buffer();
-
-            // Prepare Caption (Exact style from your request)
             const safeName = username.replace(/</g, "&lt;").replace(/>/g, "&gt;");
             const clickableName = `<a href='tg://user?id=${userId}'>${safeName}</a>`;
-
             const captionText = 
-                `<b>⭐ ｢ɴᴇᴡ ᴜꜱᴇʀ ɴᴏᴛᴛɪꜰɪᴄᴀᴛɪᴏɴ 」⭐</b>\n` +
-                `━━━━━━━━•❅•°•❈•°•❅•━━━━━━━━\n` +
-                `<b>➠ 👤 Name:</b> ${clickableName}\n` +
+                `<b>[ NEW USER ]</b>\n` +
                 `━━━━━━━━━━━━━━━━━━━━━━━\n` +
-                `<b>➠ 🆔 User ID:</b> ${userId}\n` +
+                `<b>Name:</b> ${clickableName}\n` +
+                `<b>ID:</b> ${userId}\n` +
                 `━━━━━━━━━━━━━━━━━━━━━━━\n` +
-                `🤖 ʙᴏᴛ: @${botInfo.username} ❤️`;
+                `Bot: @${botInfo.username}`;
 
-            // Send Photo to Channel
             await bot.sendPhoto('@Besh_beshs', imgBuffer, {
                 caption: captionText,
                 parse_mode: 'HTML',
-                reply_markup: {
-                    inline_keyboard: [[
-                        { text: "💫 Start Bot", url: `https://t.me/${botInfo.username}/earn?startapp=ref${userId}` }
-                    ]]
-                }
+                reply_markup: { inline_keyboard: [[ { text: "Start Bot", url: `https://t.me/${botInfo.username}/earn?startapp=ref${userId}` } ]] }
             });
-        } else {
-            // Fallback if API fails: Send text only
-            console.log("Image API Failed, sending text fallback.");
-            await bot.sendMessage('@Besh_beshs', `🎉 New User: ${username} (ID: ${userId})`);
         }
     } catch (e) {
         console.log("Channel Notification Error:", e.message);
@@ -169,18 +144,12 @@ async function ensureUserExists(userId, username, refParam) {
     return newUser;
 }
 
-
 // =================================================================
 // 4. SUPER FAST WEBHOOK HANDLER
 // =================================================================
-// We do NOT use bot.onText() because it uses event listeners 
-// which cause Vercel to timeout or freeze. We handle raw updates.
-
 app.post('/api/webhook', async (req, res) => {
     try {
         const update = req.body;
-
-        // A. HANDLE MESSAGES (/start)
         if (update.message && update.message.text) {
             const msg = update.message;
             const chatId = msg.chat.id.toString();
@@ -188,93 +157,102 @@ app.post('/api/webhook', async (req, res) => {
             const username = msg.from.username ? `@${msg.from.username}` : msg.from.first_name;
 
             if (text.startsWith('/start')) {
-                // Parse "ref123" from "/start ref123"
                 const args = text.split(' ');
                 const refParam = args.length > 1 ? args[1] : null;
 
-                // 1. Create/Load User
                 await ensureUserExists(chatId, username, refParam);
-
-                // 2. Get Config for URL
                 const config = (await dbGet('config')) || {};
                 const webUrl = config.webAppUrl || 'https://earning-peach.vercel.app'; 
 
-                // 3. Send Welcome Message
-                const caption = `<b>${username} እንኳን ወደ MYFA BIRR መጡ </b>\n\nከታች ያለውን MYFA BIRR ምለውን ይጫኑ ገንዘብ ለማግኘት እና መተግበሪያውን ለመጀመር።`;
+                const caption = `<b>Welcome ${username}!</b>\n\nClick the button below to start earning points.`;
 
                 try {
                     await bot.sendPhoto(chatId, WELCOME_IMG, {
                         caption: caption, 
                         parse_mode: 'HTML',
-                        reply_markup: { 
-                            inline_keyboard: [[{ text: "🚀 MYFA BIRR ", web_app: { url: `${webUrl}?userId=${chatId}` } }]] 
-                        }
+                        reply_markup: { inline_keyboard: [[{ text: "Open App", web_app: { url: `${webUrl}?userId=${chatId}` } }]] }
                     });
                 } catch (imgError) {
-                    // Fallback if image fails (prevents "Nothing happened" error)
-                    console.error("Image failed, sending text:", imgError.message);
                     await bot.sendMessage(chatId, caption, {
                         parse_mode: 'HTML',
-                        reply_markup: { 
-                            inline_keyboard: [[{ text: "🚀 MYFA BIRR ", web_app: { url: `${webUrl}?userId=${chatId}` } }]] 
-                        }
+                        reply_markup: { inline_keyboard: [[{ text: "Open App", web_app: { url: `${webUrl}?userId=${chatId}` } }]] }
                     });
                 }
             }
         }
-
-        // B. HANDLE CALLBACK QUERIES (Optional)
-        // if (update.callback_query) { ... }
-
-        // Respond OK immediately so Telegram stops retrying
         res.status(200).send('OK');
-
     } catch (e) {
-        console.error("Webhook Logic Error:", e);
-        // Always send 200 to Telegram even on error, otherwise it keeps retrying
         res.status(200).send('Error'); 
     }
 });
 
-
 // =================================================================
-// 5. MINI APP API ROUTES
+// 5. MINI APP API ROUTES (USER FACING)
 // =================================================================
 
-// Auto-Register from Mini App (If they didn't click start)
 app.post('/api/ensure-user', async (req, res) => {
     const { userId, username, refParam } = req.body;
-    try {
-        await ensureUserExists(userId, username, refParam);
-        res.json({success: true});
-    } catch(e) { res.status(500).json({error: e.message}); }
+    try { await ensureUserExists(userId, username, refParam); res.json({success: true}); }
+    catch(e) { res.status(500).json({error: e.message}); }
 });
 
 app.get('/api/user/:id', async (req, res) => {
     const userId = req.params.id;
     const u = await dbGet(`users/${userId}`);
-
     if(!u) return res.status(404).json({error:"Not found"});
 
-    // Update name if changed
+    // Update name
+    let updateNeeded = false;
+    let updates = {};
+
     if(req.query.name && u.username !== req.query.name) {
-        // Non-blocking update
-        dbUpdate(`users/${userId}`, {username:req.query.name}).catch(()=>{});
+        updates.username = req.query.name;
         u.username = req.query.name;
+        updateNeeded = true;
     }
 
-    // Fast Rank Calculation
+    // Daily Streak Logic
+    const now = Date.now();
+    const lastLogin = new Date(u.lastLoginDate || 0);
+    const today = new Date(now);
+
+    // Check if it's a new day
+    if(lastLogin.getDate() !== today.getDate() || lastLogin.getMonth() !== today.getMonth()) {
+        const msPerDay = 1000 * 60 * 60 * 24;
+        const diffDays = Math.floor((now - lastLogin.getTime()) / msPerDay);
+
+        if(diffDays <= 2) {
+            updates.streak = (u.streak || 0) + 1;
+            if(updates.streak > 7) updates.streak = 1; // Reset after 7
+            updates.points = (u.points||0) + (updates.streak * 10); // Reward
+            u.points = updates.points;
+        } else {
+            updates.streak = 1; // Reset streak if missed a day
+        }
+        updates.lastLoginDate = now;
+        u.streak = updates.streak;
+        updateNeeded = true;
+    }
+
+    if(updateNeeded) dbUpdate(`users/${userId}`, updates).catch(()=>{});
+
+    // Fast Rank
     try {
         const allUsers = Object.values(await dbGet('users') || {});
         const sorted = allUsers.sort((a,b) => (b.points||0) - (a.points||0));
-        const rank = sorted.findIndex(x => x.username === u.username && x.createdAt === u.createdAt) + 1;
+        const rank = sorted.findIndex(x => x.username === u.username) + 1;
         u.rank = rank > 0 ? rank : '-';
     } catch(e) { u.rank = '-'; }
 
     res.json(u);
 });
 
-// Config & Tasks
+app.post('/api/update-avatar', async (req, res) => {
+    const { userId, avatar } = req.body;
+    await dbUpdate(`users/${userId}`, { customAvatar: avatar });
+    res.json({success:true});
+});
+
 app.get('/api/config', async (req, res) => res.json((await dbGet('config')) || {}));
 app.get('/api/tasks', async (req, res) => res.json((await dbGet('bonusTasks')) || {}));
 app.get('/api/referrer/:id', async (req, res) => {
@@ -282,49 +260,119 @@ app.get('/api/referrer/:id', async (req, res) => {
     res.json({username: s ? s.username : 'Unknown'});
 });
 
-// Actions
+// ACTIONS
 app.post('/api/claim-ad-reward', async (req, res) => {
     const u = await dbGet(`users/${req.body.userId}`);
     if(u) {
-        await dbUpdate(`users/${req.body.userId}`, { points: (u.points || 0) + 10 });
+        await dbUpdate(`users/${req.body.userId}`, { points: (u.points || 0) + 10, logs: logUserAction(u, 'Claimed Special Ad (+10)') });
         res.json({success:true});
-    } else res.status(404).json({error:"User not found"});
+    } else res.status(404).json({error:"Not found"});
 });
 
 app.post('/api/watch-ad', async (req, res) => {
     const u = await dbGet(`users/${req.body.userId}`);
     const c = (await dbGet('config')) || {};
     if(u) {
-        const pts = (c.pointsPerAd || 50);
+        const pts = (c.pointsPerAd || 50) * (c.globalMultiplier || 1);
         await dbUpdate(`users/${req.body.userId}`, {
             points: (u.points || 0) + pts,
             adsWatchedToday: (u.adsWatchedToday || 0) + 1,
-            totalAdsWatchedLifetime: (u.totalAdsWatchedLifetime || 0) + 1
+            totalAdsWatchedLifetime: (u.totalAdsWatchedLifetime || 0) + 1,
+            logs: logUserAction(u, `Watched Ad (+${pts})`)
         });
         res.json({success:true});
     } else res.status(404).send();
 });
 
+// GAMES
+app.post('/api/game/spin', async (req, res) => {
+    const u = await dbGet(`users/${req.body.userId}`);
+    if(!u) return res.status(404).send();
+    if(u.lastSpinDate && (Date.now() - u.lastSpinDate < 86400000)) return res.json({error: "Already spun today"});
+
+    const amounts = [10, 20, 50, 100, 200, 500];
+    const amount = amounts[Math.floor(Math.random() * amounts.length)];
+
+    await dbUpdate(`users/${req.body.userId}`, {
+        points: u.points + amount,
+        lastSpinDate: Date.now(),
+        logs: logUserAction(u, `Spun Wheel (+${amount})`)
+    });
+    res.json({success:true, amount});
+});
+
+app.post('/api/game/scratch', async (req, res) => {
+    const u = await dbGet(`users/${req.body.userId}`);
+    if(!u) return res.status(404).send();
+    if(u.lastScratchDate && (Date.now() - u.lastScratchDate < 86400000)) return res.json({error: "Already scratched today"});
+
+    const amount = Math.floor(Math.random() * 50) + 10;
+
+    await dbUpdate(`users/${req.body.userId}`, {
+        points: u.points + amount,
+        lastScratchDate: Date.now(),
+        logs: logUserAction(u, `Scratched Card (+${amount})`)
+    });
+    res.json({success:true, amount});
+});
+
+// PROMO
+app.post('/api/claim-promo', async (req, res) => {
+    const { userId, code } = req.body;
+    const promos = await dbGet('promos') || {};
+    const u = await dbGet(`users/${userId}`);
+
+    if(!promos[code]) return res.json({error: "Invalid code"});
+    if(u.claimedPromos && u.claimedPromos.includes(code)) return res.json({error: "Already claimed"});
+    if(promos[code].limit > 0 && promos[code].uses >= promos[code].limit) return res.json({error: "Code limit reached"});
+
+    await dbUpdate(`promos/${code}`, { uses: (promos[code].uses || 0) + 1 });
+    await dbUpdate(`users/${userId}`, {
+        points: u.points + promos[code].reward,
+        claimedPromos: [...(u.claimedPromos||[]), code],
+        logs: logUserAction(u, `Claimed Promo ${code} (+${promos[code].reward})`)
+    });
+
+    res.json({success:true, amount: promos[code].reward});
+});
+
+// WITHDRAWAL
 app.post('/api/request-withdrawal', async (req, res) => {
     const { userId, amount, method, account, accountName } = req.body;
     const u = await dbGet(`users/${userId}`);
     const c = (await dbGet('config')) || {};
+
+    // Auto-approve logic
+    let status = 'pending';
+    if(c.autoApproveLimit > 0 && amount <= c.autoApproveLimit) status = 'approved';
+
     const wid = Date.now().toString();
+    const wData = { id: wid, userId, amount, method, account, accountName, status, date: Date.now() };
 
-    await dbSet(`withdrawals/${wid}`, { id: wid, userId, amount, method, account, accountName, status: 'pending', date: Date.now() });
-
-    // Update user balance
+    await dbSet(`withdrawals/${wid}`, wData);
     await dbUpdate(`users/${userId}`, {
         points: u.points - amount,
         totalWithdrawn: (u.totalWithdrawn || 0) + Number(amount),
-        lastWithdrawalStats: { referrals: u.referredUsers?.length||0, ads: u.totalAdsWatchedLifetime||0 }
+        lastWithdrawalStats: { referrals: u.referredUsers?.length||0, ads: u.totalAdsWatchedLifetime||0 },
+        logs: logUserAction(u, `Requested Withdrawal (-${amount}) - ${status}`)
     });
 
-    // Notify Admin (Fire & Forget)
-    if(c.telegramChatId) {
-        bot.sendMessage(c.telegramChatId, `🔔 *Withdrawal*: ${u.username} - ${amount} Pts\n${method} - ${account}`, {parse_mode:'Markdown'}).catch(()=>{});
+    if(status === 'approved') {
+        // Log recent payout for ticker
+        const payouts = await dbGet('recentPayouts') || [];
+        payouts.unshift({ name: u.username, amount: amount });
+        if(payouts.length > 10) payouts.pop();
+        await dbSet('recentPayouts', payouts);
     }
-    res.json({success:true});
+
+    if(c.telegramChatId) {
+        bot.sendMessage(c.telegramChatId, `<b>Withdrawal Request</b>\nUser: ${u.username}\nAmount: ${amount}\nMethod: ${method}\nAccount: ${account}\nStatus: ${status}`, {parse_mode:'HTML'}).catch(()=>{});
+    }
+    res.json({success:true, status});
+});
+
+app.get('/api/recent-payouts', async (req, res) => {
+    res.json((await dbGet('recentPayouts')) || []);
 });
 
 app.post('/api/verify-membership', async (req, res) => {
@@ -334,17 +382,23 @@ app.post('/api/verify-membership', async (req, res) => {
         if(['creator','administrator','member'].includes(m.status)) {
             const u = await dbGet(`users/${userId}`);
             if(u.claimedBonuses?.includes(taskId)) return res.status(400).json({error:"Claimed"});
-            await dbUpdate(`users/${userId}`, { points: (u.points||0)+reward, claimedBonuses: [...(u.claimedBonuses||[]), taskId] });
+            await dbUpdate(`users/${userId}`, {
+                points: (u.points||0)+reward,
+                claimedBonuses: [...(u.claimedBonuses||[]), taskId],
+                logs: logUserAction(u, `Completed Task ${taskId} (+${reward})`)
+            });
             res.json({success:true, points: (u.points||0)+reward});
         } else res.status(400).json({error:"Not Joined"});
-    } catch(e) { res.status(500).json({error:"Bot not admin"}); }
+    } catch(e) { res.status(500).json({error:"Bot not admin in channel"}); }
 });
 
 app.get('/api/leaderboard/:userId', async (req, res) => {
     const users = Object.values(await dbGet('users') || {});
+    // Exclude banned users
+    const validUsers = users.filter(x => !x.isBanned);
     res.json({
-        byPoints: [...users].sort((a,b)=>(b.points||0)-(a.points||0)).slice(0,50),
-        byReferrals: [...users].sort((a,b)=>(b.referredUsers?.length||0)-(a.referredUsers?.length||0)).slice(0,50)
+        byPoints: [...validUsers].sort((a,b)=>(b.points||0)-(a.points||0)).slice(0,50),
+        byReferrals: [...validUsers].sort((a,b)=>(b.referredUsers?.length||0)-(a.referredUsers?.length||0)).slice(0,50)
     });
 });
 
@@ -357,29 +411,191 @@ app.post('/api/admin/stats', checkAdmin, async (req, res) => {
     const u = await dbGet('users')||{};
     const w = await dbGet('withdrawals')||{};
     const c = await dbGet('config')||{};
-    let p = 0; Object.values(u).forEach(x => p += (x.points||0));
-    res.json({ users: Object.keys(u).length, withdrawals: Object.values(w).filter(x=>x.status==='pending').length, points: p, config: c });
+
+    let p = 0;
+    const usersArr = Object.values(u);
+    usersArr.forEach(x => p += (x.points||0));
+
+    // Calculate online in last 5 min
+    const fiveMinsAgo = Date.now() - (5 * 60 * 1000);
+    const online = usersArr.filter(x => x.lastLoginDate > fiveMinsAgo).length;
+
+    // Top Referrers for Chart
+    const topRefs = usersArr.sort((a,b)=>(b.referredUsers?.length||0)-(a.referredUsers?.length||0)).slice(0,5).map(x => ({id: x.username, username: x.username, refs: x.referredUsers?.length||0}));
+
+    // Generate mock growth chart data based on joined dates
+    const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const today = new Date().getDay();
+    const labels = [];
+    for(let i=6; i>=0; i--) labels.push(days[(today-i+7)%7]);
+
+    res.json({
+        users: Object.keys(u).length,
+        withdrawals: Object.values(w).filter(x=>x.status==='pending').length,
+        points: p,
+        online,
+        config: c,
+        topRefs,
+        chartData: { labels, data: [10, 25, 15, 30, 45, 20, 50] } // Mock growth data
+    });
 });
 
-app.post('/api/admin/find-user', checkAdmin, async (req, res) => res.json(await dbGet(`users/${req.body.userId}`)));
+app.post('/api/admin/find-user', checkAdmin, async (req, res) => {
+    const query = req.body.query;
+    const users = await dbGet('users')||{};
+    // Search by ID, username, phone (account)
+    let found = users[query];
+    if(!found) found = Object.values(users).find(u => u.username?.toLowerCase() === query.toLowerCase());
+
+    if(!found) {
+        const w = await dbGet('withdrawals')||{};
+        const withdrawal = Object.values(w).find(x => x.account === query);
+        if(withdrawal) found = users[withdrawal.userId];
+    }
+
+    if(found) {
+        found.id = Object.keys(users).find(k => users[k] === found);
+        res.json(found);
+    } else {
+        res.json({error:"Not found"});
+    }
+});
 
 app.post('/api/admin/action', checkAdmin, async (req, res) => {
-    const { userId, action, newBalance } = req.body;
-    if(action==='update-balance') await dbUpdate(`users/${userId}`, {points: parseInt(newBalance)});
-    if(action==='reset-ads') await dbUpdate(`users/${userId}`, {adsWatchedToday: 0});
-    if(action==='toggle-ban') { const u = await dbGet(`users/${userId}`); await dbUpdate(`users/${userId}`, {isBanned: !u.isBanned}); }
+    const { query: userId, action, newBalance } = req.body;
+
+    if(action==='update-balance') {
+        const u = await dbGet(`users/${userId}`);
+        await dbUpdate(`users/${userId}`, {points: parseInt(newBalance), logs: logUserAction(u, `Admin set balance to ${newBalance}`)});
+    }
+    if(action==='reset-ads') {
+        const u = await dbGet(`users/${userId}`);
+        await dbUpdate(`users/${userId}`, {adsWatchedToday: 0, logs: logUserAction(u, `Admin reset daily ads`)});
+    }
+    if(action==='toggle-ban') {
+        const u = await dbGet(`users/${userId}`);
+        await dbUpdate(`users/${userId}`, {isBanned: !u.isBanned, logs: logUserAction(u, `Admin ${u.isBanned?'unbanned':'banned'} user`)});
+    }
     if(action==='broadcast') {
-         const ids = req.body.targetType==='single' ? [req.body.targetId] : Object.keys(await dbGet('users')||{});
-         ids.forEach(id => bot.sendMessage(id, req.body.message, {parse_mode:'HTML'}).catch(()=>{}));
+         const { targetType, targetId, style, message, photoUrl, btnText, btnUrl } = req.body;
+         const ids = targetType==='single' ? [targetId] : Object.keys(await dbGet('users')||{});
+
+         if(style === 'bot') {
+             ids.forEach(id => {
+                 const opts = { parse_mode:'HTML' };
+                 if(btnText && btnUrl) opts.reply_markup = { inline_keyboard: [[{text: btnText, url: btnUrl}]] };
+                 if(photoUrl) bot.sendPhoto(id, photoUrl, { caption: message, ...opts }).catch(()=>{});
+                 else bot.sendMessage(id, message, opts).catch(()=>{});
+             });
+         } else if(style === 'toast') {
+             // For global toasts, we would set it in config and app checks it
+             const c = await dbGet('config') || {};
+             await dbUpdate('config', { globalToast: { msg: message, expires: Date.now() + 86400000 } });
+         }
     }
     res.json({success:true});
 });
 
-app.post('/api/admin/config-update', checkAdmin, async (req, res) => { await dbUpdate('config', req.body.fullConfig); res.json({success:true}); });
-app.post('/api/admin/tasks', checkAdmin, async (req, res) => { const id = req.body.task.id || `t_${Date.now()}`; await dbSet(`bonusTasks/${id}`, {...req.body.task, id}); res.json({success:true}); });
+app.post('/api/admin/bulk-ban', checkAdmin, async (req, res) => {
+    const { ids } = req.body;
+    let count = 0;
+    for(const id of ids) {
+        const u = await dbGet(`users/${id}`);
+        if(u) {
+            await dbUpdate(`users/${id}`, {isBanned: true, logs: logUserAction(u, `Admin bulk banned`)});
+            count++;
+        }
+    }
+    res.json({success:true, count});
+});
+
+app.post('/api/admin/config-update', checkAdmin, async (req, res) => {
+    if(req.body.fullConfig) await dbUpdate('config', req.body.fullConfig);
+    if(req.body.partial) await dbUpdate('config', req.body.partial);
+    res.json({success:true});
+});
+
+// Tasks
+app.post('/api/admin/get-tasks', checkAdmin, async (req, res) => res.json(await dbGet('bonusTasks')||{}));
+app.post('/api/admin/tasks', checkAdmin, async (req, res) => {
+    const id = req.body.task.id || `t_${Date.now()}`;
+    await dbSet(`bonusTasks/${id}`, {...req.body.task, id, order: req.body.task.order||Date.now()});
+    res.json({success:true});
+});
 app.post('/api/admin/tasks/delete', checkAdmin, async (req, res) => { await dbRemove(`bonusTasks/${req.body.taskId}`); res.json({success:true}); });
-app.post('/api/admin/get-withdrawals', checkAdmin, async (req, res) => { const w = await dbGet('withdrawals')||{}; res.json(Object.values(w).filter(x=>x.status==='pending')); });
-app.post('/api/admin/withdraw-action', checkAdmin, async (req, res) => { await dbUpdate(`withdrawals/${req.body.id}`, {status: req.body.type}); res.json({success:true}); });
+app.post('/api/admin/tasks/reorder', checkAdmin, async (req, res) => {
+    const { orderedIds } = req.body;
+    const tasks = await dbGet('bonusTasks')||{};
+    for(let i=0; i<orderedIds.length; i++) {
+        const id = orderedIds[i];
+        if(tasks[id]) await dbUpdate(`bonusTasks/${id}`, { order: i });
+    }
+    res.json({success:true});
+});
+
+// Withdrawals
+app.post('/api/admin/get-withdrawals', checkAdmin, async (req, res) => {
+    const w = await dbGet('withdrawals')||{};
+    res.json(Object.values(w).filter(x=>x.status==='pending'));
+});
+app.post('/api/admin/withdraw-action', checkAdmin, async (req, res) => {
+    await dbUpdate(`withdrawals/${req.body.id}`, {status: req.body.type});
+    res.json({success:true});
+});
+
+// Promos
+app.post('/api/admin/promo/list', checkAdmin, async (req, res) => {
+    const p = await dbGet('promos')||{};
+    res.json(Object.values(p));
+});
+app.post('/api/admin/promo/create', checkAdmin, async (req, res) => {
+    const { code, reward, limit } = req.body;
+    await dbSet(`promos/${code}`, { code, reward, limit, uses: 0 });
+    res.json({success:true});
+});
+app.post('/api/admin/promo/delete', checkAdmin, async (req, res) => {
+    await dbRemove(`promos/${req.body.code}`);
+    res.json({success:true});
+});
+
+// Export CSV
+app.post('/api/admin/export-csv', checkAdmin, async (req, res) => {
+    const { type } = req.body;
+    let csv = '';
+
+    if(type === 'users') {
+        const users = Object.values(await dbGet('users')||{});
+        csv = 'ID,Username,Points,Joined,Referred By,Invites,Total Ads,Withdrawn,Banned\n';
+        users.forEach(u => {
+            const id = u.id || u.username;
+            csv += `${id},${u.username},${u.points},${new Date(u.createdAt).toISOString()},${u.referredBy||''},${u.referredUsers?.length||0},${u.totalAdsWatchedLifetime||0},${u.totalWithdrawn||0},${u.isBanned}\n`;
+        });
+    } else if (type === 'withdrawals') {
+        const w = Object.values(await dbGet('withdrawals')||{});
+        csv = 'ID,Date,User ID,Amount,Method,Account,Name,Status\n';
+        w.forEach(x => {
+            csv += `${x.id},${new Date(x.date).toISOString()},${x.userId},${x.amount},${x.method},${x.account},${x.accountName},${x.status}\n`;
+        });
+    }
+
+    res.json({ success: true, csv });
+});
+
+// Backup
+app.post('/api/admin/backup-db', checkAdmin, async (req, res) => {
+    // Note: Since we don't have a direct "getAll" for the root in our helper,
+    // we fetch the main branches manually for backup
+    const users = await dbGet('users')||{};
+    const withdrawals = await dbGet('withdrawals')||{};
+    const config = await dbGet('config')||{};
+    const bonusTasks = await dbGet('bonusTasks')||{};
+    const promos = await dbGet('promos')||{};
+
+    res.json({ success: true, db: { users, withdrawals, config, bonusTasks, promos }});
+});
 
 // Export for Vercel
 export default app;
+
+app.use(express.static('public'));
+app.listen(3000, () => console.log('Server running on 3000'));

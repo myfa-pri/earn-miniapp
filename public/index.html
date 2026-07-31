@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
     <title>Besh Besh</title>
     
     <!-- MONETAG AD SDK -->
@@ -13,7 +13,8 @@
 
     <!-- FONTS & ICONS -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     
     <!-- EXTERNAL CSS -->
@@ -21,61 +22,202 @@
 
     <!-- TELEGRAM WEB APP -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <!-- CONFETTI (for celebrations) -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <!-- QR CODE GENERATOR -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
-    <div class="app-container">
-        <!-- LOADING SCREEN -->
+    <!-- OFFLINE ALERT -->
+    <div id="offline-alert" class="toast error" style="display: none; bottom: auto; top: -100px; z-index: 4000;">
+        <i class="fa-solid fa-wifi"></i> <span>No Internet Connection</span>
+    </div>
+
+    <!-- PULL TO REFRESH INDICATOR -->
+    <div id="ptr" class="ptr-element">
+        <i class="fa-solid fa-arrow-down" id="ptr-icon"></i> <span id="ptr-text">Pull to refresh</span>
+    </div>
+
+    <!-- MARQUEE (Live Payouts) -->
+    <div class="marquee-container" id="payout-marquee" style="display: none;">
+        <div class="marquee-content" id="payout-content">
+            <!-- Populated via JS -->
+        </div>
+    </div>
+
+    <div class="app-container" id="app-container">
+
+        <!-- THEME SWITCH & LANG (Top Right) -->
+        <div class="theme-switch-wrapper" style="top: 40px;">
+            <select id="langSelect" style="background: transparent; border: 1px solid rgba(255,255,255,0.5); color: white; border-radius: 5px; margin-right: 10px; padding: 2px; font-size: 0.8rem;" onchange="changeLang()">
+                <option value="en" style="color: black;">EN</option>
+                <option value="am" style="color: black;">AM</option>
+            </select>
+            <label class="theme-switch" for="checkbox">
+                <input type="checkbox" id="checkbox" onchange="toggleTheme()" />
+                <div class="slider"><i class="fa-solid fa-moon" style="position: absolute; right: 5px; top: 4px; font-size: 14px; color: white;"></i></div>
+            </label>
+        </div>
+
+        <!-- LOADING SCREEN (Cinematic) -->
         <div id="loading-overlay">
-            <div class="spinner"></div>
-            <h3 style="margin-top:15px; background: var(--gradient-main); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Besh Besh</h3>
+            <i class="fa-solid fa-gem loading-logo"></i>
+            <h3 class="loading-text">Besh Besh</h3>
+            <div class="progress-container" style="width: 200px; background: rgba(255,255,255,0.2);">
+                <div class="progress-bar" id="loading-progress" style="width: 0%; background: white;"></div>
+            </div>
         </div>
 
         <!-- HEADER (Home) -->
         <div id="homeHeader" class="home-header">
-            <h1 style="font-size: 2rem; font-weight:700;">Besh Besh</h1>
+            <h1 style="font-size: 2.5rem; font-weight:800; letter-spacing: 1px;">Besh Besh</h1>
+            <div style="font-size: 0.9rem; opacity: 0.8; margin-top: 5px;" data-lang="welcome_subtitle">Earn rewards daily</div>
         </div>
 
         <!-- HEADER (Pages) -->
-        <div id="pageHeader" class="page-header">
+        <div id="pageHeader" class="page-header glass" style="position: sticky; top: 0; z-index: 10; margin-bottom: 20px; display: none;">
             <div style="display:flex; align-items:center; gap:10px;">
-                <div class="profile-pic" style="width:40px; height:40px; position:static; transform:none; border:2px solid var(--accent-color);"></div>
+                <div class="profile-pic" id="pageHeaderAvatar" style="width:40px; height:40px; position:static; transform:none; border:2px solid var(--accent-color);"></div>
                 <div>
                     <div style="font-weight:700;" id="pageHeaderName">User</div>
-                    <div style="font-size:0.8rem; color:#888;">Welcome back</div>
+                    <div class="badge badge-silver" id="pageHeaderStatus" style="font-size: 0.6rem; padding: 2px 6px;">Member</div>
                 </div>
             </div>
-            <div style="font-weight:700; color:var(--primary-bg);"><i class="fa-solid fa-coins"></i> <span id="pageHeaderBalance">0</span></div>
+            <div style="text-align: right;">
+                <div style="font-weight:800; color:var(--accent-color); font-size: 1.1rem;"><i class="fa-solid fa-gem"></i> <span id="pageHeaderBalance" class="odometer">0</span></div>
+            </div>
         </div>
 
         <!-- PROFILE SECTION (Home Only) -->
         <div id="profileSection" class="profile-section">
-            <div class="profile-card">
-                <div class="profile-pic"></div>
-                <h2 id="profileNameDisplay" style="margin-top: 10px;">User</h2>
-                <div id="userPointsDisplay" class="points-display"><i class="fa-solid fa-coins"></i> 0 Points</div>
+            <div class="profile-card glass">
+                <div class="profile-pic" id="mainAvatar" onclick="handleAvatarTap()"></div>
+                <h2 id="profileNameDisplay" style="margin-top: 15px; font-weight: 800;">User</h2>
+                <div id="userPointsDisplay" class="points-display"><i class="fa-solid fa-gem"></i> <span class="odometer" id="homePointsVal">0</span></div>
+
+                <!-- Daily Streak -->
+                <div style="margin-top: 20px; text-align: left;">
+                    <div style="font-size: 0.8rem; font-weight: 600; color: #666;" data-lang="daily_streak">Daily Login Streak</div>
+                    <div class="streak-container" id="streakContainer">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- CONTENT AREA -->
-        <div id="mainContent" class="content-section"></div>
-
-        <!-- NAVIGATION -->
-        <div class="bottom-nav">
-            <a href="javascript:void(0)" class="nav-item active" data-page="home"><i class="fa-solid fa-house"></i><span>Home</span></a>
-            <a href="javascript:void(0)" class="nav-item" data-page="tasks"><i class="fa-solid fa-list-check"></i><span>Tasks</span></a>
-            <a href="javascript:void(0)" class="nav-item" data-page="leaderboard"><i class="fa-solid fa-trophy"></i><span>Top</span></a>
-            <a href="javascript:void(0)" class="nav-item" data-page="referral"><i class="fa-solid fa-user-group"></i><span>Invite</span></a>
-            <a href="javascript:void(0)" class="nav-item" data-page="withdraw"><i class="fa-solid fa-wallet"></i><span>Pay</span></a>
+        <div id="mainContent" class="content-section" style="min-height: 50vh;">
+            <!-- Skeletons shown initially -->
+            <div class="card skeleton" style="height: 150px;"></div>
+            <div class="card skeleton" style="height: 100px;"></div>
         </div>
 
-        <div id="toast" class="toast"></div>
+        <!-- FLOATING ACTION BUTTON (Support/Help) -->
+        <div class="fab" onclick="openFAQ()">
+            <i class="fa-solid fa-question"></i>
+        </div>
+
+        <!-- SCROLL TO TOP -->
+        <div id="scrollToTop" class="fab" style="bottom: 140px; display: none; background: var(--card-bg); color: var(--accent-color); border: 1px solid var(--accent-color);" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
+            <i class="fa-solid fa-chevron-up"></i>
+        </div>
+
+        <!-- NAVIGATION -->
+        <div class="bottom-nav glass">
+            <a href="javascript:void(0)" class="nav-item active" data-page="home"><i class="fa-solid fa-house"></i><span data-lang="nav_home">Home</span></a>
+            <a href="javascript:void(0)" class="nav-item" data-page="tasks"><i class="fa-solid fa-list-check"></i><span data-lang="nav_tasks">Tasks</span></a>
+            <a href="javascript:void(0)" class="nav-item" data-page="games"><i class="fa-solid fa-gamepad"></i><span data-lang="nav_games">Games</span></a>
+            <a href="javascript:void(0)" class="nav-item" data-page="leaderboard"><i class="fa-solid fa-trophy"></i><span data-lang="nav_top">Top</span></a>
+            <a href="javascript:void(0)" class="nav-item" data-page="referral"><i class="fa-solid fa-user-group"></i><span data-lang="nav_invite">Invite</span></a>
+            <a href="javascript:void(0)" class="nav-item" data-page="withdraw"><i class="fa-solid fa-wallet"></i><span data-lang="nav_pay">Pay</span></a>
+        </div>
+
+        <div id="toast" class="toast"><i class="fa-solid fa-circle-info"></i> <span id="toast-msg"></span></div>
     </div>
+
+    <!-- FAQ MODAL -->
+    <div id="faqModal" class="modal-overlay">
+        <div class="modal-content glass">
+            <i class="fa-solid fa-xmark modal-close" onclick="closeFAQ()"></i>
+            <h3 style="margin-bottom: 20px; color: var(--text-dark);"><i class="fa-solid fa-circle-question"></i> Help & FAQ</h3>
+            <div id="faqList">
+                <div class="faq-item">
+                    <div class="faq-header" onclick="toggleFaq(this)">How do I earn points? <i class="fa-solid fa-chevron-down"></i></div>
+                    <div class="faq-content">You can earn points by watching ads, completing tasks in the Tasks section, inviting friends, and playing daily games like Spin the Wheel.</div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-header" onclick="toggleFaq(this)">When can I withdraw? <i class="fa-solid fa-chevron-down"></i></div>
+                    <div class="faq-content">You must meet the minimum referral, ad watch, and task requirements shown on the Pay page.</div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-header" onclick="toggleFaq(this)">How do referrals work? <i class="fa-solid fa-chevron-down"></i></div>
+                    <div class="faq-content">Share your link. When a friend joins and starts the bot, you both receive a bonus!</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AVATAR SELECTION MODAL -->
+    <div id="avatarModal" class="modal-overlay">
+        <div class="modal-content glass" style="text-align: center;">
+            <i class="fa-solid fa-xmark modal-close" onclick="document.getElementById('avatarModal').style.display='none'"></i>
+            <h3 style="margin-bottom: 20px; color: var(--text-dark);">Choose Avatar</h3>
+            <div style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;" id="avatarList">
+                <!-- Populated via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- SOUND EFFECTS -->
+    <audio id="clickSound" src="https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3"></audio>
+    <audio id="successSound" src="https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3"></audio>
 
     <script>
         const API_BASE_URL = ''; 
         let AppConfig = {}, BonusTasks = [], currentUser = null, userId = null, LeaderboardData = null, startParam = null;
-        let userPhotoUrl = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+        let userPhotoUrl = 'https://ui-avatars.com/api/?name=User&background=B026FF&color=fff';
         
+        // State
+        let currentLang = localStorage.getItem('lang') || 'en';
+        let isDarkMode = localStorage.getItem('theme') === 'dark';
+        let hapticEnabled = true;
+        let soundEnabled = true;
+        let avatarTaps = 0;
+        let avatarTapTimer;
+
+        const translations = {
+            en: {
+                welcome_subtitle: "Earn rewards daily",
+                daily_streak: "Daily Login Streak",
+                nav_home: "Home", nav_tasks: "Tasks", nav_games: "Games", nav_top: "Top", nav_invite: "Invite", nav_pay: "Pay",
+                btn_post_story: "Post Story", btn_withdraw: "Withdraw", btn_history: "History",
+                stat_refs: "Referrals", stat_rank: "Global Rank", stat_ads: "Total Ads", stat_left: "Ads Left", stat_tasks: "Tasks", stat_withdrawn: "Withdrawn",
+                quests_title: "Daily Quests", quest_1: "Watch 5 Ads", quest_2: "Invite 1 Friend", quest_3: "Play Spin Wheel",
+                promo_title: "Promo Code", promo_placeholder: "Enter secret code...", promo_btn: "Claim",
+                tasks_daily: "Daily Earning", tasks_watch: "Watch Ad", tasks_special: "Special", tasks_bonus: "Bonus Tasks",
+                games_spin: "Spin the Wheel", games_scratch: "Scratch Card",
+                top_points: "By Points", top_refs: "By Invite",
+                inv_title: "Invite & Earn", inv_desc: "Earn points for every friend.", inv_copy: "Copy Link", inv_share: "Share",
+                pay_unlocked: "Withdraw Unlocked!", pay_reqs: "Requirements for Next Withdraw", pay_submit: "Submit Withdrawal"
+            },
+            am: {
+                welcome_subtitle: "በየቀኑ ሽልማቶችን ያግኙ",
+                daily_streak: "ዕለታዊ መግቢያ",
+                nav_home: "ዋና", nav_tasks: "ስራዎች", nav_games: "ጨዋታዎች", nav_top: "ደረጃ", nav_invite: "ጋብዝ", nav_pay: "ክፍያ",
+                btn_post_story: "ታሪክ ለጥፍ", btn_withdraw: "ገንዘብ አውጣ", btn_history: "ታሪክ",
+                stat_refs: "ግብዣዎች", stat_rank: "ደረጃ", stat_ads: "ማስታወቂያዎች", stat_left: "ቀሪ", stat_tasks: "ስራዎች", stat_withdrawn: "የወጣ",
+                quests_title: "ዕለታዊ ስራዎች", quest_1: "5 ማስታወቂያ እይ", quest_2: "1 ሰው ጋብዝ", quest_3: "ጨዋታ ተጫወት",
+                promo_title: "የማስተዋወቂያ ኮድ", promo_placeholder: "ኮድ ያስገቡ...", promo_btn: "አረጋግጥ",
+                tasks_daily: "ዕለታዊ ገቢ", tasks_watch: "ማስታወቂያ እይ", tasks_special: "ልዩ", tasks_bonus: "ተጨማሪ ስራዎች",
+                games_spin: "ዕድል መንኮራኩር", games_scratch: "ካርድ ፍቅፍቅ",
+                top_points: "በነጥብ", top_refs: "በግብዣ",
+                inv_title: "ጋብዝ እና አግኝ", inv_desc: "ለእያንዳንዱ ጓደኛ ነጥብ ያግኙ", inv_copy: "ኮፒ", inv_share: "አጋራ",
+                pay_unlocked: "ክፍያ ተከፍቷል!", pay_reqs: "ለቀጣይ ክፍያ የሚያስፈልጉ", pay_submit: "ጥያቄ ላክ"
+            }
+        };
+
         // --- ADSGRAM INITIALIZATION ---
         let AdController;
         try {
@@ -86,26 +228,40 @@
             const tg = window.Telegram.WebApp;
             tg.expand();
 
+            initTheme();
+            initLang();
+            initPullToRefresh();
+            initScrollToTop();
+
+            // Simulate Loading
+            let prog = 0;
+            const loadInt = setInterval(() => {
+                prog += 20;
+                document.getElementById('loading-progress').style.width = prog + '%';
+                if(prog >= 90) clearInterval(loadInt);
+            }, 200);
+
+            // Network Listener
+            window.addEventListener('online', () => document.getElementById('offline-alert').style.display = 'none');
+            window.addEventListener('offline', () => document.getElementById('offline-alert').style.display = 'flex');
+
             // --- ADSGRAM AUTO LOGIC ---
             if(AdController) {
-                // 1. Show Ad immediately on Open (No Reward)
-                AdController.show().catch((e)=>{ console.log("Open Ad skipped/err"); });
-                // 2. Show Ad every 60 seconds (No Reward)
-                setInterval(() => {
-                    AdController.show().catch((e)=>{ console.log("Interval Ad skipped"); });
-                }, 60000); 
+                AdController.show().catch((e)=>{ console.log("Open Ad skipped"); });
+                setInterval(() => { AdController.show().catch((e)=>{}); }, 60000);
             }
             
             const tgUser = tg.initDataUnsafe?.user;
             userId = tgUser?.id?.toString() || new URLSearchParams(window.location.search).get('userId');
-            startParam = tg.initDataUnsafe?.start_param || null; // Capture startapp param
+            startParam = tg.initDataUnsafe?.start_param || null;
             
-            if(tgUser?.photo_url) userPhotoUrl = tgUser.photo_url;
             let realName = "User";
-            if(tgUser) realName = tgUser.username || (tgUser.first_name + (tgUser.last_name ? " " + tgUser.last_name : ""));
+            if(tgUser) {
+                realName = tgUser.username || (tgUser.first_name + (tgUser.last_name ? " " + tgUser.last_name : ""));
+                userPhotoUrl = tgUser.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(realName)}&background=B026FF&color=fff`;
+            }
 
             if (!userId) {
-                // Testing purposes
                 userId = "test_user_1";
                 console.log("No User ID, using Test ID");
             }
@@ -113,11 +269,67 @@
             try {
                 await loadAppConfig();
                 await loadOrRegisterUser(realName, startParam);
-                setupApp();
+
+                clearInterval(loadInt);
+                document.getElementById('loading-progress').style.width = '100%';
+
+                setTimeout(() => {
+                    setupApp();
+                }, 500);
+
             } catch (e) {
-                document.getElementById('loading-overlay').innerHTML = `<p style="color:red; text-align:center; padding:20px;">${e.message}</p>`;
+                clearInterval(loadInt);
+                document.getElementById('loading-overlay').innerHTML = `
+                    <i class="fa-solid fa-triangle-exclamation" style="font-size: 3rem; color: var(--danger-color); margin-bottom: 20px;"></i>
+                    <h3 style="color: white; margin-bottom: 10px;">Error</h3>
+                    <p style="color:#ccc; text-align:center; padding:0 20px;">${e.message}</p>
+                    <button class="btn btn-primary" style="margin-top:20px; width: auto; padding: 10px 20px;" onclick="location.reload()">Retry</button>
+                `;
             }
         });
+
+        // ==========================================
+        // INITIALIZATION & UI SETUP
+        // ==========================================
+
+        function initTheme() {
+            if(isDarkMode) {
+                document.body.classList.add('dark-mode');
+                document.getElementById('checkbox').checked = true;
+            }
+        }
+
+        function toggleTheme() {
+            playClickSound();
+            hapticClick();
+            document.body.classList.toggle('dark-mode');
+            isDarkMode = document.body.classList.contains('dark-mode');
+            localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+        }
+
+        function initLang() {
+            document.getElementById('langSelect').value = currentLang;
+            applyTranslations();
+        }
+
+        function changeLang() {
+            currentLang = document.getElementById('langSelect').value;
+            localStorage.setItem('lang', currentLang);
+            applyTranslations();
+            // Re-render current page to update dynamic content
+            const activePage = document.querySelector('.nav-item.active').getAttribute('data-page');
+            navigateTo(activePage, false);
+        }
+
+        function applyTranslations() {
+            document.querySelectorAll('[data-lang]').forEach(el => {
+                const key = el.getAttribute('data-lang');
+                if(translations[currentLang][key]) {
+                    if(el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') el.placeholder = translations[currentLang][key];
+                    else el.textContent = translations[currentLang][key];
+                }
+            });
+        }
 
         async function loadAppConfig() {
             try {
@@ -125,39 +337,42 @@
                 AppConfig = await c.json();
                 BonusTasks = Object.values(await t.json() || {});
             } catch (error) {
-                AppConfig = { adsPerDay: 20, pointsPerAd: 50 };
+                AppConfig = { adsPerDay: 20, pointsPerAd: 50, currencyName: 'Gems' };
             }
-            if(AppConfig.maintenanceMode) throw new Error("⚠️ App is in Maintenance Mode.");
+            if(AppConfig.maintenanceMode) throw new Error("⚠️ App is currently Under Maintenance. Please check back later.");
         }
 
-        // --- UPDATED USER LOADING (Auto-Register Direct Links) ---
         async function loadOrRegisterUser(realName, refCode) {
             try {
-                // 1. Try to get user
                 let res = await fetch(`${API_BASE_URL}/api/user/${userId}?name=${encodeURIComponent(realName)}`);
                 if(!res.ok) {
-                    // 2. User doesn't exist -> Call Ensure/Create Endpoint
-                    console.log("User not found, registering...");
                     res = await fetch(`${API_BASE_URL}/api/ensure-user`, {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({ userId, username: realName, refParam: refCode })
                     });
                     if(!res.ok) throw new Error("Registration Failed");
-                    // 3. Retry get user
                     res = await fetch(`${API_BASE_URL}/api/user/${userId}`);
                 }
                 currentUser = await res.json();
                 
                 if(currentUser.isBanned) throw new Error("⛔ ACCOUNT BANNED");
                 currentUser.username = realName;
+
+                // Set custom avatar if exists
+                if(currentUser.customAvatar) userPhotoUrl = currentUser.customAvatar;
             } catch (e) { throw e; }
         }
 
         function setupApp() {
+            // Fade out loader
+            const loader = document.getElementById('loading-overlay');
+            loader.style.opacity = '0';
+            setTimeout(() => { loader.style.display = 'none'; }, 500);
+
             document.querySelectorAll('.profile-pic').forEach(el => el.style.backgroundImage = `url('${userPhotoUrl}')`);
 
-            // FIXED NAVIGATION
+            // Navigation
             document.querySelectorAll('.nav-item').forEach(link => {
                 link.addEventListener('click', (e) => {
                     e.preventDefault(); 
@@ -166,156 +381,241 @@
                 });
             });
 
+            // Swipe Navigation
+            let startX = 0;
+            const pages = ['home', 'tasks', 'games', 'leaderboard', 'referral', 'withdraw'];
+            document.getElementById('mainContent').addEventListener('touchstart', e => startX = e.changedTouches[0].screenX);
+            document.getElementById('mainContent').addEventListener('touchend', e => {
+                let endX = e.changedTouches[0].screenX;
+                if(Math.abs(endX - startX) > 100) {
+                    const currentIdx = pages.indexOf(document.querySelector('.nav-item.active').getAttribute('data-page'));
+                    if(endX < startX && currentIdx < pages.length - 1) navigateTo(pages[currentIdx + 1]); // Swipe Left
+                    else if(endX > startX && currentIdx > 0) navigateTo(pages[currentIdx - 1]); // Swipe Right
+                }
+            });
+
             updateUI();
             navigateTo('home');
-            document.getElementById('loading-overlay').style.display = 'none';
+
+            // Marquee
+            if(AppConfig.showPayoutTicker) {
+                document.getElementById('payout-marquee').style.display = 'block';
+                document.getElementById('homeHeader').style.marginTop = '30px';
+                fetchPayoutTicker();
+            }
         }
 
         function updateUI() {
-            const cur = AppConfig.currencyName || 'Points';
+            const cur = AppConfig.currencyName || 'Gems';
             const pts = currentUser.points || 0;
+            const ptsStr = pts.toLocaleString();
+
             document.getElementById('profileNameDisplay').textContent = currentUser.username;
-            document.getElementById('userPointsDisplay').innerHTML = `<i class="fa-solid fa-coins"></i> ${pts} ${cur}`;
+            document.getElementById('homePointsVal').textContent = ptsStr;
+
             document.getElementById('pageHeaderName').textContent = currentUser.username;
-            document.getElementById('pageHeaderBalance').innerText = pts;
+            document.getElementById('pageHeaderBalance').innerText = ptsStr;
+
+            // Tier Badge
+            let tier = "Bronze"; let badgeCls = "badge-bronze";
+            if(pts > 50000) { tier = "Platinum"; badgeCls = "badge-platinum"; }
+            else if(pts > 20000) { tier = "Gold"; badgeCls = "badge-gold"; }
+            else if(pts > 5000) { tier = "Silver"; badgeCls = "badge-silver"; }
+
+            const b = document.getElementById('pageHeaderStatus');
+            b.className = `badge ${badgeCls}`;
+            b.textContent = tier;
         }
 
-        function navigateTo(page) {
+        function navigateTo(page, playSound = true) {
+            if(playSound) { playClickSound(); hapticClick(); }
+
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
             document.querySelector(`.nav-item[data-page="${page}"]`).classList.add('active');
             
             const isHome = page === 'home';
             document.getElementById('homeHeader').style.display = isHome ? 'flex' : 'none';
             document.getElementById('profileSection').style.display = isHome ? 'block' : 'none';
-            
-            if(isHome) {
-                document.getElementById('pageHeader').style.display = 'none';
-            } else {
-                document.getElementById('pageHeader').style.display = 'flex';
-            }
+            document.getElementById('pageHeader').style.display = isHome ? 'none' : 'flex';
 
             const content = document.getElementById('mainContent');
-            content.innerHTML = ''; 
+            content.innerHTML = '<div class="card skeleton" style="height: 150px;"></div><div class="card skeleton" style="height: 100px;"></div>';
 
-            if(page === 'home') renderHome(content);
-            if(page === 'tasks') renderTasks(content);
-            if(page === 'referral') renderReferral(content);
-            if(page === 'leaderboard') renderLeaderboard(content);
-            if(page === 'withdraw') renderWithdraw(content);
+            // Simulate slight delay for skeleton effect
+            setTimeout(() => {
+                if(page === 'home') renderHome(content);
+                if(page === 'tasks') renderTasks(content);
+                if(page === 'games') renderGames(content);
+                if(page === 'referral') renderReferral(content);
+                if(page === 'leaderboard') renderLeaderboard(content);
+                if(page === 'withdraw') renderWithdraw(content);
+
+                applyTranslations();
+                window.scrollTo(0,0);
+            }, 300);
         }
 
-        // --- RENDERERS ---
+        // ==========================================
+        // RENDERERS
+        // ==========================================
 
         function renderHome(container) {
             const adsLeft = (AppConfig.adsPerDay || 20) - (currentUser.adsWatchedToday || 0);
             const rank = currentUser.rank ? `#${currentUser.rank}` : '#N/A'; 
             
+            // Build Streak
+            const streak = currentUser.streak || 0;
+            let streakHtml = '';
+            for(let i=1; i<=7; i++) {
+                let cls = i <= streak ? 'active' : 'future';
+                streakHtml += `<div class="streak-day ${cls}">${i}</div>`;
+            }
+            document.getElementById('streakContainer').innerHTML = streakHtml;
+
             container.innerHTML = `
-                <div class="card">
-                    <h2 class="section-title">Welcome, ${currentUser.username}!</h2>
-                    <p style="color:#666;">Earn rewards by completing tasks.</p>
+                <div class="card glass">
                     <div class="home-actions">
-                        <button class="btn btn-primary" onclick="handlePostStory()"><i class="fa-solid fa-camera"></i> Post Story</button>
-                        <button class="btn btn-secondary" onclick="navigateTo('withdraw')"><i class="fa-solid fa-wallet"></i> Withdraw</button>
+                        <button class="btn btn-primary" onclick="handlePostStory()"><i class="fa-solid fa-camera"></i> <span data-lang="btn_post_story">Post Story</span></button>
+                        <button class="btn btn-secondary" onclick="navigateTo('withdraw')"><i class="fa-solid fa-wallet"></i> <span data-lang="btn_withdraw">Withdraw</span></button>
                     </div>
                 </div>
                 
-                <div class="card home-stats">
-                    <div class="home-stat"><div class="label">Referrals</div><div class="value">${currentUser.referredUsers?.length || 0}</div></div>
-                    <div class="home-stat"><div class="label">Global Rank</div><div class="value">${rank}</div></div>
-                    <div class="home-stat"><div class="label">Total Ads</div><div class="value">${currentUser.totalAdsWatchedLifetime || 0}</div></div>
-                    <div class="home-stat"><div class="label">Ads Left</div><div class="value">${adsLeft < 0 ? 0 : adsLeft}</div></div>
-                    <div class="home-stat"><div class="label">Tasks</div><div class="value">${currentUser.claimedBonuses?.length || 0}</div></div>
-                    <div class="home-stat"><div class="label">Withdrawn</div><div class="value">${currentUser.totalWithdrawn || 0}</div></div>
+                <div class="card glass home-stats">
+                    <div class="home-stat"><div class="label" data-lang="stat_refs">Referrals</div><div class="value">${currentUser.referredUsers?.length || 0}</div></div>
+                    <div class="home-stat"><div class="label" data-lang="stat_rank">Global Rank</div><div class="value">${rank}</div></div>
+                    <div class="home-stat"><div class="label" data-lang="stat_ads">Total Ads</div><div class="value">${currentUser.totalAdsWatchedLifetime || 0}</div></div>
+                    <div class="home-stat"><div class="label" data-lang="stat_left">Ads Left</div><div class="value">${adsLeft < 0 ? 0 : adsLeft}</div></div>
+                    <div class="home-stat"><div class="label" data-lang="stat_tasks">Tasks</div><div class="value">${currentUser.claimedBonuses?.length || 0}</div></div>
+                    <div class="home-stat"><div class="label" data-lang="stat_withdrawn">Withdrawn</div><div class="value">${currentUser.totalWithdrawn || 0}</div></div>
                 </div>`;
         }
 
-        // --- UPDATED RENDER TASKS (SIDE BY SIDE) ---
         function renderTasks(container) {
              const adsLeft = (AppConfig.adsPerDay || 20) - (currentUser.adsWatchedToday || 0);
              const pts = (AppConfig.pointsPerAd || 50) * (AppConfig.globalMultiplier || 1);
-             const cur = AppConfig.currencyName || 'Pts';
+             const cur = AppConfig.currencyName || 'Gems';
              
              let html = `
-                <!-- SIDE BY SIDE BUTTONS CONTAINER -->
-                <div class="card">
-                    <h3 class="section-title">Daily Earning</h3>
+                <div class="card glass">
+                    <h3 class="section-title"><i class="fa-solid fa-bolt" style="color:var(--gold-color);"></i> <span data-lang="tasks_daily">Daily Earning</span></h3>
                     <div class="task-grid-buttons">
-                        
-                        <!-- 1. Monetag Button -->
                         <div class="ad-btn-card btn-monetag" onclick="${adsLeft > 0 ? 'watchAd()' : ''}" style="opacity:${adsLeft<=0?0.5:1}">
-                            <i class="fa-brands fa-youtube" style="font-size:24px; margin-bottom:5px;"></i>
-                            <div style="font-weight:700;">Watch Ad</div>
-                            <div style="font-size:0.8rem;">+${pts} ${cur}</div>
-                            ${adsLeft<=0 ? '<div style="font-size:0.7rem; color:red;">Limit</div>' : ''}
+                            <i class="fa-brands fa-youtube" style="font-size:28px; margin-bottom:8px;"></i>
+                            <div style="font-weight:700;" data-lang="tasks_watch">Watch Ad</div>
+                            <div style="font-size:0.8rem; font-weight:600;">+${pts}</div>
+                            ${adsLeft<=0 ? '<div style="font-size:0.7rem; color:var(--danger-color); margin-top:5px; font-weight:bold;">LIMIT REACHED</div>' : ''}
                         </div>
-
-                        <!-- 2. Adsgram Button -->
                         <div class="ad-btn-card btn-adsgram" onclick="claimAdsgramReward()">
-                            <i class="fa-solid fa-fire" style="font-size:24px; margin-bottom:5px;"></i>
-                            <div style="font-weight:700;">Special</div>
-                            <div style="font-size:0.8rem;">+10 ${cur}</div>
+                            <i class="fa-solid fa-fire" style="font-size:28px; margin-bottom:8px;"></i>
+                            <div style="font-weight:700;" data-lang="tasks_special">Special</div>
+                            <div style="font-size:0.8rem; font-weight:600;">+10 ${cur}</div>
                         </div>
                     </div>
                 </div>
 
-                <div class="card"><div class="section-title"><i class="fa-solid fa-star" style="color:var(--accent-color);"></i> Bonus Tasks</div>`;
+                <div class="card glass">
+                    <div class="section-title"><i class="fa-solid fa-star" style="color:var(--accent-color);"></i> <span data-lang="tasks_bonus">Bonus Tasks</span></div>
+                    <!-- Search Bar -->
+                    <input type="text" id="taskSearch" class="input-field" placeholder="Search tasks..." onkeyup="filterTasks()" style="padding: 10px; margin-bottom: 15px;">
+                    <div id="bonusTaskList">`;
              
              html += BonusTasks.map(t => {
                  const done = currentUser.claimedBonuses?.includes(t.id);
                  return `
-                    <div class="channel-item">
+                    <div class="channel-item task-item" data-name="${t.name.toLowerCase()}">
                         <div style="display:flex; align-items:center;">
                             <div class="icon-box"><i class="${t.icon || 'fa-brands fa-telegram'}"></i></div>
                             <div>
                                 <div style="font-weight:600;">${t.name}</div>
-                                <div style="font-size:0.8rem; color:var(--primary-bg);">+${t.reward} ${cur}</div>
+                                <div style="font-size:0.8rem; color:var(--accent-color); font-weight:bold;">+${t.reward} ${cur}</div>
                             </div>
                         </div>
-                        <button class="btn" style="width:auto; padding:6px 15px; font-size:0.8rem; background:${done?'#eee':'var(--success-color)'}; color:${done?'#888':'white'};"
+                        <button class="btn" style="width:auto; padding:8px 20px; font-size:0.8rem; background:${done?'#e2e8f0':'var(--success-color)'}; color:${done?'#94a3b8':'white'};"
                              onclick="doTask('${t.id}','${t.channelId}',${t.reward},'${t.link}')" ${done?'disabled':''}>
-                             ${done ? 'Done' : 'Start'}
+                             ${done ? '<i class="fa-solid fa-check"></i>' : '<i class="fa-solid fa-arrow-right"></i>'}
                         </button>
                     </div>`;
              }).join('');
-             container.innerHTML = html + '</div>';
+             container.innerHTML = html + '</div></div>';
+        }
+
+        function filterTasks() {
+            const q = document.getElementById('taskSearch').value.toLowerCase();
+            document.querySelectorAll('.task-item').forEach(el => {
+                el.style.display = el.getAttribute('data-name').includes(q) ? 'flex' : 'none';
+            });
+        }
+
+        function renderGames(container) {
+            const hasSpun = currentUser.lastSpinDate && (Date.now() - currentUser.lastSpinDate < 86400000);
+            const hasScratched = currentUser.lastScratchDate && (Date.now() - currentUser.lastScratchDate < 86400000);
+
+            container.innerHTML = `
+                <div class="card glass">
+                    <div class="section-title"><i class="fa-solid fa-dharmachakra" style="color:var(--accent-color);"></i> <span data-lang="games_spin">Spin the Wheel</span></div>
+                    <div class="wheel-container">
+                        <div class="wheel-pointer"></div>
+                        <div class="wheel" id="wheel"></div>
+                        <button class="wheel-btn" onclick="spinWheel()" ${hasSpun?'disabled':''}>SPIN</button>
+                    </div>
+                    <p style="text-align:center; margin-top:15px; font-size:0.8rem; color:#888;">${hasSpun ? 'Come back tomorrow!' : '1 Free Spin Daily'}</p>
+                </div>
+
+                <div class="card glass">
+                    <div class="section-title"><i class="fa-solid fa-ticket" style="color:var(--gold-color);"></i> <span data-lang="games_scratch">Scratch Card</span></div>
+                    <div class="scratch-container" id="scratchContainer">
+                        <div id="scratchResult" style="display:none;"></div>
+                        <canvas class="scratch-canvas" id="scratchCanvas"></canvas>
+                        ${hasScratched ? '<div style="position:absolute; inset:0; background:rgba(255,255,255,0.8); z-index:5; display:flex; align-items:center; justify-content:center; font-weight:bold; color:#333;">Come back tomorrow!</div>' : ''}
+                    </div>
+                </div>
+
+                <div class="card glass">
+                    <div class="section-title"><i class="fa-solid fa-calendar-check" style="color:var(--success-color);"></i> <span data-lang="quests_title">Daily Quests</span></div>
+                    <div class="channel-item">
+                        <div style="font-weight:600;"><i class="fa-solid fa-video" style="color:#888; width:20px;"></i> <span data-lang="quest_1">Watch 5 Ads</span></div>
+                        <span class="badge ${currentUser.adsWatchedToday>=5?'badge-gold':'badge-silver'}">${Math.min(currentUser.adsWatchedToday||0, 5)}/5</span>
+                    </div>
+                    <div class="channel-item">
+                        <div style="font-weight:600;"><i class="fa-solid fa-user-plus" style="color:#888; width:20px;"></i> <span data-lang="quest_2">Invite 1 Friend</span></div>
+                        <span class="badge badge-silver">0/1</span>
+                    </div>
+                </div>
+            `;
+            if(!hasScratched) initScratchCard();
         }
 
         async function renderLeaderboard(container) {
-            container.innerHTML = '<div class="card"><p>Loading...</p></div>';
             try {
                 const res = await fetch(`${API_BASE_URL}/api/leaderboard/${userId}`);
                 LeaderboardData = await res.json();
                 
                 container.innerHTML = `
-                    <div class="card">
+                    <div class="card glass">
                         <div class="leaderboard-tabs">
-                            <div class="leaderboard-tab active" id="tabPoints" onclick="switchBoard('points')">By Points</div>
-                            <div class="leaderboard-tab" id="tabRefs" onclick="switchBoard('refs')">By Invite</div>
+                            <div class="leaderboard-tab active" id="tabPoints" onclick="switchBoard('points')" data-lang="top_points">By Points</div>
+                            <div class="leaderboard-tab" id="tabRefs" onclick="switchBoard('refs')" data-lang="top_refs">By Invite</div>
                         </div>
                         <div id="boardContent"></div>
                     </div>`;
                 switchBoard('points');
             } catch(e) {
-                container.innerHTML = '<div class="card"><p>Failed to load leaderboard.</p></div>';
+                container.innerHTML = '<div class="card glass"><p style="text-align:center; color:var(--danger-color);"><i class="fa-solid fa-triangle-exclamation"></i> Failed to load leaderboard.</p></div>';
             }
         }
 
-        // --- UPDATED LEADERBOARD PODIUM LOGIC ---
         function switchBoard(type) {
+            playClickSound(); hapticClick();
             document.querySelectorAll('.leaderboard-tab').forEach(t => t.classList.remove('active'));
             document.getElementById(type === 'points' ? 'tabPoints' : 'tabRefs').classList.add('active');
             
             const list = type === 'points' ? LeaderboardData.byPoints : LeaderboardData.byReferrals;
-            const unit = type === 'points' ? (AppConfig.currencyName || 'pts') : 'Ref';
+            const unit = type === 'points' ? (AppConfig.currencyName || 'Gems') : 'Ref';
             
             let html = '';
-
-            // Helper for generated avatars if photoUrl is missing
-            const pfpStyle = (u) => u.photoUrl ? `background-image:url('${u.photoUrl}')` : `background:linear-gradient(45deg, #4158D0, #C850C0); display:flex; align-items:center; justify-content:center; color:white; font-size:1.2rem;`;
+            const pfpStyle = (u) => u.customAvatar ? `background-image:url('${u.customAvatar}')` : `background:var(--gradient-main); display:flex; align-items:center; justify-content:center; color:white; font-size:1.2rem;`;
             const getInitials = (n) => n ? n.substring(0,2).toUpperCase() : '??';
 
-            // PODIUM (Top 3)
             if(list.length >= 3) {
                  const p1 = list[0], p2 = list[1], p3 = list[2];
                  const v1 = type==='points'?p1.points:(p1.referredUsers?.length||0);
@@ -324,93 +624,114 @@
 
                  html += `
                     <div class="top-3-container">
-                        <!-- Rank 2 -->
                         <div class="leaderboard-podium rank-2">
-                            <div class="pfp" style="${pfpStyle(p2)}">${!p2.photoUrl ? getInitials(p2.username) : ''}</div>
-                            <div style="font-size:0.8rem; font-weight:bold; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">${p2.username}</div>
-                            <div style="font-size:0.9rem;">${v2}</div>
+                            <div class="pfp" style="${pfpStyle(p2)}">${!p2.customAvatar ? getInitials(p2.username) : ''}</div>
+                            <div style="font-size:0.8rem; font-weight:bold; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:var(--text-dark);">${p2.username}</div>
+                            <div style="font-size:0.9rem; font-weight:600; color:var(--accent-color);">${v2.toLocaleString()}</div>
+                            <div class="podium-base"></div>
                             <div class="rank-badge">2</div>
                         </div>
-                        <!-- Rank 1 -->
                         <div class="leaderboard-podium rank-1">
                             <div class="crown"><i class="fa-solid fa-crown"></i></div>
-                            <div class="pfp" style="${pfpStyle(p1)}">${!p1.photoUrl ? getInitials(p1.username) : ''}</div>
-                            <div style="font-size:0.8rem; font-weight:bold; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">${p1.username}</div>
-                            <div style="font-size:1rem; font-weight:900;">${v1}</div>
+                            <div class="pfp" style="${pfpStyle(p1)}">${!p1.customAvatar ? getInitials(p1.username) : ''}</div>
+                            <div style="font-size:0.8rem; font-weight:bold; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:var(--text-dark);">${p1.username}</div>
+                            <div style="font-size:1.1rem; font-weight:900; color:var(--gold-color);">${v1.toLocaleString()}</div>
+                            <div class="podium-base"></div>
                             <div class="rank-badge">1</div>
                         </div>
-                        <!-- Rank 3 -->
                         <div class="leaderboard-podium rank-3">
-                            <div class="pfp" style="${pfpStyle(p3)}">${!p3.photoUrl ? getInitials(p3.username) : ''}</div>
-                            <div style="font-size:0.8rem; font-weight:bold; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">${p3.username}</div>
-                            <div style="font-size:0.9rem;">${v3}</div>
+                            <div class="pfp" style="${pfpStyle(p3)}">${!p3.customAvatar ? getInitials(p3.username) : ''}</div>
+                            <div style="font-size:0.8rem; font-weight:bold; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:var(--text-dark);">${p3.username}</div>
+                            <div style="font-size:0.9rem; font-weight:600; color:var(--accent-color);">${v3.toLocaleString()}</div>
+                            <div class="podium-base"></div>
                             <div class="rank-badge">3</div>
                         </div>
                     </div>`;
             }
 
-            // LIST (Rank 4+)
             html += list.slice(3, 20).map((u, i) => {
                 const val = type === 'points' ? (u.points||0) : (u.referredUsers?.length || 0);
                 return `
                 <div class="leaderboard-list-item">
                     <div class="rank-circle">${i+4}</div>
-                    <div style="flex:1; font-weight:600;">${u.username}</div>
-                    <div style="color:var(--primary-bg); font-weight:bold;">${val} ${unit}</div>
+                    <div style="flex:1; font-weight:600; color:var(--text-dark);">${u.username}</div>
+                    <div style="color:var(--accent-color); font-weight:bold;">${val.toLocaleString()} ${unit}</div>
                 </div>`;
             }).join('');
             
-            document.getElementById('boardContent').innerHTML = html || '<p style="text-align:center">No data.</p>';
+            document.getElementById('boardContent').innerHTML = html || '<p style="text-align:center; color:#888;">No data available.</p>';
         }
 
         async function renderReferral(container) {
-            container.innerHTML = '<div class="card"><p>Loading...</p></div>';
-            
-            // --- UPDATED LINK FORMAT ---
             let botUser = "myfabirr_robot"; 
             if(AppConfig.botLink) botUser = AppConfig.botLink.replace('https://t.me/', '').replace('/', '');
             const link = `https://t.me/${botUser}/earn?startapp=${userId}`;
-            const cur = AppConfig.currencyName || 'Points';
+            const cur = AppConfig.currencyName || 'Gems';
             
-            // FETCH REFERRER NAMES
-            let usersHtml = '<p style="text-align:center;color:#999;">No invites yet.</p>';
-            if(currentUser.referredUsers?.length > 0) {
-                 const reqs = currentUser.referredUsers.map(id => fetch(`${API_BASE_URL}/api/referrer/${id}`).then(r=>r.json()).catch(()=>({username:'Unknown'})));
-                 const users = await Promise.all(reqs);
-                 usersHtml = users.map(u => `
-                    <div class="referral-list-item">
-                        <i class="fa-solid fa-user-check" style="color:var(--success-color); margin-right:10px;"></i>
-                        <div style="flex:1;"><b>${u.username}</b></div>
-                    </div>`).join('');
-            }
+            let usersHtml = '<div class="skeleton-text"></div><div class="skeleton-text"></div>';
 
             container.innerHTML = `
-                <div class="card" style="text-align:center;">
-                    <img src="https://cdn-icons-png.flaticon.com/512/3893/3893269.png" width="80" style="margin-bottom:15px;">
-                    <h2>Invite & Earn</h2>
-                    <p style="color:#666; margin-bottom:20px;">Earn <b>${AppConfig.referralBonusReferrer || 0} ${cur}</b> for every friend.</p>
-                    <div style="background:#f0f0f0; padding:15px; border-radius:10px; word-break:break-all; font-family:monospace; margin-bottom:15px; font-size:0.8rem;">${link}</div>
+                <div class="card glass" style="text-align:center; padding: 40px 20px;">
+                    <i class="fa-solid fa-user-group" style="font-size: 3rem; color: var(--accent-color); margin-bottom: 20px;"></i>
+                    <h2 data-lang="inv_title">Invite & Earn</h2>
+                    <p style="color:#666; margin-bottom:20px;" data-lang="inv_desc">Earn <b style="color:var(--accent-color);">${AppConfig.referralBonusReferrer || 0} ${cur}</b> for every friend.</p>
+
+                    <div id="qrCodeContainer" style="display:flex; justify-content:center; margin-bottom:20px; padding:10px; background:white; border-radius:10px; width:fit-content; margin-inline:auto;"></div>
+
+                    <div style="background:var(--bg-color); border:1px solid rgba(0,0,0,0.1); padding:15px; border-radius:12px; word-break:break-all; font-family:monospace; margin-bottom:20px; font-size:0.8rem; color:var(--text-dark);">${link}</div>
+
                     <div style="display:flex; gap:10px;">
-                        <button class="btn btn-primary" onclick="navigator.clipboard.writeText('${link}'); showToast('Copied!')">
-                            <i class="fa-regular fa-copy"></i> Copy Link
+                        <button class="btn btn-primary" onclick="copyRefLink('${link}')">
+                            <i class="fa-regular fa-copy"></i> <span data-lang="inv_copy">Copy Link</span>
                         </button>
                         <button class="btn btn-secondary" onclick="shareLink('${link}')">
-                            <i class="fa-solid fa-share"></i> Share
+                            <i class="fa-solid fa-share"></i> <span data-lang="inv_share">Share</span>
                         </button>
                     </div>
                 </div>
-                <div class="card">
-                    <div class="section-title">My Invites (${currentUser.referredUsers?.length||0})</div>
-                    ${usersHtml}
+
+                <div class="card glass">
+                    <div class="section-title"><i class="fa-solid fa-gift" style="color:var(--gold-color);"></i> <span data-lang="promo_title">Promo Code</span></div>
+                    <div style="display:flex; gap:10px;">
+                        <input type="text" id="promoCodeInput" class="input-field" style="margin:0;" data-lang="promo_placeholder" placeholder="Enter secret code...">
+                        <button class="btn btn-primary" style="width:100px;" onclick="claimPromo()" data-lang="promo_btn">Claim</button>
+                    </div>
+                </div>
+
+                <div class="card glass">
+                    <div class="section-title"><i class="fa-solid fa-users" style="color:var(--accent-color);"></i> My Invites (${currentUser.referredUsers?.length||0})</div>
+                    <div id="refsListContainer">${usersHtml}</div>
                 </div>`;
+
+            // Generate QR
+            setTimeout(() => {
+                new QRCode(document.getElementById("qrCodeContainer"), {
+                    text: link, width: 120, height: 120, colorDark : "#0B0B2A", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.L
+                });
+            }, 100);
+
+            // Fetch Refs
+            if(currentUser.referredUsers?.length > 0) {
+                 const reqs = currentUser.referredUsers.map(id => fetch(`${API_BASE_URL}/api/referrer/${id}`).then(r=>r.json()).catch(()=>({username:'Unknown'})));
+                 const users = await Promise.all(reqs);
+                 document.getElementById('refsListContainer').innerHTML = users.map(u => `
+                    <div class="referral-list-item">
+                        <i class="fa-solid fa-user-check" style="color:var(--success-color); margin-right:12px; font-size:1.2rem;"></i>
+                        <div style="flex:1; font-weight:600; color:var(--text-dark);">${u.username}</div>
+                    </div>`).join('');
+            } else {
+                document.getElementById('refsListContainer').innerHTML = '<p style="text-align:center;color:#888;font-size:0.9rem;">No invites yet. Start sharing!</p>';
+            }
+        }
+
+        function copyRefLink(link) {
+            playClickSound(); hapticClick();
+            navigator.clipboard.writeText(link);
+            showToast("Copied to clipboard!", "success");
         }
 
         function renderWithdraw(container) {
-            const reqs = { 
-                ref: AppConfig.requiredReferrals || 5, 
-                ads: AppConfig.requiredAds || 10, 
-                bonus: BonusTasks.length 
-            };
+            const reqs = { ref: AppConfig.requiredReferrals || 5, ads: AppConfig.requiredAds || 10, bonus: BonusTasks.length };
             const stats = currentUser.lastWithdrawalStats || { referrals: 0, ads: 0, bonuses: 0 };
             
             const curRef = (currentUser.referredUsers?.length || 0) - stats.referrals;
@@ -418,85 +739,226 @@
             
             const totalDone = currentUser.claimedBonuses?.length || 0;
             const totalAvail = BonusTasks.length;
-            const bonusMet = totalDone >= totalAvail; 
+            const bonusMet = totalAvail === 0 ? true : totalDone >= totalAvail;
             
             const refMet = curRef >= reqs.ref; 
             const adsMet = curAds >= reqs.ads; 
             const unlocked = refMet && adsMet && bonusMet;
 
+            // Progress calculation
+            let totalProgress = 0;
+            if(reqs.ref > 0) totalProgress += (Math.min(curRef, reqs.ref) / reqs.ref) * 33.3;
+            else totalProgress += 33.3;
+            if(reqs.ads > 0) totalProgress += (Math.min(curAds, reqs.ads) / reqs.ads) * 33.3;
+            else totalProgress += 33.3;
+            if(totalAvail > 0) totalProgress += (Math.min(totalDone, totalAvail) / totalAvail) * 33.3;
+            else totalProgress += 33.4;
+
             if(unlocked) {
                 container.innerHTML = `
-                    <div class="card">
-                        <div style="text-align:center; margin-bottom:20px;">
-                            <i class="fa-solid fa-lock-open" style="font-size:3rem; color:var(--success-color);"></i>
-                            <h2 style="color:var(--success-color);">Withdraw Unlocked!</h2>
+                    <div class="card glass" style="text-align:center; padding:40px 20px;">
+                        <div style="width: 80px; height: 80px; border-radius: 50%; background: rgba(16, 185, 129, 0.1); display:flex; align-items:center; justify-content:center; margin: 0 auto 20px;">
+                            <i class="fa-solid fa-lock-open" style="font-size:2.5rem; color:var(--success-color);"></i>
                         </div>
+                        <h2 style="color:var(--success-color); margin-bottom:20px;" data-lang="pay_unlocked">Withdraw Unlocked!</h2>
+
                         <input type="number" id="wAmount" class="input-field" placeholder="Amount (Min: ${AppConfig.minWithdraw || 5000})">
-                        <select id="wMethod" class="input-field"><option>Telebirr</option><option>CBE</option><option>BOA</option></select>
+                        <select id="wMethod" class="input-field">
+                            <option value="Telebirr">Telebirr</option>
+                            <option value="CBE">CBE</option>
+                            <option value="BOA">BOA</option>
+                        </select>
                         <input type="text" id="wPhone" class="input-field" placeholder="Phone / Account Number">
                         <input type="text" id="wName" class="input-field" placeholder="Account Holder Name">
-                        <button class="btn btn-primary" onclick="submitWithdraw()">Submit Withdrawal</button>
+
+                        <button class="btn btn-primary pulse-btn" style="margin-top:20px;" onclick="submitWithdraw()"><i class="fa-solid fa-paper-plane"></i> <span data-lang="pay_submit">Submit Withdrawal</span></button>
                     </div>`;
             } else {
-                const row = (lbl, cur, req, met) => `<li><span>${lbl} (${cur}/${req})</span> <span class="status ${met?'met':'not-met'}">${met?'✔':'✘'}</span></li>`;
+                const row = (lbl, icon, cur, req, met) => `
+                    <li>
+                        <div class="req-header">
+                            <span><i class="${icon}" style="width:20px; color:#888;"></i> ${lbl}</span>
+                            <span class="status ${met?'met':'not-met'}">${met?'<i class="fa-solid fa-check"></i>':'<i class="fa-solid fa-xmark"></i>'}</span>
+                        </div>
+                        <div class="progress-container"><div class="progress-bar" style="width:${Math.min((cur/req)*100, 100)}%; background:${met?'var(--success-color)':'var(--accent-color)'}"></div></div>
+                        <div style="text-align:right; font-size:0.75rem; color:#888; margin-top:4px;">${cur} / ${req}</div>
+                    </li>`;
                 
                 container.innerHTML = `
-                    <div class="card">
-                        <div class="section-title">Requirements for Next Withdraw</div>
+                    <div class="card glass">
+                        <div class="section-title"><i class="fa-solid fa-list-check" style="color:var(--accent-color);"></i> <span data-lang="pay_reqs">Requirements for Next Withdraw</span></div>
+
+                        <div style="text-align:center; margin-bottom: 20px;">
+                            <div style="font-size: 2rem; font-weight: 800; color: var(--text-dark);">${Math.round(totalProgress)}%</div>
+                            <div class="progress-container" style="height:12px; border-radius:6px; background:rgba(0,0,0,0.05);"><div class="progress-bar" style="width:${totalProgress}%;"></div></div>
+                        </div>
+
                         <ul class="requirements-list">
-                            ${row('Invites', curRef, reqs.ref, refMet)}
-                            ${row('Ads Watched', curAds, reqs.ads, adsMet)}
-                            ${row('Bonus Tasks', totalDone, totalAvail, bonusMet)}
+                            ${row('Invites', 'fa-solid fa-user-plus', curRef, reqs.ref, refMet)}
+                            ${row('Ads Watched', 'fa-solid fa-video', curAds, reqs.ads, adsMet)}
+                            ${row('Bonus Tasks', 'fa-solid fa-star', totalDone, totalAvail, bonusMet)}
                         </ul>
-                        <button class="btn" disabled>Locked</button>
+                        <button class="btn btn-secondary" disabled style="margin-top:20px;"><i class="fa-solid fa-lock"></i> Locked</button>
                     </div>`;
             }
         }
 
-        // --- ACTIONS ---
-        function showToast(msg) {
+        // ==========================================
+        // ACTIONS & UTILITIES
+        // ==========================================
+
+        function showToast(msg, type = 'info') {
             const t = document.getElementById('toast');
-            t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000);
+            document.getElementById('toast-msg').textContent = msg;
+            t.className = `toast show ${type}`;
+            if(type === 'success') { t.innerHTML = `<i class="fa-solid fa-circle-check"></i> <span id="toast-msg">${msg}</span>`; playSuccessSound(); }
+            else if(type === 'error') t.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> <span id="toast-msg">${msg}</span>`;
+            else t.innerHTML = `<i class="fa-solid fa-circle-info"></i> <span id="toast-msg">${msg}</span>`;
+
+            setTimeout(() => t.classList.remove('show'), 3000);
         }
 
-        // --- ADSGRAM REWARD LOGIC ---
+        function playClickSound() { if(soundEnabled) document.getElementById('clickSound').play().catch(()=>{}); }
+        function playSuccessSound() { if(soundEnabled) document.getElementById('successSound').play().catch(()=>{}); }
+        function hapticClick() { if(hapticEnabled && window.Telegram.WebApp.HapticFeedback) window.Telegram.WebApp.HapticFeedback.impactOccurred('light'); }
+        function hapticSuccess() { if(hapticEnabled && window.Telegram.WebApp.HapticFeedback) window.Telegram.WebApp.HapticFeedback.notificationOccurred('success'); }
+        function hapticError() { if(hapticEnabled && window.Telegram.WebApp.HapticFeedback) window.Telegram.WebApp.HapticFeedback.notificationOccurred('error'); }
+
+        function triggerConfetti() {
+            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, colors: ['#B026FF', '#FFB347', '#10B981'] });
+            hapticSuccess();
+        }
+
+        function openFAQ() { playClickSound(); document.getElementById('faqModal').style.display = 'flex'; }
+        function closeFAQ() { playClickSound(); document.getElementById('faqModal').style.display = 'none'; }
+        function toggleFaq(el) { playClickSound(); el.parentElement.classList.toggle('active'); }
+
+        // --- EASTER EGG (Custom Avatars) ---
+        function handleAvatarTap() {
+            avatarTaps++;
+            clearTimeout(avatarTapTimer);
+            avatarTapTimer = setTimeout(() => avatarTaps = 0, 1000);
+
+            if(avatarTaps >= 5) {
+                avatarTaps = 0;
+                hapticSuccess();
+                openAvatarSelection();
+            }
+        }
+
+        function openAvatarSelection() {
+            const list = document.getElementById('avatarList');
+            const avatars = [
+                'https://api.dicebear.com/7.x/bottts/svg?seed=1&backgroundColor=B026FF',
+                'https://api.dicebear.com/7.x/bottts/svg?seed=2&backgroundColor=FFB347',
+                'https://api.dicebear.com/7.x/adventurer/svg?seed=Felix&backgroundColor=10B981',
+                'https://api.dicebear.com/7.x/fun-emoji/svg?seed=4&backgroundColor=EF4444',
+                'https://api.dicebear.com/7.x/pixel-art/svg?seed=5&backgroundColor=0B0B2A'
+            ];
+            list.innerHTML = avatars.map(url => `<div style="width:60px; height:60px; border-radius:50%; background-image:url('${url}'); background-size:cover; border:3px solid var(--accent-color); cursor:pointer;" onclick="selectAvatar('${url}')"></div>`).join('');
+            document.getElementById('avatarModal').style.display = 'flex';
+        }
+
+        async function selectAvatar(url) {
+            playClickSound();
+            userPhotoUrl = url;
+            document.querySelectorAll('.profile-pic').forEach(el => el.style.backgroundImage = `url('${url}')`);
+            document.getElementById('avatarModal').style.display = 'none';
+            // Save to backend silently
+            fetch(`${API_BASE_URL}/api/update-avatar`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({userId, avatar: url}) });
+            showToast("Avatar updated!", "success");
+        }
+
+        // --- PULL TO REFRESH LOGIC ---
+        function initPullToRefresh() {
+            const p = document.getElementById('ptr');
+            const icon = document.getElementById('ptr-icon');
+            const text = document.getElementById('ptr-text');
+            let startY = 0; let currentY = 0; let refreshing = false;
+
+            document.body.addEventListener('touchstart', e => { if(window.scrollY === 0) startY = e.touches[0].clientY; }, {passive: true});
+            document.body.addEventListener('touchmove', e => {
+                if(startY > 0 && !refreshing) {
+                    currentY = e.touches[0].clientY;
+                    const diff = currentY - startY;
+                    if(diff > 0) {
+                        p.style.transform = `translateY(${Math.min(diff, 60)}px)`;
+                        if(diff > 60) { icon.classList.replace('fa-arrow-down', 'fa-arrow-up'); text.textContent = "Release to refresh"; }
+                        else { icon.classList.replace('fa-arrow-up', 'fa-arrow-down'); text.textContent = "Pull to refresh"; }
+                    }
+                }
+            }, {passive: true});
+            document.body.addEventListener('touchend', async () => {
+                if(startY > 0 && !refreshing) {
+                    const diff = currentY - startY;
+                    if(diff > 60) {
+                        refreshing = true;
+                        p.style.transform = `translateY(60px)`;
+                        icon.className = 'fa-solid fa-spinner fa-spin';
+                        text.textContent = "Refreshing...";
+                        hapticClick();
+                        try {
+                            const res = await fetch(`${API_BASE_URL}/api/user/${userId}`);
+                            currentUser = await res.json();
+                            updateUI();
+                        } catch(e){}
+                        p.style.transform = `translateY(-100%)`;
+                        setTimeout(() => { refreshing = false; icon.className = 'fa-solid fa-arrow-down'; text.textContent = "Pull to refresh"; }, 300);
+                    } else { p.style.transform = `translateY(-100%)`; }
+                }
+                startY = 0;
+            });
+        }
+
+        // --- SCROLL TO TOP ---
+        function initScrollToTop() {
+            const btn = document.getElementById('scrollToTop');
+            window.addEventListener('scroll', () => {
+                if(window.scrollY > 300) btn.style.display = 'flex';
+                else btn.style.display = 'none';
+            });
+        }
+
+        // --- API INTERACTION ---
+
         function claimAdsgramReward() {
-            if(!AdController) return alert("Ad not ready yet. Please wait.");
+            playClickSound();
+            if(!AdController) return showToast("Ad system not ready.", "error");
             
-            // Show ad
-            AdController.show().then((result) => {
+            AdController.show().then(() => {
                 fetch(`${API_BASE_URL}/api/claim-ad-reward`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ userId: userId })
+                    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: userId })
                 })
                 .then(res => res.json())
                 .then(data => {
                     if(data.success) {
                         currentUser.points += 10;
                         updateUI();
-                        showToast("+10 Reward Claimed!");
+                        triggerConfetti();
+                        showToast("+10 Gems Claimed!", "success");
                     }
                 });
-            }).catch((e) => {
-                console.error(e);
-                alert("Ad failed to load or closed too early.");
-            });
+            }).catch(() => { showToast("Ad failed or closed early.", "error"); hapticError(); });
         }
 
         function watchAd() {
+            playClickSound();
             if(typeof show_10024038 === 'function') {
                 show_10024038().then(() => {
                     fetch(`${API_BASE_URL}/api/watch-ad`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userId}) });
                     const pts = (AppConfig.pointsPerAd || 50) * (AppConfig.globalMultiplier || 1);
                     currentUser.points += pts; currentUser.adsWatchedToday++; currentUser.totalAdsWatchedLifetime++;
-                    updateUI(); renderTasks(document.getElementById('mainContent')); showToast(`+${pts} Points`);
+                    updateUI(); renderTasks(document.getElementById('mainContent'));
+                    triggerConfetti();
+                    showToast(`+${pts} Gems`, "success");
                 });
-            } else alert("Ad not loaded. Please refresh.");
+            } else showToast("Ad not loaded. Please refresh.", "error");
         }
 
         async function doTask(id, cid, rew, link) {
+            playClickSound();
             window.open(link, '_blank');
+            showToast("Verifying task...", "info");
             setTimeout(async () => {
                 const res = await fetch(`${API_BASE_URL}/api/verify-membership`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userId, taskId:id, channelId:cid, reward:rew})});
                 const d = await res.json();
@@ -504,39 +966,162 @@
                     currentUser.points = d.points; 
                     if(!currentUser.claimedBonuses) currentUser.claimedBonuses = [];
                     currentUser.claimedBonuses.push(id);
-                    updateUI(); renderTasks(document.getElementById('mainContent')); showToast(`+${rew} Points`);
-                } else alert(d.error);
+                    updateUI(); renderTasks(document.getElementById('mainContent'));
+                    triggerConfetti();
+                    showToast(`+${rew} Gems`, "success");
+                } else { showToast(d.error || "Verification failed", "error"); hapticError(); }
             }, 5000);
         }
 
+        async function claimPromo() {
+            playClickSound();
+            const code = document.getElementById('promoCodeInput').value;
+            if(!code) return showToast("Enter a code", "error");
+
+            const res = await fetch(`${API_BASE_URL}/api/claim-promo`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userId, code}) });
+            const data = await res.json();
+            if(data.success) {
+                currentUser.points += data.amount;
+                updateUI(); triggerConfetti();
+                document.getElementById('promoCodeInput').value = '';
+                showToast(`Promo Claimed! +${data.amount}`, "success");
+            } else { showToast(data.error, "error"); hapticError(); }
+        }
+
         async function submitWithdraw() {
+            playClickSound();
             const amt = document.getElementById('wAmount').value;
             const acc = document.getElementById('wPhone').value;
             const name = document.getElementById('wName').value;
             const method = document.getElementById('wMethod').value;
-            if(!amt || !acc || !name) return alert("Fill all fields");
+            if(!amt || !acc || !name) return showToast("Fill all fields", "error");
             
+            const btn = document.querySelector('.pulse-btn');
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+            btn.disabled = true;
+
             await fetch(`${API_BASE_URL}/api/request-withdrawal`, {
                 method:'POST', headers:{'Content-Type':'application/json'},
                 body:JSON.stringify({userId, amount:amt, method, account:acc, accountName:name})
             });
-            alert("Success! Request sent."); location.reload();
+
+            triggerConfetti();
+            showToast("Success! Request sent.", "success");
+            setTimeout(() => location.reload(), 2000);
         }
         
-        function shareLink(link) {
-            window.Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=Join%20me!`);
-        }
+        function shareLink(link) { playClickSound(); window.Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=Join%20me%20on%20Besh%20Besh!`); }
 
         async function handlePostStory() {
-            // Build format: https://t.me/botname/earn?startapp=userId
+            playClickSound();
             let botUser = "myfabirr_robot"; 
             if(AppConfig.botLink) botUser = AppConfig.botLink.replace('https://t.me/', '').replace('/', '');
             const link = `https://t.me/${botUser}/earn?startapp=${userId}`;
 
             if(window.Telegram.WebApp.shareToStory) {
-                // Using DIRECT IMAGE LINK (.jpg)
                 window.Telegram.WebApp.shareToStory("https://i.ibb.co/3ykz8Jq/8gKPR1wn.jpg", {text: `Join me on Besh Besh! \n${link}`});
-            } else alert("Not supported.");
+            } else showToast("Story feature not supported.", "error");
+        }
+
+        async function fetchPayoutTicker() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/recent-payouts`);
+                const data = await res.json();
+                if(data.length > 0) {
+                    const text = data.map(p => `💸 User ${p.name.substring(0,3)}*** withdrew ${p.amount} Gems!`).join(' &nbsp;&nbsp;•&nbsp;&nbsp; ');
+                    document.getElementById('payout-content').innerHTML = text + ' &nbsp;&nbsp;•&nbsp;&nbsp; ' + text; // Duplicate for smooth loop
+                }
+            } catch(e){}
+        }
+
+        // --- GAMES LOGIC ---
+        function spinWheel() {
+            playClickSound();
+            const w = document.getElementById('wheel');
+            const deg = Math.floor(1800 + Math.random() * 360); // Spin 5 times + random
+            w.style.transform = `rotate(${deg}deg)`;
+
+            setTimeout(async () => {
+                const res = await fetch(`${API_BASE_URL}/api/game/spin`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userId}) });
+                const data = await res.json();
+                if(data.success) {
+                    currentUser.points += data.amount;
+                    currentUser.lastSpinDate = Date.now();
+                    updateUI(); triggerConfetti();
+                    showToast(`You won ${data.amount} Gems!`, "success");
+                    renderGames(document.getElementById('mainContent')); // Re-render to disable button
+                } else showToast(data.error, "error");
+            }, 4000); // Matches CSS transition time
+        }
+
+        function initScratchCard() {
+            const canvas = document.getElementById('scratchCanvas');
+            if(!canvas) return;
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.parentElement.offsetWidth;
+            canvas.height = canvas.parentElement.offsetHeight;
+
+            // Fill silver layer
+            ctx.fillStyle = '#C0C0C0';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // Add texture
+            ctx.fillStyle = 'rgba(255,255,255,0.2)';
+            for(let i=0; i<100; i++) ctx.fillRect(Math.random()*canvas.width, Math.random()*canvas.height, 2, 2);
+            ctx.fillStyle = '#999';
+            ctx.font = '20px Plus Jakarta Sans';
+            ctx.textAlign = 'center';
+            ctx.fillText('SCRATCH HERE', canvas.width/2, canvas.height/2 + 5);
+
+            let isDrawing = false;
+            let scratchedPixels = 0;
+            const totalPixels = canvas.width * canvas.height;
+            let revealed = false;
+
+            const scratch = (x, y) => {
+                if(revealed) return;
+                ctx.globalCompositeOperation = 'destination-out';
+                ctx.beginPath();
+                ctx.arc(x, y, 20, 0, Math.PI * 2);
+                ctx.fill();
+                scratchedPixels += Math.PI * 400; // Approx area
+
+                if(scratchedPixels > totalPixels * 0.4 && !revealed) {
+                    revealed = true;
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    canvas.style.pointerEvents = 'none';
+                    revealScratchReward();
+                }
+            };
+
+            const getPos = (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                return { x: clientX - rect.left, y: clientY - rect.top };
+            };
+
+            canvas.addEventListener('mousedown', e => { isDrawing = true; scratch(getPos(e).x, getPos(e).y); });
+            canvas.addEventListener('mousemove', e => { if(isDrawing) scratch(getPos(e).x, getPos(e).y); });
+            canvas.addEventListener('mouseup', () => isDrawing = false);
+
+            canvas.addEventListener('touchstart', e => { isDrawing = true; scratch(getPos(e).x, getPos(e).y); e.preventDefault(); });
+            canvas.addEventListener('touchmove', e => { if(isDrawing) scratch(getPos(e).x, getPos(e).y); e.preventDefault(); });
+            canvas.addEventListener('touchend', () => isDrawing = false);
+        }
+
+        async function revealScratchReward() {
+            const res = await fetch(`${API_BASE_URL}/api/game/scratch`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userId}) });
+            const data = await res.json();
+            const resDiv = document.getElementById('scratchResult');
+            resDiv.style.display = 'block';
+            if(data.success) {
+                resDiv.innerHTML = `+${data.amount} <i class="fa-solid fa-gem"></i>`;
+                currentUser.points += data.amount;
+                currentUser.lastScratchDate = Date.now();
+                updateUI(); triggerConfetti();
+            } else {
+                resDiv.innerHTML = `<span style="color:var(--danger-color); font-size:1rem;">${data.error}</span>`;
+            }
         }
     </script>
 </body>

@@ -444,11 +444,11 @@
                     AdController.show().catch((e)=>{ console.log("Open Ad skipped"); });
                     setInterval(() => { AdController.show().catch((e)=>{}); }, 60000);
                 }
-                
+
                 const tgUser = tg.initDataUnsafe?.user;
                 userId = tgUser?.id?.toString() || new URLSearchParams(window.location.search).get('userId');
                 startParam = tg.initDataUnsafe?.start_param || null;
-                
+
                 let realName = "User";
                 if(tgUser) {
                     realName = tgUser.username || (tgUser.first_name + (tgUser.last_name ? " " + tgUser.last_name : ""));

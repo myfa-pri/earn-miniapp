@@ -400,12 +400,15 @@
         } catch(e) { console.log("Adsgram init error", e); }
 
         function initTheme() {
+            const toggleIcon = document.getElementById('themeToggleIcon');
             if(!isDarkMode) {
                 document.body.classList.add('day-mode');
-                document.getElementById('themeToggleIcon').innerHTML = '<i class="fa-solid fa-moon"></i>';
+                document.body.classList.remove('dark-mode');
+                if(toggleIcon) toggleIcon.innerHTML = '<i class="fa-solid fa-moon"></i>';
             } else {
                 document.body.classList.remove('day-mode');
-                document.getElementById('themeToggleIcon').innerHTML = '<i class="fa-solid fa-sun" style="color: #FFB347;"></i>';
+                document.body.classList.add('dark-mode');
+                if(toggleIcon) toggleIcon.innerHTML = '<i class="fa-solid fa-sun" style="color: #FFB347;"></i>';
             }
         }
 
@@ -416,47 +419,47 @@
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
-            const tg = window.Telegram.WebApp;
-            if(tg.expand) tg.expand();
-
-            initTheme();
-            initPullToRefresh();
-            initScrollToTop();
-
-            // Simulate Loading
-            let prog = 0;
-            const loadInt = setInterval(() => {
-                prog += 20;
-                document.getElementById('loading-progress').style.width = prog + '%';
-                if(prog >= 90) clearInterval(loadInt);
-            }, 200);
-
-            // Network Listener
-            window.addEventListener('online', () => document.getElementById('offline-alert').style.display = 'none');
-            window.addEventListener('offline', () => document.getElementById('offline-alert').style.display = 'flex');
-
-            // --- ADSGRAM AUTO LOGIC ---
-            if(AdController) {
-                AdController.show().catch((e)=>{ console.log("Open Ad skipped"); });
-                setInterval(() => { AdController.show().catch((e)=>{}); }, 60000);
-            }
-            
-            const tgUser = tg.initDataUnsafe?.user;
-            userId = tgUser?.id?.toString() || new URLSearchParams(window.location.search).get('userId');
-            startParam = tg.initDataUnsafe?.start_param || null;
-            
-            let realName = "User";
-            if(tgUser) {
-                realName = tgUser.username || (tgUser.first_name + (tgUser.last_name ? " " + tgUser.last_name : ""));
-                userPhotoUrl = tgUser.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(realName)}&background=B026FF&color=fff`;
-            }
-
-            if (!userId) {
-                userId = "test_user_1";
-                console.log("No User ID, using Test ID");
-            }
-
             try {
+                const tg = window.Telegram.WebApp;
+                if(tg.expand) tg.expand();
+
+                initTheme();
+                initPullToRefresh();
+                initScrollToTop();
+
+                // Simulate Loading
+                let prog = 0;
+                const loadInt = setInterval(() => {
+                    prog += 20;
+                    document.getElementById('loading-progress').style.width = prog + '%';
+                    if(prog >= 90) clearInterval(loadInt);
+                }, 200);
+
+                // Network Listener
+                window.addEventListener('online', () => document.getElementById('offline-alert').style.display = 'none');
+                window.addEventListener('offline', () => document.getElementById('offline-alert').style.display = 'flex');
+
+                // --- ADSGRAM AUTO LOGIC ---
+                if(AdController) {
+                    AdController.show().catch((e)=>{ console.log("Open Ad skipped"); });
+                    setInterval(() => { AdController.show().catch((e)=>{}); }, 60000);
+                }
+
+                const tgUser = tg.initDataUnsafe?.user;
+                userId = tgUser?.id?.toString() || new URLSearchParams(window.location.search).get('userId');
+                startParam = tg.initDataUnsafe?.start_param || null;
+
+                let realName = "User";
+                if(tgUser) {
+                    realName = tgUser.username || (tgUser.first_name + (tgUser.last_name ? " " + tgUser.last_name : ""));
+                    userPhotoUrl = tgUser.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(realName)}&background=B026FF&color=fff`;
+                }
+
+                if (!userId) {
+                    userId = "test_user_1";
+                    console.log("No User ID, using Test ID");
+                }
+
                 await loadAppConfig();
                 await loadOrRegisterUser(realName, startParam);
 
@@ -464,38 +467,20 @@
                 document.getElementById('loading-progress').style.width = '100%';
 
                 setTimeout(() => {
+                    document.getElementById('loading-overlay').style.display = 'none';
                     setupApp();
                 }, 500);
 
             } catch (e) {
-                clearInterval(loadInt);
-                document.getElementById('loading-overlay').innerHTML = `
-                    <i class="fa-solid fa-triangle-exclamation" style="font-size: 3rem; color: var(--danger-color); margin-bottom: 20px;"></i>
-                    <h3 style="color: white; margin-bottom: 10px;">Error</h3>
-                    <p style="color:#ccc; text-align:center; padding:0 20px;">${e.message}</p>
-                    <button class="btn btn-primary" style="margin-top:20px; width: auto; padding: 10px 20px;" onclick="location.reload()">Retry</button>
-                `;
+                document.getElementById('loading-overlay').style.display = 'none';
+                console.error("Initialization Error", e);
+                alert("Failed to load app data. Please try again.");
             }
         });
 
         // ==========================================
         // INITIALIZATION & UI SETUP
         // ==========================================
-
-        function initTheme() {
-            if(isDarkMode) {
-                document.body.classList.add('dark-mode');
-                document.getElementById('checkbox').checked = true;
-            }
-        }
-
-        function toggleTheme() {
-            playClickSound();
-            hapticClick();
-            document.body.classList.toggle('dark-mode');
-            isDarkMode = document.body.classList.contains('dark-mode');
-            localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
-        }
 
         function initLang() {
             document.getElementById('langSelect').value = currentLang;

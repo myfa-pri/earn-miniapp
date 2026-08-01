@@ -350,7 +350,9 @@
 
         // --- THEME ---
         function toggleAdminTheme() {
-            const isDark = document.getElementById('themeToggle').checked;
+            const toggle = document.getElementById('themeToggle');
+            if(!toggle) return;
+            const isDark = toggle.checked;
             if(isDark) document.body.classList.add('dark-mode');
             else document.body.classList.remove('dark-mode');
         }

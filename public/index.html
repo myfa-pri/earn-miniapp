@@ -114,7 +114,7 @@
         </div>
 
         <!-- INDIVIDUAL GAME CONTAINERS -->
-
+        
         <!-- Game 1: Spin Wheel -->
         <div id="spinGame" class="content-section" style="display: none; text-align: center;">
             <h2 style="color: var(--gold-color);">Pro Spin Wheel</h2>
@@ -150,16 +150,16 @@
         <!-- Game 3: Aviator -->
         <div id="aviatorGame" class="content-section" style="display: none; text-align: center;">
             <h2 style="color: var(--danger-color); margin-bottom: 10px;"><i class="fa-solid fa-plane-up"></i> Aviator</h2>
-
+            
             <div class="aviator-container">
                 <!-- Parallax Canvas -->
                 <canvas id="aviatorCanvas"></canvas>
-
+                
                 <!-- Central Text Overlays -->
                 <div id="aviatorMultiplier" style="position:absolute; top:40%; left:50%; transform:translate(-50%, -50%); font-size: 4rem; font-weight:900; color:white; text-shadow: 0 0 20px rgba(0,0,0,0.8); z-index:10; font-family: monospace;">1.00x</div>
                 <div id="aviatorCrashText" style="position:absolute; top:20%; left:50%; transform:translateX(-50%); font-size: 1.5rem; font-weight:800; color:var(--danger-color); text-transform:uppercase; text-shadow: 0 0 10px black; z-index:10; opacity: 0;">Flew Away!</div>
             </div>
-
+            
             <!-- Dual Betting Panel -->
             <div class="bet-panel-container">
                 <!-- Panel 1 -->
@@ -179,7 +179,7 @@
                     <button class="bet-btn idle" id="aviatorBtn2" onclick="toggleBet(2)">Bet</button>
                 </div>
             </div>
-
+            
             <!-- Audio elements -->
             <audio id="audioEngine" src="https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3" loop></audio>
             <audio id="audioCashout" src="https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3"></audio>
@@ -201,13 +201,13 @@
                     <option value="200">200 Gems</option>
                 </select>
             </div>
-
+            
             <div style="display:flex; gap:10px; justify-content:center;">
                 <button class="btn btn-primary" onclick="findOXMatch(false)">Find Match Online</button>
                 <button class="btn btn-secondary" onclick="findOXMatch(true)" style="background: #333;">Play Bot (Hard)</button>
             </div>
             <div id="oxMatchStatus" style="margin-top: 15px; font-style: italic;"></div>
-
+            
             <div id="oxBoard" style="display:none; margin-top: 20px;">
                 <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:5px; width:200px; margin:0 auto;" id="oxGrid">
                     <div class="glass-panel" style="height:60px; display:flex; align-items:center; justify-content:center; font-size:2rem; cursor:pointer;"></div>
@@ -272,7 +272,7 @@
         <!-- NEW FEATURES SECTION (Phase 6) -->
         <div id="featuresHub" class="content-section" style="display: none;">
              <h2 style="font-weight: 800; margin-bottom: 15px; color: var(--text-dark);"><i class="fa-solid fa-star"></i> Hub Features</h2>
-
+             
              <!-- Idle Miner -->
              <div class="glass-panel" style="padding: 15px; margin-bottom: 15px; text-align: center;">
                  <h3 style="color: var(--gold-color);"><i class="fa-solid fa-pickaxe"></i> Idle Gem Miner</h3>
@@ -411,7 +411,7 @@
                 if(toggleIcon) toggleIcon.innerHTML = '<i class="fa-solid fa-sun" style="color: #FFB347;"></i>';
             }
         }
-
+        
         function toggleTheme() {
             isDarkMode = !isDarkMode;
             localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
@@ -1324,7 +1324,7 @@
         btn.disabled = true;
         resDiv.innerText = "Spinning...";
         wheel.style.transform = `rotate(${360 * 5 + Math.floor(Math.random() * 360)}deg)`;
-
+        
         try {
             const res = await fetch('/api/spin', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: userId || 'test_user' }) });
             const data = await res.json();
@@ -1357,7 +1357,7 @@
             document.getElementById('comboResult').innerText = "Fill all slots first!";
             return;
         }
-
+        
         try {
             const res = await fetch('/api/combo', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: userId || 'test_user', combination: slots }) });
             const data = await res.json();
@@ -1392,13 +1392,13 @@
 
     let animationFrameId;
     let gridOffset = 0;
-
+    
     function toggleBet(panelId) {
         const betState = aviatorState.bets[panelId-1];
         const btn = document.getElementById(`aviatorBtn${panelId}`);
         const amtInput = document.getElementById(`aviatorBet${panelId}`);
         const autoInput = document.getElementById(`aviatorAuto${panelId}`);
-
+        
         if (aviatorState.status === 'betting' || aviatorState.status === 'idle') {
             // Place bet only allowed during idle/betting
             if(!betState.active) {
@@ -1430,7 +1430,7 @@
     async function cashOutBet(panelId, multToUse) {
         const betState = aviatorState.bets[panelId-1];
         betState.cashedOut = true;
-
+        
         try {
             const res = await fetch('/api/aviator/cashout', {
                 method: 'POST',
@@ -1451,7 +1451,7 @@
     // Canvas Setup
     const canvas = document.getElementById('aviatorCanvas');
     const ctx = canvas.getContext('2d');
-
+    
     function resizeCanvas() {
         const container = document.querySelector('.aviator-container');
         if(container && canvas) {
@@ -1472,24 +1472,24 @@
         if(!aviatorState.startTime && aviatorState.status === 'flying') {
             aviatorState.startTime = timestamp;
         }
-
+        
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+        
         const w = canvas.width;
         const h = canvas.height;
-
+        
         // Background color transitions darker as multiplier increases
         let bgDarkness = Math.min(1, (aviatorState.multiplier - 1) / 10); // Fully dark by 11x
         ctx.fillStyle = `rgba(0, 0, ${42 - (42*bgDarkness)}, 1)`; // Base #0B0B2A fades to black
         ctx.fillRect(0, 0, w, h);
-
+        
         // Draw Parallax Radar Grid
         ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
         ctx.lineWidth = 1;
         const gridSize = 40;
         gridOffset += 1; // Pan grid
         if (gridOffset > gridSize) gridOffset = 0;
-
+        
         ctx.beginPath();
         // Vertical lines moving left
         for(let x = w - gridOffset; x > -gridSize; x -= gridSize) {
@@ -1513,7 +1513,7 @@
                 ctx.font = "bold 30px monospace";
                 ctx.textAlign = "center";
                 ctx.fillText(`NEXT ROUND IN ${Math.ceil(aviatorState.bettingTimeLeft)}...`, w/2, h/2 - 20);
-
+                
                 // Progress bar (top of canvas)
                 ctx.fillStyle = "#333";
                 ctx.fillRect(0, 0, w, 10);
@@ -1527,32 +1527,32 @@
             // Start bottom-left, fly to top-right center
             let progress = Math.min(1, (aviatorState.multiplier - 1) / 2); // Maxes out visual curve around 3x
             if (aviatorState.status === 'crashed') progress = 1.5; // Fly off screen
-
+            
             const startX = 50;
             const startY = h - 30;
-
+            
             let targetX = w * 0.7;
             let targetY = h * 0.3;
-
+            
             // Turbulence
             let turbY = 0;
             if(aviatorState.status === 'flying') {
                 turbY = Math.sin(timestamp * 0.01) * 3 + Math.sin(timestamp * 0.025) * 2;
             }
-
+            
             const currentX = startX + (targetX - startX) * progress;
             const currentY = startY + (targetY - startY) * progress + turbY;
 
             // Draw Bezier Curve trailing the plane
             const cp1X = startX + (currentX - startX) * 0.5;
             const cp1Y = startY;
-
+            
             if (aviatorState.status !== 'crashed') {
                 // Fill Gradient
                 const grad = ctx.createLinearGradient(0, startY, 0, currentY);
                 grad.addColorStop(0, "rgba(239, 68, 68, 0)"); // Transparent at bottom
                 grad.addColorStop(1, "rgba(239, 68, 68, 0.4)"); // Red near curve
-
+                
                 ctx.beginPath();
                 ctx.moveTo(startX, startY);
                 ctx.quadraticCurveTo(cp1X, cp1Y, currentX, currentY);
@@ -1570,7 +1570,7 @@
                 ctx.lineWidth = 4;
                 ctx.stroke();
             }
-
+            
             // Calculate tangent angle for rotation
             let dx = currentX - cp1X;
             let dy = currentY - cp1Y;
@@ -1580,7 +1580,7 @@
             } else if (aviatorState.status === 'crashed') {
                angle = -Math.PI / 4; // Fly off sharply
             }
-
+            
             if (aviatorState.status !== 'crashed') {
                 drawPlane(ctx, currentX, currentY, angle, timestamp);
             }
@@ -1592,7 +1592,7 @@
             const timeElapsed = (timestamp - aviatorState.startTime) / 1000;
             // e^(rt) formula approximation. Let's say it takes ~8s to reach 10x
             aviatorState.multiplier = Math.pow(Math.E, 0.15 * timeElapsed) || 1.00;
-
+            
             // Update audio pitch based on multiplier
             const engine = document.getElementById('audioEngine');
             if(engine) {
@@ -1605,7 +1605,7 @@
                     cashOutBet(bet.id, bet.auto);
                 }
             });
-
+            
             document.getElementById('aviatorMultiplier').innerText = aviatorState.multiplier.toFixed(2) + "x";
 
             // Check Crash
@@ -1615,7 +1615,7 @@
                 triggerCrash();
             }
         }
-
+        
         animationFrameId = requestAnimationFrame(drawAviatorFrame);
     }
 
@@ -1624,26 +1624,26 @@
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(angle);
-
+        
         // Draw realistic biplane SVG
         ctx.drawImage(planeImg, -40, -20, 80, 40);
-
+        
         // Propeller Blur
         ctx.fillStyle = "rgba(255,255,255,0.4)";
         ctx.beginPath();
         ctx.ellipse(35, 0, 4, 15 + Math.sin(timestamp*0.05)*5, 0, 0, Math.PI*2);
         ctx.fill();
-
+        
         ctx.restore();
     }
-
+    
     function startBettingPhase() {
         if (aviatorState.status === 'betting') return;
         aviatorState.status = 'betting';
         aviatorState.bettingTimeLeft = 5.0;
         document.getElementById('aviatorCrashText').style.opacity = '0';
         document.getElementById('aviatorMultiplier').style.opacity = '0'; // Hide mult during betting
-
+        
         // Reset inputs and buttons
         aviatorState.bets.forEach(bet => {
             if(!bet.active) {
@@ -1654,7 +1654,7 @@
                 document.getElementById(`aviatorAuto${bet.id}`).disabled = false;
             }
         });
-
+        
         if(!animationFrameId) {
             animationFrameId = requestAnimationFrame((t) => {
                 lastTime = t;
@@ -1668,10 +1668,10 @@
         // Get fair RNG crash point from backend
         // To save API calls in this demo if no bets, we can mock it, but let's call API
         try {
-            const res = await fetch('/api/aviator/start', {
-                method: 'POST',
-                headers: {'Content-Type':'application/json'},
-                body: JSON.stringify({ userId: userId || 'test_user', bets: aviatorState.bets })
+            const res = await fetch('/api/aviator/start', { 
+                method: 'POST', 
+                headers: {'Content-Type':'application/json'}, 
+                body: JSON.stringify({ userId: userId || 'test_user', bets: aviatorState.bets }) 
             });
             const data = await res.json();
             aviatorState.crashPoint = data.crashPoint;
@@ -1691,11 +1691,11 @@
                 btn.innerText = "Cash Out";
             }
         });
-
+        
         document.getElementById('aviatorCrashText').style.opacity = '0';
         document.getElementById('aviatorMultiplier').style.color = "white";
         document.getElementById('aviatorMultiplier').innerText = "1.00x";
-
+        
         const engine = document.getElementById('audioEngine');
         engine.playbackRate = 1.0;
         engine.play().catch(()=>{});
@@ -1711,16 +1711,16 @@
 
     function triggerCrash() {
         aviatorState.status = 'crashed';
-
+        
         const engine = document.getElementById('audioEngine');
         engine.pause();
         engine.currentTime = 0;
-
+        
         document.getElementById('audioCrash').play().catch(()=>{});
-
+        
         document.getElementById('aviatorMultiplier').style.color = "var(--danger-color)";
         document.getElementById('aviatorCrashText').style.opacity = '1';
-
+        
         // Reset bets
         aviatorState.bets.forEach(bet => {
             if(bet.active && !bet.cashedOut) {
@@ -1733,7 +1733,7 @@
                 document.getElementById(`aviatorAuto${bet.id}`).disabled = false;
             }
         });
-
+        
         // Schedule next round betting phase
         setTimeout(() => {
             startBettingPhase();
@@ -1753,13 +1753,13 @@
     let oxCurrentPlayer = 'X'; // User is X
     let oxGameActive = false;
     let oxBetAmount = 0;
-
+    
     const winConditions = [
         [0, 1, 2], [3, 4, 5], [6, 7, 8],
         [0, 3, 6], [1, 4, 7], [2, 5, 8],
         [0, 4, 8], [2, 4, 6]
     ];
-
+    
     function resetOXBoard() {
         oxBoardState = ['', '', '', '', '', '', '', '', ''];
         oxCurrentPlayer = 'X';
@@ -1778,10 +1778,10 @@
 
     async function findOXMatch(playBot) {
         if(!playBot) return alert("Online Multiplayer coming soon. Try the Unbeatable Bot!");
-
+        
         oxBetAmount = parseInt(document.getElementById('oxBet').value);
         if(isNaN(oxBetAmount) || oxBetAmount <= 0) return alert("Invalid bet.");
-
+        
         document.getElementById('oxMatchStatus').innerText = "Matched with UNBEATABLE BOT (Minimax)";
         document.getElementById('oxBoard').style.display = 'block';
         resetOXBoard();
@@ -1847,17 +1847,17 @@
 
     async function handleOXCellClick(idx) {
         if(!oxGameActive || oxBoardState[idx] !== '' || oxCurrentPlayer !== 'X') return;
-
+        
         oxBoardState[idx] = 'X';
         const cells = document.querySelectorAll('#oxGrid .glass-panel');
         cells[idx].innerText = 'X';
         cells[idx].style.color = "var(--success-color)";
-
+        
         const result = checkOXWin(oxBoardState);
         if(result) { return finalizeOXRound(result); }
-
+        
         oxCurrentPlayer = 'O'; // Bot's turn
-
+        
         // Slight delay for realism
         setTimeout(() => {
             if(!oxGameActive) return;
@@ -1866,18 +1866,18 @@
                 oxBoardState[botMove] = 'O';
                 cells[botMove].innerText = 'O';
                 cells[botMove].style.color = "var(--danger-color)";
-
+                
                 const botResult = checkOXWin(oxBoardState);
                 if(botResult) { return finalizeOXRound(botResult); }
                 oxCurrentPlayer = 'X';
             }
         }, 500);
     }
-
+    
     async function finalizeOXRound(result) {
         oxGameActive = false;
         const resultDiv = document.getElementById('oxResult');
-
+        
         // Sync with backend (Simplified for demo, real app would send move log)
         if(result === 'X') {
             resultDiv.innerText = `You Won! +${oxBetAmount} Gems`;

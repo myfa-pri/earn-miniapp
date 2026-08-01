@@ -285,7 +285,7 @@
         <div id="games" class="page hidden">
             <div class="card">
                 <h3><i class="fa-solid fa-gear"></i> Game Economy & Rigging Controls</h3>
-
+                
                 <div style="margin-top:20px;">
                     <label>Aviator Max Crash Threshold (e.g., 85% fail before this value)</label>
                     <input type="number" id="adminAviatorCrash" placeholder="e.g. 2.00">
@@ -303,7 +303,7 @@
                 <h3><i class="fa-solid fa-puzzle-piece"></i> Daily Combo Setter</h3>
                 <label>Set today's correct SVG IDs (comma separated, e.g. c1,c2,c3)</label>
                 <input type="text" id="adminComboOrder" placeholder="c1,c2,c3">
-
+                
                 <label>Combo Reward (Gems)</label>
                 <input type="number" id="adminComboReward" placeholder="50">
 
@@ -709,7 +709,7 @@
         const aviatorCrash = parseFloat(document.getElementById('adminAviatorCrash').value);
         const spinReward = document.getElementById('adminSpinReward').value;
         if(!aviatorCrash || !spinReward) return alert("Fill all fields");
-
+        
         await fetch('/api/admin/odds', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -722,7 +722,7 @@
         const comboStr = document.getElementById('adminComboOrder').value;
         const reward = parseInt(document.getElementById('adminComboReward').value);
         if(!comboStr || !reward) return alert("Fill all fields");
-
+        
         const combination = comboStr.split(',').map(s => s.trim());
         await fetch('/api/admin/combo-set', {
             method: 'POST',

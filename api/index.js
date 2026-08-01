@@ -2,6 +2,12 @@ import TelegramBot from 'node-telegram-bot-api';
 import express from 'express';
 import cors from 'cors';
 import fetch from 'node-fetch';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import crypto from 'crypto';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // =================================================================
 // 1. CONFIGURATION (HARDCODED)
@@ -594,6 +600,183 @@ app.post('/api/admin/export-csv', checkAdmin, async (req, res) => {
     res.json({ success: true, csv });
 });
 
+// =================================================================
+// GAME API (Phase 3)
+// =================================================================
+
+app.post('/api/spin', async (req, res) => {
+    // Game 1: Spin Wheel (Rigged)
+    // 75% chance for a specific reward chosen by admin
+    const { userId } = req.body;
+    const c = await dbGet('config') || {};
+    const riggedReward = c.spinRiggedReward || "10 Gems"; // Admin configured
+
+    let result = "";
+    const rand = Math.random();
+    if (rand < 0.75) {
+        result = riggedReward;
+    } else if (rand < 0.99) {
+        result = "5 Gems"; // small fallback
+    } else {
+        result = "1000 Gems"; // <1% chance for high payout
+    }
+
+    res.json({ success: true, result });
+});
+
+app.post('/api/combo', async (req, res) => {
+    // Game 2: Combo (Verification)
+    const { userId, combination } = req.body;
+    const c = await dbGet('config') || {};
+    const correctCombo = c.dailyCombo || []; // Array of IDs
+    const reward = c.comboReward || 50;
+
+    const isCorrect = JSON.stringify(combination) === JSON.stringify(correctCombo);
+    if(isCorrect) {
+        const u = await dbGet(`users/${userId}`);
+        await dbUpdate(`users/${userId}`, { points: (u.points||0) + reward });
+        res.json({ success: true, isCorrect, reward });
+    } else {
+        res.json({ success: true, isCorrect });
+    }
+});
+
+app.post('/api/aviator/start', async (req, res) => {
+    const { userId, bets } = req.body;
+    const user = await dbGet(`users/${userId}`);
+
+    // Cryptographically Secure RNG (CSPRNG)
+    const buf = crypto.randomBytes(4);
+    const rand = buf.readUInt32BE(0) / 0xFFFFFFFF; // Generates 0 to 1
+
+    let crashPoint = 0.99 / (1 - (rand === 1 ? 0.999 : rand));
+    crashPoint = parseFloat(Math.max(1.00, crashPoint).toFixed(2));
+
+    let totalBet = 0;
+    bets.forEach(b => {
+        if(b.active) totalBet += b.amount;
+    });
+
+    await dbUpdate(`users/${userId}`, { points: (user.points||0) - totalBet });
+
+    // Store current round for validation
+    const roundId = Date.now().toString();
+    await dbSet(`aviatorRounds/${roundId}`, { crashPoint, active: true });
+
+    res.json({ success: true, crashPoint, roundId });
+});
+
+app.post('/api/aviator/cashout', async (req, res) => {
+    const { userId, roundId, multiplier, betAmount } = req.body;
+    const round = await dbGet(`aviatorRounds/${roundId}`);
+
+    if(!round || !round.active || multiplier > round.crashPoint) {
+        return res.json({ success: false, error: "Invalid cashout" });
+    }
+
+    const user = await dbGet(`users/${userId}`);
+    const winnings = betAmount * multiplier;
+
+    await dbUpdate(`users/${userId}`, { points: (user.points||0) + winnings });
+    res.json({ success: true, winnings });
+});
+
+app.post('/api/ox', async (req, res) => {
+    // Game 4: OX (Tic-Tac-Toe & Wagering)
+    const { userId, bet, playBot } = req.body;
+    const user = await dbGet(`users/${userId}`);
+
+    // For single requests, we emulate the result directly here since we lack WS setup in this snippet
+    // If playBot is true (Hard mode), win chance < 10%
+    // If real player matchmaking fails, we fake a bot and user has 75% win chance
+
+    const rand = Math.random();
+    let winChance = playBot ? 0.08 : 0.75;
+
+    const win = rand < winChance;
+    if(win) {
+        await dbUpdate(`users/${userId}`, { points: (user.points||0) + bet }); // User wins pot
+    } else {
+        await dbUpdate(`users/${userId}`, { points: (user.points||0) - bet }); // User loses bet
+    }
+
+    res.json({ success: true, win });
+});
+
+app.post('/api/mines', async (req, res) => {
+    // Game 5: Mines
+    const { userId, bet, spacesCleared } = req.body;
+    const user = await dbGet(`users/${userId}`);
+
+    // Simplistic rigged check for now
+    const win = Math.random() < 0.4;
+    if(win) {
+        const reward = bet * (1 + (spacesCleared * 0.1));
+        await dbUpdate(`users/${userId}`, { points: (user.points||0) + reward - bet });
+    } else {
+        await dbUpdate(`users/${userId}`, { points: (user.points||0) - bet });
+    }
+    res.json({ success: true, win });
+});
+
+app.post('/api/plinko', async (req, res) => {
+    // Game 6: Plinko
+    const { userId, bet } = req.body;
+    const user = await dbGet(`users/${userId}`);
+
+    // Multipliers
+    const multipliers = [0.2, 0.5, 1.1, 1.5, 3.0, 10.0];
+    // Rigged weights
+    const rand = Math.random();
+    let multiIndex = 0;
+    if(rand < 0.4) multiIndex = 0; // 0.2
+    else if(rand < 0.7) multiIndex = 1; // 0.5
+    else if(rand < 0.9) multiIndex = 2; // 1.1
+    else if(rand < 0.96) multiIndex = 3; // 1.5
+    else if(rand < 0.99) multiIndex = 4; // 3.0
+    else multiIndex = 5; // 10.0
+
+    const payout = bet * multipliers[multiIndex];
+    await dbUpdate(`users/${userId}`, { points: (user.points||0) + payout - bet });
+
+    res.json({ success: true, multiplier: multipliers[multiIndex], payout });
+});
+
+app.post('/api/admin/odds', checkAdmin, async (req, res) => {
+    const { aviatorCrash, spinReward } = req.body;
+    await dbUpdate('config', {
+        aviatorCrashThreshold: aviatorCrash,
+        spinRiggedReward: spinReward
+    });
+    res.json({ success: true });
+});
+
+app.post('/api/admin/combo-set', checkAdmin, async (req, res) => {
+    const { combination, reward } = req.body;
+    await dbUpdate('config', { dailyCombo: combination, comboReward: reward });
+    res.json({ success: true });
+});
+
+app.get('/api/avatar/:userId', async (req, res) => {
+    try {
+        const userId = req.params.userId;
+        const photos = await bot.getUserProfilePhotos(userId, { limit: 1 });
+        if (photos.total_count > 0) {
+            const fileId = photos.photos[0][0].file_id;
+            const file = await bot.getFile(fileId);
+            const url = `https://api.telegram.org/file/bot${BOT_TOKEN}/${file.file_path}`;
+            const response = await fetch(url);
+            const buffer = await response.buffer();
+            res.set('Content-Type', 'image/jpeg');
+            res.send(buffer);
+        } else {
+            res.status(404).send('No avatar found');
+        }
+    } catch (e) {
+        res.status(500).send('Error fetching avatar');
+    }
+});
+
 // Backup
 app.post('/api/admin/backup-db', checkAdmin, async (req, res) => {
     // Note: Since we don't have a direct "getAll" for the root in our helper,
@@ -607,8 +790,13 @@ app.post('/api/admin/backup-db', checkAdmin, async (req, res) => {
     res.json({ success: true, db: { users, withdrawals, config, bonusTasks, promos }});
 });
 
+app.use(express.static(path.join(__dirname, '../public')));
+
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, '../public/index.html')));
+app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, '../public/admin.html')));
+app.get('/admin.html', (req, res) => res.sendFile(path.join(__dirname, '../public/admin.html')));
+
 // Export for Vercel
 export default app;
 
-app.use(express.static('public'));
 app.listen(3000, () => console.log('Server running on 3000'));

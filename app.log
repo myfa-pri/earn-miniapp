@@ -1,0 +1,19 @@
+Server running on 3000
+TypeError: Cannot read properties of null (reading 'points')
+    at file:///app/api/index.js:660:55
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+TypeError: Cannot read properties of null (reading 'points')
+    at file:///app/api/index.js:660:55
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+TypeError: Cannot read properties of null (reading 'points')
+    at file:///app/api/index.js:660:55
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+TypeError: Cannot read properties of null (reading 'points')
+    at file:///app/api/index.js:660:55
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+TypeError: Cannot read properties of null (reading 'points')
+    at file:///app/api/index.js:660:55
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+TypeError: Cannot read properties of null (reading 'points')
+    at file:///app/api/index.js:660:55
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)

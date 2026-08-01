@@ -1,17 +1,27 @@
 :root {
-    /* --- 3-IN-1 GRADIENT THEME (Deep Midnight Blue, Neon Purple, Sunset Gold) --- */
+    /* --- DAY/NIGHT & GLASSMORPHISM THEME --- */
+    --bg-color-day: #F1F5F9;
+    --text-color-day: #1E293B;
+    --card-bg-day: rgba(255, 255, 255, 0.7);
+
+    --bg-color-night: #0B0B2A;
+    --text-color-night: #F8FAFC;
+    --card-bg-night: rgba(11, 11, 42, 0.7);
+
+    --primary-bg: var(--bg-color-night);
+    --text-light: var(--text-color-night);
+    --card-bg: var(--card-bg-night);
+    --bg-color: var(--bg-color-night);
+
+    --glass-border: 1px solid rgba(255, 255, 255, 0.2);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+
     --color-midnight: #0B0B2A;
     --color-neon-purple: #B026FF;
     --color-sunset-gold: #FFB347;
-
-    --primary-bg: var(--color-midnight);
     --gradient-main: linear-gradient(135deg, var(--color-midnight) 0%, var(--color-neon-purple) 50%, var(--color-sunset-gold) 100%);
     
     --text-dark: #1E293B;
-    --text-light: #F8FAFC;
-    --card-bg: #FFFFFF;
-    --bg-color: #F1F5F9;
-    
     --accent-color: var(--color-neon-purple);
     --gold-color: var(--color-sunset-gold);
     --success-color: #10B981;
@@ -299,3 +309,95 @@ input:checked + .slider:before { transform: translateX(20px); background-color: 
 .req-header { display: flex; justify-content: space-between; margin-bottom: 5px; }
 .requirements-list .status.met { color: var(--success-color); font-weight: bold; }
 .requirements-list .status.not-met { color: var(--danger-color); font-weight: bold; }
+
+/* Games & Feature Specific Styles */
+.aviator-container {
+    width: 100%;
+    height: 350px;
+    background: #0B0B2A;
+    border-radius: var(--card-radius);
+    overflow: hidden;
+    position: relative;
+    border: 2px solid var(--danger-color);
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.2);
+}
+
+#aviatorCanvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.bet-panel-container {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.bet-panel {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 15px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.bet-btn {
+    width: 100%;
+    padding: 12px;
+    font-size: 1.1rem;
+    font-weight: 800;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s;
+}
+
+.bet-btn.idle {
+    background: var(--success-color);
+    color: white;
+}
+
+.bet-btn.waiting {
+    background: var(--danger-color);
+    color: white;
+}
+
+.bet-btn.active {
+    background: var(--gold-color);
+    color: black;
+}
+
+.spin-wheel-container {
+    position: relative;
+    width: 250px;
+    height: 250px;
+    margin: 20px auto;
+    border-radius: 50%;
+    border: 5px solid var(--gold-color);
+    overflow: hidden;
+    transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+}
+
+.leaderboard-rank-badge {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--card-bg);
+    padding: 10px 20px;
+    border-radius: 20px;
+    box-shadow: var(--glass-shadow);
+    z-index: 100;
+    font-weight: bold;
+    color: var(--text-light);
+}
+
+.telegram-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--gold-color);
+}

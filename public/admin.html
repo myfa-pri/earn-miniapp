@@ -79,6 +79,7 @@
         <div class="nav-link" onclick="nav('tasks')"><i class="fa-solid fa-list-check"></i> Bonus Tasks</div>
         <div class="nav-link" onclick="nav('withdrawals')"><i class="fa-solid fa-money-bill-transfer"></i> Withdrawals</div>
         <div class="nav-link" onclick="nav('promo')"><i class="fa-solid fa-ticket"></i> Promo Codes</div>
+        <div class="nav-link" onclick="nav('games')"><i class="fa-solid fa-gamepad"></i> Game Management</div>
         <div class="nav-link" onclick="nav('tools')"><i class="fa-solid fa-wrench"></i> Advanced Tools</div>
 
         <div style="margin-top: auto;">
@@ -281,6 +282,35 @@
         </div>
         
         <!-- ADVANCED TOOLS -->
+        <div id="games" class="page hidden">
+            <div class="card">
+                <h3><i class="fa-solid fa-gear"></i> Game Economy & Rigging Controls</h3>
+
+                <div style="margin-top:20px;">
+                    <label>Aviator Max Crash Threshold (e.g., 85% fail before this value)</label>
+                    <input type="number" id="adminAviatorCrash" placeholder="e.g. 2.00">
+                </div>
+
+                <div style="margin-top:20px;">
+                    <label>Pro Spin Wheel (75% Fixed Reward)</label>
+                    <input type="text" id="adminSpinReward" placeholder="e.g. 10 Gems">
+                </div>
+
+                <button onclick="saveGameOdds()">Save Game Odds</button>
+            </div>
+
+            <div class="card">
+                <h3><i class="fa-solid fa-puzzle-piece"></i> Daily Combo Setter</h3>
+                <label>Set today's correct SVG IDs (comma separated, e.g. c1,c2,c3)</label>
+                <input type="text" id="adminComboOrder" placeholder="c1,c2,c3">
+
+                <label>Combo Reward (Gems)</label>
+                <input type="number" id="adminComboReward" placeholder="50">
+
+                <button onclick="saveCombo()">Set Daily Combo</button>
+            </div>
+        </div>
+
         <div id="tools" class="page hidden">
             <div class="card">
                 <h2>📢 Global Broadcast</h2>
@@ -672,4 +702,31 @@
         }
     </script>
 </body>
-</html>
+</html><script>
+    async function saveGameOdds() {
+        const aviatorCrash = parseFloat(document.getElementById('adminAviatorCrash').value);
+        const spinReward = document.getElementById('adminSpinReward').value;
+        if(!aviatorCrash || !spinReward) return alert("Fill all fields");
+
+        await fetch('/api/admin/odds', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ secret: getSecret(), aviatorCrash, spinReward })
+        });
+        alert('Game odds updated');
+    }
+
+    async function saveCombo() {
+        const comboStr = document.getElementById('adminComboOrder').value;
+        const reward = parseInt(document.getElementById('adminComboReward').value);
+        if(!comboStr || !reward) return alert("Fill all fields");
+
+        const combination = comboStr.split(',').map(s => s.trim());
+        await fetch('/api/admin/combo-set', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ secret: getSecret(), combination, reward })
+        });
+        alert('Daily Combo updated');
+    }
+</script>

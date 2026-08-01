@@ -4,6 +4,7 @@ import cors from 'cors';
 import fetch from 'node-fetch';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import crypto from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -644,7 +645,10 @@ app.post('/api/aviator/start', async (req, res) => {
     const { userId, bets } = req.body;
     const user = await dbGet(`users/${userId}`);
 
-    const rand = Math.random();
+    // Cryptographically Secure RNG (CSPRNG)
+    const buf = crypto.randomBytes(4);
+    const rand = buf.readUInt32BE(0) / 0xFFFFFFFF; // Generates 0 to 1
+
     let crashPoint = 0.99 / (1 - (rand === 1 ? 0.999 : rand));
     crashPoint = parseFloat(Math.max(1.00, crashPoint).toFixed(2));
 

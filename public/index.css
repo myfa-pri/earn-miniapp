@@ -401,3 +401,20 @@ input:checked + .slider:before { transform: translateX(20px); background-color: 
     object-fit: cover;
     border: 2px solid var(--gold-color);
 }
+
+/* DAY MODE VARIABLES (Task 4) */
+body.day-mode {
+    --primary-bg: #F1F5F9;
+    --text-light: #1E293B;
+    --card-bg: rgba(255, 255, 255, 0.7);
+    --bg-color: #F1F5F9;
+    --glass-border: 1px solid rgba(0, 0, 0, 0.1);
+    --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    --color-midnight: #E2E8F0;
+    --text-dark: #0F172A;
+}
+
+body.day-mode .glass-panel {
+    background: var(--card-bg);
+    color: var(--text-dark);
+}

@@ -49,16 +49,15 @@
 
     <div class="app-container" id="app-container">
 
-        <!-- THEME SWITCH & LANG (Top Right) -->
-        <div class="theme-switch-wrapper" style="top: 40px;">
-            <select id="langSelect" style="background: transparent; border: 1px solid rgba(255,255,255,0.5); color: white; border-radius: 5px; margin-right: 10px; padding: 2px; font-size: 0.8rem;" onchange="changeLang()">
+        <!-- THEME SWITCH & LANG (Top Right Global) -->
+        <div class="theme-switch-wrapper" style="position: fixed; top: 20px; right: 20px; z-index: 1000; display: flex; align-items: center; background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 20px;">
+            <select id="langSelect" style="background: transparent; border: none; color: white; margin-right: 10px; font-weight: bold; outline: none; cursor: pointer;" onchange="changeLang()">
                 <option value="en" style="color: black;">EN</option>
                 <option value="am" style="color: black;">AM</option>
             </select>
-            <label class="theme-switch" for="checkbox">
-                <input type="checkbox" id="checkbox" onchange="toggleTheme()" />
-                <div class="slider"><i class="fa-solid fa-moon" style="position: absolute; right: 5px; top: 4px; font-size: 14px; color: white;"></i></div>
-            </label>
+            <div style="cursor: pointer; color: white; font-size: 1.2rem;" onclick="toggleTheme()" id="themeToggleIcon">
+                <i class="fa-solid fa-moon"></i>
+            </div>
         </div>
 
         <!-- LOADING SCREEN (Cinematic) -->
@@ -357,7 +356,7 @@
         
         // State
         let currentLang = localStorage.getItem('lang') || 'en';
-        let isDarkMode = localStorage.getItem('theme') === 'dark';
+        let isDarkMode = localStorage.getItem('theme') !== 'light'; // Default to dark
         let hapticEnabled = true;
         let soundEnabled = true;
         let avatarTaps = 0;
@@ -400,12 +399,27 @@
             AdController = window.Adsgram.init({ blockId: "int-20922" });
         } catch(e) { console.log("Adsgram init error", e); }
 
+        function initTheme() {
+            if(!isDarkMode) {
+                document.body.classList.add('day-mode');
+                document.getElementById('themeToggleIcon').innerHTML = '<i class="fa-solid fa-moon"></i>';
+            } else {
+                document.body.classList.remove('day-mode');
+                document.getElementById('themeToggleIcon').innerHTML = '<i class="fa-solid fa-sun" style="color: #FFB347;"></i>';
+            }
+        }
+
+        function toggleTheme() {
+            isDarkMode = !isDarkMode;
+            localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+            initTheme();
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
             const tg = window.Telegram.WebApp;
-            tg.expand();
+            if(tg.expand) tg.expand();
 
             initTheme();
-            initLang();
             initPullToRefresh();
             initScrollToTop();
 
@@ -1379,11 +1393,12 @@
 <script>
     // --- ADVANCED AVIATOR LOGIC (Fair RNG, HTML5 Canvas, Bezier Curve, Web Audio) ---
     const aviatorState = {
-        status: 'idle', // idle, waiting, flying, crashed
+        status: 'idle', // idle, betting, flying, crashed
         multiplier: 1.00,
         crashPoint: 1.00,
         startTime: 0,
         roundId: null,
+        bettingTimeLeft: 5.0,
         bets: [
             { id: 1, active: false, amount: 10, auto: null, cashedOut: false },
             { id: 2, active: false, amount: 50, auto: null, cashedOut: false }
@@ -1399,8 +1414,8 @@
         const amtInput = document.getElementById(`aviatorBet${panelId}`);
         const autoInput = document.getElementById(`aviatorAuto${panelId}`);
 
-        if (aviatorState.status === 'idle') {
-            // Place bet
+        if (aviatorState.status === 'betting' || aviatorState.status === 'idle') {
+            // Place bet only allowed during idle/betting
             if(!betState.active) {
                 betState.amount = parseFloat(amtInput.value) || 0;
                 betState.auto = parseFloat(autoInput.value) || null;
@@ -1461,8 +1476,14 @@
     }
     window.addEventListener('resize', resizeCanvas);
 
+    const planeImg = new Image();
+    planeImg.src = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdib3g9IjAgMCAxMDAgMTAwIj48ZyBmaWxsPSIjZWY0NDQ0Ij48cGF0aCBkPSJNMTAgNTBoNThMMTggMjhoLTZsMjYgMjJINXMtNCAwLTQgNWg4NmMwLTUgNC01IDQtNWwtMjYtMjJoNmw1MCAyMmwtMiAyIi8+PGNpcmNsZSBjeD0iODUiIGN5PSI1MCIgcj0iMyIgZmlsbD0iIzAwMCIvPjwvZz48L3N2Zz4=";
+
     // Render loop
+    let lastTime = 0;
     function drawAviatorFrame(timestamp) {
+        const dt = (timestamp - lastTime) / 1000;
+        lastTime = timestamp;
         if(!aviatorState.startTime && aviatorState.status === 'flying') {
             aviatorState.startTime = timestamp;
         }
@@ -1485,8 +1506,8 @@
         if (gridOffset > gridSize) gridOffset = 0;
 
         ctx.beginPath();
-        // Vertical lines
-        for(let x = -gridOffset; x < w; x += gridSize) {
+        // Vertical lines moving left
+        for(let x = w - gridOffset; x > -gridSize; x -= gridSize) {
             ctx.moveTo(x, 0); ctx.lineTo(x, h);
         }
         // Horizontal lines moving down
@@ -1495,54 +1516,90 @@
         }
         ctx.stroke();
 
-        // Calculate Plane Position
-        // Start bottom-left, fly to top-right center
-        let progress = Math.min(1, (aviatorState.multiplier - 1) / 2); // Maxes out visual curve around 3x
-        if (aviatorState.status === 'crashed') progress = 1.5; // Fly off screen
+        if (aviatorState.status === 'betting') {
+            aviatorState.bettingTimeLeft -= dt;
+            if(aviatorState.bettingTimeLeft <= 0) {
+                startAviatorRound(); // Launch!
+            } else {
+                // Draw Betting UI
+                ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+                ctx.fillRect(0, 0, w, h);
+                ctx.fillStyle = "#fff";
+                ctx.font = "bold 30px monospace";
+                ctx.textAlign = "center";
+                ctx.fillText(`NEXT ROUND IN ${Math.ceil(aviatorState.bettingTimeLeft)}...`, w/2, h/2 - 20);
 
-        const startX = 50;
-        const startY = h - 30;
-
-        let targetX = w * 0.7;
-        let targetY = h * 0.3;
-
-        // Turbulence
-        let turbY = 0;
-        if(aviatorState.status === 'flying') {
-            turbY = Math.sin(timestamp * 0.01) * 3 + Math.sin(timestamp * 0.025) * 2;
+                // Progress bar (top of canvas)
+                ctx.fillStyle = "#333";
+                ctx.fillRect(0, 0, w, 10);
+                ctx.fillStyle = varColorDanger;
+                ctx.fillRect(0, 0, w * (Math.max(0, aviatorState.bettingTimeLeft)/5.0), 10);
+            }
         }
 
-        const currentX = startX + (targetX - startX) * progress;
-        const currentY = startY + (targetY - startY) * progress + turbY;
+        if (aviatorState.status === 'flying' || aviatorState.status === 'crashed') {
+            // Calculate Plane Position
+            // Start bottom-left, fly to top-right center
+            let progress = Math.min(1, (aviatorState.multiplier - 1) / 2); // Maxes out visual curve around 3x
+            if (aviatorState.status === 'crashed') progress = 1.5; // Fly off screen
 
-        // Draw Bezier Curve trailing the plane
-        const cp1X = startX + (currentX - startX) * 0.5;
-        const cp1Y = startY;
+            const startX = 50;
+            const startY = h - 30;
 
-        // Fill Gradient
-        const grad = ctx.createLinearGradient(0, startY, 0, currentY);
-        grad.addColorStop(0, "rgba(239, 68, 68, 0)"); // Transparent at bottom
-        grad.addColorStop(1, "rgba(239, 68, 68, 0.4)"); // Red near curve
+            let targetX = w * 0.7;
+            let targetY = h * 0.3;
 
-        ctx.beginPath();
-        ctx.moveTo(startX, startY);
-        ctx.quadraticCurveTo(cp1X, cp1Y, currentX, currentY);
-        ctx.lineTo(currentX, h); // Drop to bottom right
-        ctx.lineTo(startX, h);   // Connect to bottom left
-        ctx.closePath();
-        ctx.fillStyle = grad;
-        ctx.fill();
+            // Turbulence
+            let turbY = 0;
+            if(aviatorState.status === 'flying') {
+                turbY = Math.sin(timestamp * 0.01) * 3 + Math.sin(timestamp * 0.025) * 2;
+            }
 
-        // Draw Red Line
-        ctx.beginPath();
-        ctx.moveTo(startX, startY);
-        ctx.quadraticCurveTo(cp1X, cp1Y, currentX, currentY);
-        ctx.strokeStyle = "red";
-        ctx.lineWidth = 4;
-        ctx.stroke();
+            const currentX = startX + (targetX - startX) * progress;
+            const currentY = startY + (targetY - startY) * progress + turbY;
 
-        // Draw Plane (SVG shape)
-        drawPlane(ctx, currentX, currentY, progress);
+            // Draw Bezier Curve trailing the plane
+            const cp1X = startX + (currentX - startX) * 0.5;
+            const cp1Y = startY;
+
+            if (aviatorState.status !== 'crashed') {
+                // Fill Gradient
+                const grad = ctx.createLinearGradient(0, startY, 0, currentY);
+                grad.addColorStop(0, "rgba(239, 68, 68, 0)"); // Transparent at bottom
+                grad.addColorStop(1, "rgba(239, 68, 68, 0.4)"); // Red near curve
+
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                ctx.quadraticCurveTo(cp1X, cp1Y, currentX, currentY);
+                ctx.lineTo(currentX, h); // Drop to bottom right
+                ctx.lineTo(startX, h);   // Connect to bottom left
+                ctx.closePath();
+                ctx.fillStyle = grad;
+                ctx.fill();
+
+                // Draw Red Line
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                ctx.quadraticCurveTo(cp1X, cp1Y, currentX, currentY);
+                ctx.strokeStyle = "red";
+                ctx.lineWidth = 4;
+                ctx.stroke();
+            }
+
+            // Calculate tangent angle for rotation
+            let dx = currentX - cp1X;
+            let dy = currentY - cp1Y;
+            let angle = Math.atan2(dy, dx);
+            if (progress >= 1 && aviatorState.status !== 'crashed') {
+               angle = 0; // Level out
+            } else if (aviatorState.status === 'crashed') {
+               angle = -Math.PI / 4; // Fly off sharply
+            }
+
+            if (aviatorState.status !== 'crashed') {
+                drawPlane(ctx, currentX, currentY, angle, timestamp);
+            }
+        }
 
         // Logic Updates
         if (aviatorState.status === 'flying') {
@@ -1574,41 +1631,55 @@
             }
         }
 
-        if(aviatorState.status === 'flying' || aviatorState.status === 'crashed') {
-            animationFrameId = requestAnimationFrame(drawAviatorFrame);
-        }
+        animationFrameId = requestAnimationFrame(drawAviatorFrame);
     }
 
-    function drawPlane(ctx, x, y, tiltProgress) {
+    const varColorDanger = "#EF4444";
+    function drawPlane(ctx, x, y, angle, timestamp) {
         ctx.save();
         ctx.translate(x, y);
-        // Tilt plane up slightly as it climbs
-        const angle = -15 * Math.PI / 180 * Math.min(1, tiltProgress);
         ctx.rotate(angle);
 
-        // Simple Plane Drawing
-        ctx.fillStyle = "#EF4444"; // Red body
-        ctx.beginPath();
-        ctx.moveTo(10, 0); // Nose
-        ctx.lineTo(-20, -5); // Top tail
-        ctx.lineTo(-20, 5); // Bottom tail
-        ctx.fill();
+        // Draw realistic biplane SVG
+        ctx.drawImage(planeImg, -40, -20, 80, 40);
 
-        ctx.fillStyle = "#fff"; // Window
+        // Propeller Blur
+        ctx.fillStyle = "rgba(255,255,255,0.4)";
         ctx.beginPath();
-        ctx.arc(0, -2, 2, 0, Math.PI*2);
+        ctx.ellipse(35, 0, 4, 15 + Math.sin(timestamp*0.05)*5, 0, 0, Math.PI*2);
         ctx.fill();
 
         ctx.restore();
     }
 
+    function startBettingPhase() {
+        if (aviatorState.status === 'betting') return;
+        aviatorState.status = 'betting';
+        aviatorState.bettingTimeLeft = 5.0;
+        document.getElementById('aviatorCrashText').style.opacity = '0';
+        document.getElementById('aviatorMultiplier').style.opacity = '0'; // Hide mult during betting
+
+        // Reset inputs and buttons
+        aviatorState.bets.forEach(bet => {
+            if(!bet.active) {
+                const btn = document.getElementById(`aviatorBtn${bet.id}`);
+                btn.className = "bet-btn idle";
+                btn.innerText = "Bet";
+                document.getElementById(`aviatorBet${bet.id}`).disabled = false;
+                document.getElementById(`aviatorAuto${bet.id}`).disabled = false;
+            }
+        });
+
+        if(!animationFrameId) {
+            animationFrameId = requestAnimationFrame((t) => {
+                lastTime = t;
+                drawAviatorFrame(t);
+            });
+        }
+    }
+
     async function startAviatorRound() {
-        if(aviatorState.status !== 'idle') return;
-
-        // Only start if at least one bet is active, or force for demo
-        const hasBet = aviatorState.bets.some(b => b.active);
-
-        aviatorState.status = 'waiting';
+        if(aviatorState.status !== 'betting') return;
         // Get fair RNG crash point from backend
         // To save API calls in this demo if no bets, we can mock it, but let's call API
         try {
@@ -1678,58 +1749,162 @@
             }
         });
 
-        // Schedule next round
+        // Schedule next round betting phase
         setTimeout(() => {
-            aviatorState.status = 'idle';
-            // Auto-restart for demo flow
-            setTimeout(startAviatorRound, 2000);
-        }, 3000);
+            startBettingPhase();
+        }, 2000);
     }
 
     // Call this when opening the game
     function initAviator() {
         resizeCanvas();
         if(aviatorState.status === 'idle') {
-            setTimeout(startAviatorRound, 1000);
+            startBettingPhase();
         }
     }
 
-    // OX Matchmaking Logic
+    // --- ADVANCED OX GAME (Minimax Algorithm) ---
+    let oxBoardState = ['', '', '', '', '', '', '', '', ''];
+    let oxCurrentPlayer = 'X'; // User is X
+    let oxGameActive = false;
+    let oxBetAmount = 0;
+
+    const winConditions = [
+        [0, 1, 2], [3, 4, 5], [6, 7, 8],
+        [0, 3, 6], [1, 4, 7], [2, 5, 8],
+        [0, 4, 8], [2, 4, 6]
+    ];
+
+    function resetOXBoard() {
+        oxBoardState = ['', '', '', '', '', '', '', '', ''];
+        oxCurrentPlayer = 'X';
+        oxGameActive = true;
+        document.getElementById('oxResult').innerText = "";
+        const cells = document.querySelectorAll('#oxGrid .glass-panel');
+        cells.forEach((cell, idx) => {
+            cell.innerText = "";
+            cell.style.color = "inherit";
+            // Remove old listener to avoid duplicates, then add new
+            const newCell = cell.cloneNode(true);
+            cell.parentNode.replaceChild(newCell, cell);
+            newCell.addEventListener('click', () => handleOXCellClick(idx));
+        });
+    }
+
     async function findOXMatch(playBot) {
-        const bet = document.getElementById('oxBet').value;
-        const status = document.getElementById('oxMatchStatus');
-        const board = document.getElementById('oxBoard');
+        if(!playBot) return alert("Online Multiplayer coming soon. Try the Unbeatable Bot!");
 
-        board.style.display = 'none';
-        status.innerText = "Searching for opponent...";
+        oxBetAmount = parseInt(document.getElementById('oxBet').value);
+        if(isNaN(oxBetAmount) || oxBetAmount <= 0) return alert("Invalid bet.");
 
-        // Fake 3-second searching delay
-        setTimeout(async () => {
-            status.innerText = playBot ? "Matched with Hard Bot!" : "Matched with Bot_Player102!";
+        document.getElementById('oxMatchStatus').innerText = "Matched with UNBEATABLE BOT (Minimax)";
+        document.getElementById('oxBoard').style.display = 'block';
+        resetOXBoard();
+    }
 
-            try {
-                const res = await fetch('/api/ox', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: userId || 'test_user', bet: parseInt(bet), playBot }) });
-                const data = await res.json();
+    function checkOXWin(board) {
+        for(let i=0; i<winConditions.length; i++) {
+            const [a,b,c] = winConditions[i];
+            if(board[a] && board[a] === board[b] && board[a] === board[c]) return board[a];
+        }
+        if(!board.includes('')) return 'Tie';
+        return null;
+    }
 
-                // Show board and simulate quick game
-                board.style.display = 'block';
-                const resultDiv = document.getElementById('oxResult');
-                resultDiv.innerText = "Playing...";
+    // Minimax Algorithm
+    function minimax(board, depth, isMaximizing) {
+        const result = checkOXWin(board);
+        if (result === 'O') return 10 - depth;
+        if (result === 'X') return depth - 10;
+        if (result === 'Tie') return 0;
 
-                setTimeout(() => {
-                    if(data.win) {
-                        resultDiv.innerText = `You Won! +${bet} Gems`;
-                        resultDiv.style.color = "var(--success-color)";
-                    } else {
-                        resultDiv.innerText = `You Lost! -${bet} Gems`;
-                        resultDiv.style.color = "var(--danger-color)";
-                    }
-                }, 2000);
-
-            } catch(e) {
-                status.innerText = "Error connecting to match.";
+        if (isMaximizing) {
+            let bestScore = -Infinity;
+            for(let i=0; i<9; i++) {
+                if(board[i] === '') {
+                    board[i] = 'O';
+                    let score = minimax(board, depth + 1, false);
+                    board[i] = '';
+                    bestScore = Math.max(score, bestScore);
+                }
             }
-        }, 3000);
+            return bestScore;
+        } else {
+            let bestScore = Infinity;
+            for(let i=0; i<9; i++) {
+                if(board[i] === '') {
+                    board[i] = 'X';
+                    let score = minimax(board, depth + 1, true);
+                    board[i] = '';
+                    bestScore = Math.min(score, bestScore);
+                }
+            }
+            return bestScore;
+        }
+    }
+
+    function bestOXMove() {
+        let bestScore = -Infinity;
+        let move;
+        for(let i=0; i<9; i++) {
+            if(oxBoardState[i] === '') {
+                oxBoardState[i] = 'O';
+                let score = minimax(oxBoardState, 0, false);
+                oxBoardState[i] = '';
+                if(score > bestScore) {
+                    bestScore = score;
+                    move = i;
+                }
+            }
+        }
+        return move;
+    }
+
+    async function handleOXCellClick(idx) {
+        if(!oxGameActive || oxBoardState[idx] !== '' || oxCurrentPlayer !== 'X') return;
+
+        oxBoardState[idx] = 'X';
+        const cells = document.querySelectorAll('#oxGrid .glass-panel');
+        cells[idx].innerText = 'X';
+        cells[idx].style.color = "var(--success-color)";
+
+        const result = checkOXWin(oxBoardState);
+        if(result) { return finalizeOXRound(result); }
+
+        oxCurrentPlayer = 'O'; // Bot's turn
+
+        // Slight delay for realism
+        setTimeout(() => {
+            if(!oxGameActive) return;
+            const botMove = bestOXMove();
+            if(botMove !== undefined) {
+                oxBoardState[botMove] = 'O';
+                cells[botMove].innerText = 'O';
+                cells[botMove].style.color = "var(--danger-color)";
+
+                const botResult = checkOXWin(oxBoardState);
+                if(botResult) { return finalizeOXRound(botResult); }
+                oxCurrentPlayer = 'X';
+            }
+        }, 500);
+    }
+
+    async function finalizeOXRound(result) {
+        oxGameActive = false;
+        const resultDiv = document.getElementById('oxResult');
+
+        // Sync with backend (Simplified for demo, real app would send move log)
+        if(result === 'X') {
+            resultDiv.innerText = `You Won! +${oxBetAmount} Gems`;
+            resultDiv.style.color = "var(--success-color)";
+        } else if (result === 'O') {
+            resultDiv.innerText = `Bot Won! -${oxBetAmount} Gems`;
+            resultDiv.style.color = "var(--danger-color)";
+            await fetch('/api/ox', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userId: userId||'test_user', bet: oxBetAmount, playBot:true}) });
+        } else {
+            resultDiv.innerText = `It's a Draw! Bet returned.`;
+            resultDiv.style.color = "var(--gold-color)";
+        }
     }
 </script>
 

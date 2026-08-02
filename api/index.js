@@ -147,25 +147,27 @@ app.post('/api/webhook', async (req, res) => {
             const msg = update.message;
             const chatId = msg.chat.id.toString();
             const text = msg.text;
-            const username = msg.from.username ? `@${msg.from.username}` : msg.from.first_name;
+            const firstName = msg.from.first_name || '';
+            const lastName = msg.from.last_name || '';
+            const accountName = `${firstName} ${lastName}`.trim() || 'Unknown User';
 
             if (text.startsWith('/start')) {
                 const args = text.split(' ');
                 const refParam = args.length > 1 ? args[1] : null;
-                await ensureUserExists(chatId, username, refParam);
+                await ensureUserExists(chatId, accountName, refParam);
                 
                 const config = (await dbGet('config')) || {};
                 const webUrl = config.webAppUrl || 'https://earn-miniapp.vercel.app'; 
-                const caption = `<b>${username} እንኳን ወደ MYFA BIRR መጡ! </b>\n\nከታች ያለውን MYFA BIRR የሚለውን ይጫኑ ገንዘብ ለማግኘት እና መተግበሪያውን ለመጀመር።`;
+                const caption = `<b>${accountName} እንኳን ወደ MYFA BIRR መጡ! </b>\n\nከታች ያለውን MYFA BIRR የሚለውን ይጫኑ ገንዘብ ለማግኘት እና መተግበሪያውን ለመጀመር።`;
 
                 try {
                     await bot.sendPhoto(chatId, WELCOME_IMG, {
                         caption: caption, parse_mode: 'HTML',
-                        reply_markup: { inline_keyboard: [[{ text: "🚀 Open Mini App", web_app: { url: `${webUrl}?userId=${chatId}` } }]] }
+                        reply_markup: { inline_keyboard: [[{ text: "🚀 Open Mini App", web_app: { url: `${webUrl}` } }]] }
                     });
                 } catch (e) {
                     await bot.sendMessage(chatId, caption, {
-                        parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: "🚀 Open Mini App", web_app: { url: `${webUrl}?userId=${chatId}` } }]] }
+                        parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: "🚀 Open Mini App", web_app: { url: `${webUrl}` } }]] }
                     });
                 }
             }
@@ -302,10 +304,22 @@ app.post('/api/request-withdrawal', async (req, res) => {
 });
 
 app.get('/api/leaderboard/:id', async (req, res) => {
-    const users = Object.values(await dbGet('users') || {}).filter(u => !u.isBanned);
+    const userId = req.params.id;
+    const usersObj = await dbGet('users') || {};
+    // Attach original userId to each object for rank identification
+    const users = Object.keys(usersObj).map(key => ({...usersObj[key], id: key})).filter(u => !u.isBanned);
+    
+    const byPoints = [...users].sort((a,b)=>(b.points||0)-(a.points||0));
+    const byReferrals = [...users].sort((a,b)=>(b.referredUsers?.length||0)-(a.referredUsers?.length||0));
+    
+    let userRankPoints = byPoints.findIndex(u => u.id === userId) + 1;
+    let userRankRefs = byReferrals.findIndex(u => u.id === userId) + 1;
+
     res.json({
-        byPoints: [...users].sort((a,b)=>(b.points||0)-(a.points||0)).slice(0,50),
-        byReferrals: [...users].sort((a,b)=>(b.referredUsers?.length||0)-(a.referredUsers?.length||0)).slice(0,50)
+        byPoints: byPoints.slice(0, 100),
+        byReferrals: byReferrals.slice(0, 100),
+        userRankPoints: userRankPoints > 0 ? userRankPoints : null,
+        userRankRefs: userRankRefs > 0 ? userRankRefs : null
     });
 });
 
@@ -316,17 +330,27 @@ app.get('/api/leaderboard/:id', async (req, res) => {
 app.post('/api/aviator/start', async (req, res) => {
     const { userId, betAmount } = req.body;
     const user = await dbGet(`users/${userId}`);
+    const config = await dbGet('config') || {};
 
-    // CSPRNG for total unpredictability
-    const buf = crypto.randomBytes(4);
-    const rand = buf.readUInt32BE(0) / 0xFFFFFFFF; 
-
-    // Rigged: 85% chance to crash extremely early (< 2.0x)
     let crashPoint = 1.00;
-    if (Math.random() < 0.85) {
-        crashPoint = parseFloat((1.01 + (rand * 0.98)).toFixed(2)); 
+    const serverSeed = crypto.randomBytes(32).toString('hex');
+    const combined = `${serverSeed}-${Date.now()}`;
+    const hash = crypto.createHash('sha256').update(combined).digest('hex');
+    const hashInt = parseInt(hash.substring(0, 8), 16);
+    const rand = hashInt / 0xFFFFFFFF; // 0 to 1
+
+    if (config.forcedCrashPoint && !isNaN(parseFloat(config.forcedCrashPoint))) {
+        crashPoint = parseFloat(config.forcedCrashPoint);
+        await dbUpdate('config', { forcedCrashPoint: "" }); // Reset after use
     } else {
-        crashPoint = parseFloat((2.00 + (rand * 8.00)).toFixed(2)); 
+        // Rigged: 85% chance to crash extremely early (< 2.0x)
+        if (rand < 0.85) {
+            const innerRand = parseInt(hash.substring(8, 16), 16) / 0xFFFFFFFF;
+            crashPoint = parseFloat((1.01 + (innerRand * 0.98)).toFixed(2)); 
+        } else {
+            const innerRand = parseInt(hash.substring(16, 24), 16) / 0xFFFFFFFF;
+            crashPoint = parseFloat((2.00 + (innerRand * 8.00)).toFixed(2)); 
+        }
     }
 
     await dbUpdate(`users/${userId}`, { 
@@ -335,8 +359,15 @@ app.post('/api/aviator/start', async (req, res) => {
     });
 
     const roundId = Date.now().toString();
-    await dbSet(`aviatorRounds/${roundId}`, { crashPoint, active: true });
-    res.json({ success: true, crashPoint, roundId });
+    
+    // Store last 15 crashes in memory (firebase) for history
+    const historyData = await dbGet('aviatorHistory') || [];
+    historyData.push(crashPoint);
+    if(historyData.length > 15) historyData.shift();
+    await dbSet('aviatorHistory', historyData);
+
+    await dbSet(`aviatorRounds/${roundId}`, { crashPoint, active: true, serverHash: hash });
+    res.json({ success: true, crashPoint, roundId, history: historyData, serverHash: hash });
 });
 
 app.post('/api/aviator/cashout', async (req, res) => {

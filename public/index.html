@@ -148,44 +148,73 @@
         </div>
 
         <!-- Game 3: Aviator -->
-        <div id="aviatorGame" class="content-section" style="display: none; text-align: center;">
-            <h2 style="color: var(--danger-color); margin-bottom: 10px;"><i class="fa-solid fa-plane-up"></i> Aviator</h2>
+        <div id="aviatorGame" class="content-section" style="display: none; text-align: center; overflow:hidden;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
+                <h2 style="color: var(--danger-color); margin: 0;"><i class="fa-solid fa-plane-up"></i> Aviator</h2>
+                <div>
+                    <button class="btn btn-secondary" onclick="showProvablyFair()" style="padding: 5px 10px; width: auto;"><i class="fa-solid fa-shield-halved"></i> Fair</button>
+                </div>
+            </div>
+            
+            <div id="aviatorHistoryBar" class="aviator-history-ticker"></div>
             
             <div class="aviator-container">
-                <!-- Parallax Canvas -->
                 <canvas id="aviatorCanvas"></canvas>
+                
+                <div id="aviatorChatOverlay" class="aviator-chat"></div>
+                <div id="aviatorTopWinOverlay" class="highest-win-banner" style="display:none;"></div>
                 
                 <!-- Central Text Overlays -->
                 <div id="aviatorMultiplier" style="position:absolute; top:40%; left:50%; transform:translate(-50%, -50%); font-size: 4rem; font-weight:900; color:white; text-shadow: 0 0 20px rgba(0,0,0,0.8); z-index:10; font-family: monospace;">1.00x</div>
                 <div id="aviatorCrashText" style="position:absolute; top:20%; left:50%; transform:translateX(-50%); font-size: 1.5rem; font-weight:800; color:var(--danger-color); text-transform:uppercase; text-shadow: 0 0 10px black; z-index:10; opacity: 0;">Flew Away!</div>
             </div>
             
+            <div class="aviator-tabs" style="display:flex; margin: 10px 0;">
+                <div class="aviator-tab active" onclick="switchAviatorTab('bets')">Live Bets</div>
+                <div class="aviator-tab" onclick="switchAviatorTab('mybets')">My History</div>
+            </div>
+            <div id="aviatorLiveBetsPanel" style="height: 60px; overflow-y:auto; background:rgba(0,0,0,0.2); border-radius:8px; margin-bottom:10px; text-align:left; padding:5px; font-size:0.8rem; color:#aaa;"></div>
+
             <!-- Dual Betting Panel -->
             <div class="bet-panel-container">
                 <!-- Panel 1 -->
                 <div class="bet-panel">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                    <div style="display:flex; gap:5px; margin-bottom:5px;">
+                        <button class="hotkey-btn" onclick="addBet(1, 10)">+10</button>
+                        <button class="hotkey-btn" onclick="addBet(1, 50)">+50</button>
+                        <button class="hotkey-btn" onclick="addBet(1, 'max')">Max</button>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
                         <input type="number" id="aviatorBet1" value="10" min="1" step="1" style="width: 48%; padding: 8px; font-weight:bold;">
                         <input type="number" id="aviatorAuto1" placeholder="Auto 2.0x" step="0.1" min="1.01" style="width: 48%; padding: 8px;">
                     </div>
+                    <label style="font-size:0.7rem; color:#888; display:block; margin-bottom:5px; text-align:left;"><input type="checkbox" id="aviatorAutoPlay1"> Auto Play</label>
                     <button class="bet-btn idle" id="aviatorBtn1" onclick="toggleBet(1)">Bet</button>
                 </div>
                 <!-- Panel 2 -->
                 <div class="bet-panel">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                        <input type="number" id="aviatorBet2" value="50" min="1" step="1" style="width: 48%; padding: 8px; font-weight:bold;">
-                        <input type="number" id="aviatorAuto2" placeholder="Auto" step="0.1" min="1.01" style="width: 48%; padding: 8px;">
+                    <div style="display:flex; gap:5px; margin-bottom:5px;">
+                        <button class="hotkey-btn" onclick="addBet(2, 10)">+10</button>
+                        <button class="hotkey-btn" onclick="addBet(2, 50)">+50</button>
+                        <button class="hotkey-btn" onclick="addBet(2, 'max')">Max</button>
                     </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                        <input type="number" id="aviatorBet2" value="50" min="1" step="1" style="width: 48%; padding: 8px; font-weight:bold;">
+                        <input type="number" id="aviatorAuto2" placeholder="Auto 3.0x" step="0.1" min="1.01" style="width: 48%; padding: 8px;">
+                    </div>
+                    <label style="font-size:0.7rem; color:#888; display:block; margin-bottom:5px; text-align:left;"><input type="checkbox" id="aviatorAutoPlay2"> Auto Play</label>
                     <button class="bet-btn idle" id="aviatorBtn2" onclick="toggleBet(2)">Bet</button>
                 </div>
             </div>
             
+            <p style="font-size: 0.7rem; color: #666; margin-top:5px;"><i class="fa-solid fa-keyboard"></i> Tip: Press Spacebar to Bet/Cashout Panel 1</p>
+
+            <button class="btn btn-secondary" onclick="closeGame('aviatorGame')" style="margin-top: 10px; width: 100%;">Back to Hub</button>
+
             <!-- Audio elements -->
             <audio id="audioEngine" src="https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3" loop></audio>
             <audio id="audioCashout" src="https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3"></audio>
             <audio id="audioCrash" src="https://assets.mixkit.co/active_storage/sfx/1466/1466-preview.mp3"></audio>
-
-            <button class="btn btn-secondary" onclick="closeGame('aviatorGame')" style="margin-top: 20px; width: 100%;">Back to Hub</button>
         </div>
 
         <!-- Game 4: OX -->
@@ -229,9 +258,9 @@
         <!-- NEW GAME HUB (Phase 2) -->
         <div id="gameHub" class="content-section" style="display: none;">
             <h2 style="font-weight: 800; margin-bottom: 15px; color: var(--text-dark);"><i class="fa-solid fa-gamepad"></i> Game Hub</h2>
-            <div class="game-hub-list">
+            <div class="game-hub-list" style="display: flex; flex-direction: column; gap: 12px;">
                 <!-- Game 1: Aviator -->
-                <div class="glass game-list-card" onclick="openGame('aviator')">
+                <div class="glass game-list-card-horizontal" onclick="openGame('aviator')">
                     <div class="game-icon-box" style="background: rgba(239, 68, 68, 0.2); color: var(--danger-color);">
                         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>
                     </div>
@@ -239,11 +268,11 @@
                         <h3>Aviator</h3>
                         <p>Hold for multipliers!</p>
                     </div>
-                    <div class="play-btn">Play</div>
+                    <div class="play-btn-pill">Play</div>
                 </div>
 
                 <!-- Game 2: Multi OX -->
-                <div class="glass game-list-card" onclick="openGame('ox')">
+                <div class="glass game-list-card-horizontal" onclick="openGame('ox')">
                     <div class="game-icon-box" style="background: rgba(176, 38, 255, 0.2); color: var(--accent-color);">
                         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-8 14H7v-4h4v4zm0-6H7V7h4v4zm6 6h-4v-4h4v4zm0-6h-4V7h4v4z"/></svg>
                     </div>
@@ -251,11 +280,11 @@
                         <h3>Multi OX</h3>
                         <p>Tic-Tac-Toe Wagering</p>
                     </div>
-                    <div class="play-btn">Play</div>
+                    <div class="play-btn-pill">Play</div>
                 </div>
 
                 <!-- Game 3: Daily Combo -->
-                <div class="glass game-list-card" onclick="openGame('combo')">
+                <div class="glass game-list-card-horizontal" onclick="openGame('combo')">
                     <div class="game-icon-box" style="background: rgba(16, 185, 129, 0.2); color: var(--success-color);">
                         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4zM4 10h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4zM4 16h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4z"/></svg>
                     </div>
@@ -263,11 +292,11 @@
                         <h3>Daily Combo</h3>
                         <p>Drag & Drop Puzzle</p>
                     </div>
-                    <div class="play-btn">Play</div>
+                    <div class="play-btn-pill">Play</div>
                 </div>
 
                 <!-- Game 4: Pro Spin -->
-                <div class="glass game-list-card" onclick="openGame('spin')">
+                <div class="glass game-list-card-horizontal" onclick="openGame('spin')">
                     <div class="game-icon-box" style="background: rgba(255, 179, 71, 0.2); color: var(--gold-color);">
                         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95.49-7.41-2.42-7.93-6.37l2.84-.71c.36 2.37 2.45 4.15 4.88 4.15 2.76 0 5-2.24 5-5s-2.24-5-5-5c-2.43 0-4.52 1.78-4.88 4.15l-2.84-.71c.52-3.95 3.98-6.86 7.93-6.37 3.55.44 6.33 3.32 6.64 6.89.39 4.35-3.04 8.01-7.39 8.01-.08 0-.17 0-.25-.04z"/></svg>
                     </div>
@@ -275,11 +304,11 @@
                         <h3>Pro Spin</h3>
                         <p>Win massive Gems!</p>
                     </div>
-                    <div class="play-btn">Play</div>
+                    <div class="play-btn-pill">Play</div>
                 </div>
 
                 <!-- Game 5: Scratch Card (Navigates to Home -> Scratch Card) -->
-                <div class="glass game-list-card" onclick="navigateTo('games')">
+                <div class="glass game-list-card-horizontal" onclick="navigateTo('games')">
                     <div class="game-icon-box" style="background: rgba(59, 130, 246, 0.2); color: #3B82F6;">
                         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-1.04 14.74l-6.84-6.84c.3-.82.46-1.71.46-2.65 0-3.87-3.13-7-7-7-.94 0-1.83.16-2.65.46l15.54 15.54c.18-.15.33-.33.49-.51z"/></svg>
                     </div>
@@ -287,7 +316,7 @@
                         <h3>Scratch Card</h3>
                         <p>Scratch to win!</p>
                     </div>
-                    <div class="play-btn">Play</div>
+                    <div class="play-btn-pill">Play</div>
                 </div>
             </div>
         </div>
@@ -304,35 +333,6 @@
              </div>
         </div>
 
-        <!-- NEW EXCHANGE SECTION (Tab) -->
-        <div id="exchangeSection" class="content-section" style="display: none;">
-            <h2 style="font-weight: 800; margin-bottom: 15px; color: var(--text-dark);"><i class="fa-solid fa-money-bill-transfer"></i> Exchange</h2>
-
-            <div class="exchange-balance-cards">
-                <div class="glass card">
-                    <div style="font-size: 0.8rem; color: #666; font-weight: 600;">Current Gems</div>
-                    <div style="font-size: 1.5rem; font-weight: 900; color: var(--accent-color); margin-top: 5px;"><i class="fa-solid fa-gem"></i> <span id="exchangeGemsBal">0</span></div>
-                </div>
-                <div class="glass card">
-                    <div style="font-size: 0.8rem; color: #666; font-weight: 600;">Real Money Balance</div>
-                    <div style="font-size: 1.5rem; font-weight: 900; color: var(--success-color); margin-top: 5px;"><i class="fa-solid fa-wallet"></i> <span id="exchangeRealBal">0.00</span></div>
-                </div>
-            </div>
-
-            <div class="glass card" style="margin-top: 20px; text-align: center;">
-                <h3 style="margin-bottom: 10px; color: var(--text-dark);">Convert Gems to Cash</h3>
-                <p style="font-size: 0.85rem; color: #888; margin-bottom: 15px;">Rate: <span id="exchangeRateDisplay">100 Gems = 1 Unit</span></p>
-
-                <div style="position: relative; margin-bottom: 20px;">
-                    <i class="fa-solid fa-gem" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--accent-color);"></i>
-                    <input type="number" id="exchangeAmount" class="input-field" placeholder="Gems to exchange" style="padding-left: 45px; font-weight: bold; font-size: 1.1rem; margin-bottom: 0;">
-                </div>
-
-                <button class="btn btn-primary" onclick="processExchange()" id="exchangeBtn" style="font-size: 1.1rem;">
-                    <i class="fa-solid fa-money-bill-transfer"></i> Convert to Real Money
-                </button>
-            </div>
-        </div>
 
         <!-- FLOATING ACTION BUTTON (Support/Help) -->
         <div class="fab" onclick="openFAQ()">
@@ -349,7 +349,6 @@
             <a href="javascript:void(0)" class="nav-item active" data-page="home"><i class="fa-solid fa-house"></i><span data-lang="nav_home">Home</span></a>
             <a href="javascript:void(0)" class="nav-item" data-page="tasks"><i class="fa-solid fa-list-check"></i><span data-lang="nav_tasks">Tasks</span></a>
             <a href="javascript:void(0)" class="nav-item" data-page="games"><i class="fa-solid fa-gamepad"></i><span data-lang="nav_games">Games</span></a>
-            <a href="javascript:void(0)" class="nav-item" data-page="exchange"><i class="fa-solid fa-money-bill-transfer"></i><span>Exchange</span></a>
             <a href="javascript:void(0)" class="nav-item" data-page="leaderboard"><i class="fa-solid fa-trophy"></i><span data-lang="nav_top">Top</span></a>
             <a href="javascript:void(0)" class="nav-item" data-page="referral"><i class="fa-solid fa-user-group"></i><span data-lang="nav_invite">Invite</span></a>
             <a href="javascript:void(0)" class="nav-item" data-page="withdraw"><i class="fa-solid fa-wallet"></i><span data-lang="nav_pay">Pay</span></a>
@@ -491,9 +490,9 @@
                     setInterval(() => { AdController.show().catch((e)=>{}); }, 60000);
                 }
 
-                const tgUser = tg.initDataUnsafe?.user;
-                userId = tgUser?.id?.toString() || new URLSearchParams(window.location.search).get('userId');
-                startParam = tg.initDataUnsafe?.start_param || null;
+                const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+                userId = tgUser?.id?.toString();
+                startParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param || null;
 
                 let realName = "User";
                 if(tgUser) {
@@ -667,7 +666,6 @@
                 if(page === 'home') renderHome(content);
                 if(page === 'tasks') renderTasks(content);
                 if(page === 'games') renderGames(content);
-                if(page === 'exchange') renderExchange(content);
                 if(page === 'referral') renderReferral(content);
                 if(page === 'leaderboard') renderLeaderboard(content);
                 if(page === 'withdraw') renderWithdraw(content);
@@ -813,12 +811,13 @@
                 LeaderboardData = await res.json();
                 
                 container.innerHTML = `
-                    <div class="card glass">
-                        <div class="leaderboard-tabs">
+                    <div class="card glass" style="padding:0; overflow:hidden; display:flex; flex-direction:column; height: 100%;">
+                        <div class="leaderboard-tabs" style="padding:20px 20px 0;">
                             <div class="leaderboard-tab active" id="tabPoints" onclick="switchBoard('points')" data-lang="top_points">By Points</div>
                             <div class="leaderboard-tab" id="tabRefs" onclick="switchBoard('refs')" data-lang="top_refs">By Invite</div>
                         </div>
-                        <div id="boardContent"></div>
+                        <div id="boardContent" style="flex:1; overflow-y:auto; padding:20px; padding-bottom: 80px;"></div>
+                        <div id="stickyRankFooter" class="glass" style="position:fixed; bottom:70px; left:0; right:0; padding:15px; border-top:1px solid rgba(255,255,255,0.2); border-bottom: none; border-radius: 20px 20px 0 0; backdrop-filter: blur(20px); text-align:center; box-shadow: 0 -5px 20px rgba(176, 38, 255, 0.2);"></div>
                     </div>`;
                 switchBoard('points');
             } catch(e) {
@@ -833,10 +832,11 @@
             
             const list = type === 'points' ? LeaderboardData.byPoints : LeaderboardData.byReferrals;
             const unit = type === 'points' ? (AppConfig.currencyName || 'Gems') : 'Ref';
+            const userRank = type === 'points' ? LeaderboardData.userRankPoints : LeaderboardData.userRankRefs;
             
             let html = '';
-            const pfpStyle = (u) => u.customAvatar ? `background-image:url('${u.customAvatar}')` : `background:var(--gradient-main); display:flex; align-items:center; justify-content:center; color:white; font-size:1.2rem;`;
-            const getInitials = (n) => n ? n.substring(0,2).toUpperCase() : '??';
+            
+            const getPfp = (u) => `<div class="leaderboard-avatar-wrapper"><img src="${API_BASE_URL}/api/avatar/${u.id || u.username}" loading="lazy" class="leaderboard-pfp" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(u.username)}&background=B026FF&color=fff';"></div>`;
 
             if(list.length >= 3) {
                  const p1 = list[0], p2 = list[1], p3 = list[2];
@@ -847,23 +847,23 @@
                  html += `
                     <div class="top-3-container">
                         <div class="leaderboard-podium rank-2">
-                            <div class="pfp" style="${pfpStyle(p2)}">${!p2.customAvatar ? getInitials(p2.username) : ''}</div>
-                            <div style="font-size:0.8rem; font-weight:bold; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:var(--text-dark);">${p2.username}</div>
+                            ${getPfp(p2)}
+                            <div style="font-size:0.8rem; font-weight:bold; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:var(--text-dark); width: 100%; text-align:center;">${p2.username}</div>
                             <div style="font-size:0.9rem; font-weight:600; color:var(--accent-color);">${v2.toLocaleString()}</div>
                             <div class="podium-base"></div>
                             <div class="rank-badge">2</div>
                         </div>
                         <div class="leaderboard-podium rank-1">
                             <div class="crown"><i class="fa-solid fa-crown"></i></div>
-                            <div class="pfp" style="${pfpStyle(p1)}">${!p1.customAvatar ? getInitials(p1.username) : ''}</div>
-                            <div style="font-size:0.8rem; font-weight:bold; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:var(--text-dark);">${p1.username}</div>
+                            ${getPfp(p1)}
+                            <div style="font-size:0.8rem; font-weight:bold; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:var(--text-dark); width: 100%; text-align:center;">${p1.username}</div>
                             <div style="font-size:1.1rem; font-weight:900; color:var(--gold-color);">${v1.toLocaleString()}</div>
                             <div class="podium-base"></div>
                             <div class="rank-badge">1</div>
                         </div>
                         <div class="leaderboard-podium rank-3">
-                            <div class="pfp" style="${pfpStyle(p3)}">${!p3.customAvatar ? getInitials(p3.username) : ''}</div>
-                            <div style="font-size:0.8rem; font-weight:bold; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:var(--text-dark);">${p3.username}</div>
+                            ${getPfp(p3)}
+                            <div style="font-size:0.8rem; font-weight:bold; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:var(--text-dark); width: 100%; text-align:center;">${p3.username}</div>
                             <div style="font-size:0.9rem; font-weight:600; color:var(--accent-color);">${v3.toLocaleString()}</div>
                             <div class="podium-base"></div>
                             <div class="rank-badge">3</div>
@@ -871,17 +871,22 @@
                     </div>`;
             }
 
-            html += list.slice(3, 20).map((u, i) => {
+            html += list.slice(3, 100).map((u, i) => {
                 const val = type === 'points' ? (u.points||0) : (u.referredUsers?.length || 0);
                 return `
-                <div class="leaderboard-list-item">
-                    <div class="rank-circle">${i+4}</div>
-                    <div style="flex:1; font-weight:600; color:var(--text-dark);">${u.username}</div>
-                    <div style="color:var(--accent-color); font-weight:bold;">${val.toLocaleString()} ${unit}</div>
+                <div class="leaderboard-list-item glass-panel" style="margin-bottom:10px; border-radius:12px; padding:10px 15px;">
+                    <div class="rank-circle" style="width:30px; height:30px; font-size:0.9rem;">${i+4}</div>
+                    <img src="${API_BASE_URL}/api/avatar/${u.id || u.username}" loading="lazy" class="leaderboard-pfp-small" style="width:40px; height:40px; border-radius:50%; border: 2px solid rgba(255,255,255,0.2); margin: 0 12px; object-fit: cover;" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(u.username)}&background=B026FF&color=fff';">
+                    <div style="flex:1; font-weight:700; color:var(--text-dark); font-size:1rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${u.username}</div>
+                    <div style="color:var(--accent-color); font-weight:800; font-size:0.9rem;">${val.toLocaleString()} ${unit}</div>
                 </div>`;
             }).join('');
             
             document.getElementById('boardContent').innerHTML = html || '<p style="text-align:center; color:#888;">No data available.</p>';
+            
+            const footer = document.getElementById('stickyRankFooter');
+            const displayRank = (userRank && userRank <= 100) ? `#${userRank}` : '99+';
+            footer.innerHTML = `<span style="font-size:1.2rem; font-weight:800; color:var(--text-dark);">Your Rank: <span style="color:var(--primary-color);">${displayRank}</span></span>`;
         }
 
         async function renderReferral(container) {
@@ -976,8 +981,36 @@
             if(totalAvail > 0) totalProgress += (Math.min(totalDone, totalAvail) / totalAvail) * 33.3;
             else totalProgress += 33.4;
 
+            let html = `
+                <div class="card glass" style="margin-bottom: 20px; text-align: center;">
+                    <h3 style="margin-top: 0; color: var(--text-dark);">Exchange to Real Money</h3>
+                    
+                    <div class="exchange-balance-cards" style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:15px;">
+                        <div style="background:rgba(0,0,0,0.05); padding:10px; border-radius:8px;">
+                            <div style="font-size:0.8rem; color:#666;">Current Gems</div>
+                            <div style="font-size:1.2rem; font-weight:bold; color:var(--accent-color);" id="exchangeGemsBal">${(currentUser.points || 0).toLocaleString()}</div>
+                        </div>
+                        <div style="background:rgba(0,0,0,0.05); padding:10px; border-radius:8px;">
+                            <div style="font-size:0.8rem; color:#666;">Real Balance (Birr)</div>
+                            <div style="font-size:1.2rem; font-weight:bold; color:var(--success-color);" id="exchangeRealBal">${(currentUser.realBalance || 0).toFixed(2)}</div>
+                        </div>
+                    </div>
+                    
+                    <p style="font-size: 0.85rem; color: #888; margin-bottom: 10px;">Rate: <span id="exchangeRateDisplay">${AppConfig.exchangeRate || 100} Gems = 1 Unit</span></p>
+
+                    <div style="position: relative; margin-bottom: 15px;">
+                        <i class="fa-solid fa-gem" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--accent-color);"></i>
+                        <input type="number" id="exchangeAmount" class="input-field" placeholder="Gems to exchange" style="padding-left: 45px; margin-bottom: 0;" oninput="previewExchange()">
+                    </div>
+                    
+                    <div style="margin-bottom: 15px; font-size: 0.9rem; color: #666;">You will receive: <span id="exchangePreview" style="font-weight: bold; color: var(--success-color);">0.00</span></div>
+                    
+                    <button class="btn btn-primary" id="btnExchange" onclick="processExchange()" style="width: 100%;"><i class="fa-solid fa-rotate"></i> Convert Now</button>
+                </div>
+            `;
+
             if(unlocked) {
-                container.innerHTML = `
+                html += `
                     <div class="card glass" style="text-align:center; padding:40px 20px;">
                         <div style="width: 80px; height: 80px; border-radius: 50%; background: rgba(16, 185, 129, 0.1); display:flex; align-items:center; justify-content:center; margin: 0 auto 20px;">
                             <i class="fa-solid fa-lock-open" style="font-size:2.5rem; color:var(--success-color);"></i>
@@ -1006,7 +1039,7 @@
                         <div style="text-align:right; font-size:0.75rem; color:#888; margin-top:4px;">${cur} / ${req}</div>
                     </li>`;
                 
-                container.innerHTML = `
+                html += `
                     <div class="card glass">
                         <div class="section-title"><i class="fa-solid fa-list-check" style="color:var(--accent-color);"></i> <span data-lang="pay_reqs">Requirements for Next Withdraw</span></div>
 
@@ -1023,6 +1056,7 @@
                         <button class="btn btn-secondary" disabled style="margin-top:20px;"><i class="fa-solid fa-lock"></i> Locked</button>
                     </div>`;
             }
+            container.innerHTML = html;
         }
 
         // ==========================================
@@ -1139,14 +1173,6 @@
                 if(window.scrollY > 300) btn.style.display = 'flex';
                 else btn.style.display = 'none';
             });
-        }
-
-        function renderExchange(container) {
-            document.getElementById('exchangeSection').style.display = 'block';
-
-            document.getElementById('exchangeGemsBal').textContent = (currentUser.points || 0).toLocaleString();
-            document.getElementById('exchangeRealBal').textContent = (currentUser.realBalance || 0).toFixed(2);
-            document.getElementById('exchangeRateDisplay').textContent = `${AppConfig.exchangeRate || 100} Gems = 1 Unit`;
         }
 
         // --- API INTERACTION ---
@@ -1482,7 +1508,7 @@
         }
     }
 
-    async function cashOutBet(panelId, multToUse) {
+    async function cashOutBet(panelId, multToUse, planeX, planeY) {
         const betState = aviatorState.bets[panelId-1];
         betState.cashedOut = true;
         
@@ -1498,10 +1524,28 @@
                 btn.className = "bet-btn idle";
                 btn.innerText = `Won ${(betState.amount * multToUse).toFixed(2)}`;
                 document.getElementById('audioCashout').play().catch(()=>{});
-                console.log(`Cashed out at ${multToUse.toFixed(2)}x for ${data.winnings}`);
+                
+                if(planeX && planeY) createSparks(planeX, planeY);
+                if(multToUse > 5.0) triggerCoinRain();
             }
         } catch(e) { console.error(e); }
     }
+    
+    function addBet(panelId, amt) {
+        const input = document.getElementById(`aviatorBet${panelId}`);
+        if(amt === 'max') {
+            input.value = currentUser.points || 0;
+        } else {
+            input.value = Math.min((currentUser.points||0), (parseInt(input.value)||0) + amt);
+        }
+    }
+    
+    document.addEventListener('keydown', (e) => {
+        if(e.code === 'Space' && document.getElementById('aviatorGame').style.display === 'block') {
+            e.preventDefault();
+            toggleBet(1);
+        }
+    });
 
     // Canvas Setup
     const canvas = document.getElementById('aviatorCanvas');
@@ -1518,6 +1562,12 @@
 
     const planeImg = new Image();
     planeImg.src = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdib3g9IjAgMCAxMDAgMTAwIj48ZyBmaWxsPSIjZWY0NDQ0Ij48cGF0aCBkPSJNMTAgNTBoNThMMTggMjhoLTZsMjYgMjJINXMtNCAwLTQgNWg4NmMwLTUgNC01IDQtNWwtMjYtMjJoNmw1MCAyMmwtMiAyIi8+PGNpcmNsZSBjeD0iODUiIGN5PSI1MCIgcj0iMyIgZmlsbD0iIzAwMCIvPjwvZz48L3N2Zz4=";
+    const goldenPlaneImg = new Image(); // VIP Golden Plane
+    goldenPlaneImg.src = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdib3g9IjAgMCAxMDAgMTAwIj48ZyBmaWxsPSIjRkZEMzAwIj48cGF0aCBkPSJNMTAgNTBoNThMMTggMjhoLTZsMjYgMjJINXMtNCAwLTQgNWg4NmMwLTUgNC01IDQtNWwtMjYtMjJoNmw1MCAyMmwtMiAyIi8+PGNpcmNsZSBjeD0iODUiIGN5PSI1MCIgcj0iMyIgZmlsbD0iIzAwMCIvPjwvZz48L3N2Zz4=";
+
+    const coins = [];
+    let smokeParticles = [];
+    let sparks = [];
 
     // Render loop
     let lastTime = 0;
@@ -1533,26 +1583,47 @@
         const w = canvas.width;
         const h = canvas.height;
         
-        // Background color transitions darker as multiplier increases
-        let bgDarkness = Math.min(1, (aviatorState.multiplier - 1) / 10); // Fully dark by 11x
-        ctx.fillStyle = `rgba(0, 0, ${42 - (42*bgDarkness)}, 1)`; // Base #0B0B2A fades to black
+        // Altitude/Atmosphere Canvas Shifts
+        let gradient;
+        if (aviatorState.multiplier < 2) {
+            gradient = ctx.createLinearGradient(0, 0, 0, h);
+            gradient.addColorStop(0, "#1e3a8a"); // Blue sky
+            gradient.addColorStop(1, "#0B0B2A"); 
+        } else if (aviatorState.multiplier < 10) {
+            gradient = ctx.createLinearGradient(0, 0, 0, h);
+            gradient.addColorStop(0, "#312e81"); // Stratosphere purple
+            gradient.addColorStop(1, "#0B0B2A");
+        } else {
+            gradient = ctx.createLinearGradient(0, 0, 0, h);
+            gradient.addColorStop(0, "#000000"); // Deep space
+            gradient.addColorStop(1, "#0B0B2A");
+        }
+        ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, w, h);
+        
+        // Dynamic Camera Zoom Effect
+        let zoom = 1.0;
+        if(aviatorState.multiplier > 2) {
+            zoom = Math.max(0.6, 1.0 - (aviatorState.multiplier - 2) * 0.02);
+        }
+        ctx.save();
+        ctx.translate(w/2, h/2);
+        ctx.scale(zoom, zoom);
+        ctx.translate(-w/2, -h/2);
         
         // Draw Parallax Radar Grid
         ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
         ctx.lineWidth = 1;
         const gridSize = 40;
-        gridOffset += 1; // Pan grid
+        gridOffset += (1 * aviatorState.multiplier * 0.5); // Grid pans faster as speed increases
         if (gridOffset > gridSize) gridOffset = 0;
         
         ctx.beginPath();
-        // Vertical lines moving left
-        for(let x = w - gridOffset; x > -gridSize; x -= gridSize) {
-            ctx.moveTo(x, 0); ctx.lineTo(x, h);
+        for(let x = w - gridOffset; x > -gridSize*2; x -= gridSize) {
+            ctx.moveTo(x, -h); ctx.lineTo(x, h*2);
         }
-        // Horizontal lines moving down
-        for(let y = gridOffset; y < h; y += gridSize) {
-            ctx.moveTo(0, y); ctx.lineTo(w, y);
+        for(let y = gridOffset - h; y < h*2; y += gridSize) {
+            ctx.moveTo(-w, y); ctx.lineTo(w*2, y);
         }
         ctx.stroke();
 
@@ -1561,7 +1632,6 @@
             if(aviatorState.bettingTimeLeft <= 0) {
                 startAviatorRound(); // Launch!
             } else {
-                // Draw Betting UI
                 ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
                 ctx.fillRect(0, 0, w, h);
                 ctx.fillStyle = "#fff";
@@ -1569,7 +1639,6 @@
                 ctx.textAlign = "center";
                 ctx.fillText(`NEXT ROUND IN ${Math.ceil(aviatorState.bettingTimeLeft)}...`, w/2, h/2 - 20);
                 
-                // Progress bar (top of canvas)
                 ctx.fillStyle = "#333";
                 ctx.fillRect(0, 0, w, 10);
                 ctx.fillStyle = varColorDanger;
@@ -1577,47 +1646,47 @@
             }
         }
 
+        let currentX = 0, currentY = 0;
+        
         if (aviatorState.status === 'flying' || aviatorState.status === 'crashed') {
-            // Calculate Plane Position
-            // Start bottom-left, fly to top-right center
-            let progress = Math.min(1, (aviatorState.multiplier - 1) / 2); // Maxes out visual curve around 3x
-            if (aviatorState.status === 'crashed') progress = 1.5; // Fly off screen
+            let progress = Math.min(1, (aviatorState.multiplier - 1) / 2); 
             
             const startX = 50;
             const startY = h - 30;
-            
             let targetX = w * 0.7;
             let targetY = h * 0.3;
             
-            // Turbulence
-            let turbY = 0;
+            // Pre-Crash Turbulence
+            let turbX = 0, turbY = 0;
             if(aviatorState.status === 'flying') {
-                turbY = Math.sin(timestamp * 0.01) * 3 + Math.sin(timestamp * 0.025) * 2;
+                if(aviatorState.crashPoint - aviatorState.multiplier < 0.5) { // Close to crash
+                     turbX = (Math.random() - 0.5) * 10;
+                     turbY = (Math.random() - 0.5) * 10;
+                } else {
+                    turbY = Math.sin(timestamp * 0.01) * 3 + Math.sin(timestamp * 0.025) * 2;
+                }
             }
             
-            const currentX = startX + (targetX - startX) * progress;
-            const currentY = startY + (targetY - startY) * progress + turbY;
+            currentX = startX + (targetX - startX) * progress + turbX;
+            currentY = startY + (targetY - startY) * progress + turbY;
 
-            // Draw Bezier Curve trailing the plane
             const cp1X = startX + (currentX - startX) * 0.5;
             const cp1Y = startY;
             
             if (aviatorState.status !== 'crashed') {
-                // Fill Gradient
                 const grad = ctx.createLinearGradient(0, startY, 0, currentY);
-                grad.addColorStop(0, "rgba(239, 68, 68, 0)"); // Transparent at bottom
-                grad.addColorStop(1, "rgba(239, 68, 68, 0.4)"); // Red near curve
+                grad.addColorStop(0, "rgba(239, 68, 68, 0)"); 
+                grad.addColorStop(1, "rgba(239, 68, 68, 0.4)"); 
                 
                 ctx.beginPath();
                 ctx.moveTo(startX, startY);
                 ctx.quadraticCurveTo(cp1X, cp1Y, currentX, currentY);
-                ctx.lineTo(currentX, h); // Drop to bottom right
-                ctx.lineTo(startX, h);   // Connect to bottom left
+                ctx.lineTo(currentX, h); 
+                ctx.lineTo(startX, h);   
                 ctx.closePath();
                 ctx.fillStyle = grad;
                 ctx.fill();
 
-                // Draw Red Line
                 ctx.beginPath();
                 ctx.moveTo(startX, startY);
                 ctx.quadraticCurveTo(cp1X, cp1Y, currentX, currentY);
@@ -1626,70 +1695,120 @@
                 ctx.stroke();
             }
             
-            // Calculate tangent angle for rotation
             let dx = currentX - cp1X;
             let dy = currentY - cp1Y;
             let angle = Math.atan2(dy, dx);
             if (progress >= 1 && aviatorState.status !== 'crashed') {
-               angle = 0; // Level out
+               angle = 0; 
             } else if (aviatorState.status === 'crashed') {
-               angle = -Math.PI / 4; // Fly off sharply
+               angle = Math.PI / 4; // Nose down
+               currentX += (aviatorState.crashTimer * 200); // Fly off screen down-right
+               currentY += (aviatorState.crashTimer * 200);
+               aviatorState.crashTimer += dt;
             }
             
-            if (aviatorState.status !== 'crashed') {
-                drawPlane(ctx, currentX, currentY, angle, timestamp);
-            }
+            const isVIP = (currentUser && currentUser.points > 50000);
+            drawPlane(ctx, currentX, currentY, angle, timestamp, isVIP);
         }
+        
+        ctx.restore(); // Undo zoom
+
+        // Draw Particles (Sparks, Smoke, Coins) independently of zoom so they render correctly
+        drawParticles(ctx, dt, w, h);
 
         // Logic Updates
         if (aviatorState.status === 'flying') {
-            // Growth formula: multiplier grows exponentially with time
             const timeElapsed = (timestamp - aviatorState.startTime) / 1000;
-            // e^(rt) formula approximation. Let's say it takes ~8s to reach 10x
             aviatorState.multiplier = Math.pow(Math.E, 0.15 * timeElapsed) || 1.00;
             
-            // Update audio pitch based on multiplier
             const engine = document.getElementById('audioEngine');
-            if(engine) {
-                engine.playbackRate = Math.min(3.0, 1.0 + (aviatorState.multiplier * 0.05));
-            }
+            if(engine) engine.playbackRate = Math.min(3.0, 1.0 + (aviatorState.multiplier * 0.05));
 
-            // Check auto-cashouts
             aviatorState.bets.forEach(bet => {
                 if(bet.active && !bet.cashedOut && bet.auto && aviatorState.multiplier >= bet.auto) {
-                    cashOutBet(bet.id, bet.auto);
+                    cashOutBet(bet.id, bet.auto, currentX, currentY);
                 }
             });
             
+            document.getElementById('aviatorMultiplier').style.opacity = '1';
             document.getElementById('aviatorMultiplier').innerText = aviatorState.multiplier.toFixed(2) + "x";
 
-            // Check Crash
-            if (aviatorState.multiplier >= aviatorState.crashPoint) {
+            // Network Disconnect Auto-Loss feature
+            if(!navigator.onLine && !aviatorState.networkLostProcessed) {
+                aviatorState.networkLostProcessed = true;
+                triggerCrash(true); // Force crash and lose immediately
+            }
+
+            if (aviatorState.multiplier >= aviatorState.crashPoint && !aviatorState.networkLostProcessed) {
                 aviatorState.multiplier = aviatorState.crashPoint;
                 document.getElementById('aviatorMultiplier').innerText = aviatorState.crashPoint.toFixed(2) + "x";
-                triggerCrash();
+                triggerCrash(false, currentX, currentY);
             }
         }
         
         animationFrameId = requestAnimationFrame(drawAviatorFrame);
     }
 
-    const varColorDanger = "#EF4444";
-    function drawPlane(ctx, x, y, angle, timestamp) {
+    function drawPlane(ctx, x, y, angle, timestamp, isVIP) {
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(angle);
         
-        // Draw realistic biplane SVG
-        ctx.drawImage(planeImg, -40, -20, 80, 40);
+        ctx.drawImage(isVIP ? goldenPlaneImg : planeImg, -40, -20, 80, 40);
         
-        // Propeller Blur
         ctx.fillStyle = "rgba(255,255,255,0.4)";
         ctx.beginPath();
         ctx.ellipse(35, 0, 4, 15 + Math.sin(timestamp*0.05)*5, 0, 0, Math.PI*2);
         ctx.fill();
         
         ctx.restore();
+    }
+    
+    function drawParticles(ctx, dt, w, h) {
+        // Coins
+        for (let i = coins.length - 1; i >= 0; i--) {
+            const p = coins[i];
+            p.y += p.vy * dt; p.x += p.vx * dt; p.life -= dt;
+            ctx.fillStyle = `rgba(255, 215, 0, ${p.life})`;
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
+            if(p.life <= 0) coins.splice(i, 1);
+        }
+        // Sparks
+        for (let i = sparks.length - 1; i >= 0; i--) {
+            const p = sparks[i];
+            p.y += p.vy * dt; p.x += p.vx * dt; p.life -= dt;
+            ctx.fillStyle = `rgba(0, 255, 0, ${p.life})`;
+            ctx.fillRect(p.x, p.y, p.size, p.size);
+            if(p.life <= 0) sparks.splice(i, 1);
+        }
+        // Smoke
+        for (let i = smokeParticles.length - 1; i >= 0; i--) {
+            const p = smokeParticles[i];
+            p.y += p.vy * dt; p.x += p.vx * dt;
+            p.r += 20 * dt; // expand
+            p.life -= dt;
+            ctx.fillStyle = `rgba(30, 30, 30, ${p.life})`;
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
+            if(p.life <= 0) smokeParticles.splice(i, 1);
+        }
+    }
+
+    function createSparks(x, y) {
+        for(let i=0; i<20; i++) {
+            sparks.push({ x, y, vx: (Math.random()-0.5)*200, vy: (Math.random()-0.5)*200, life: 0.5, size: Math.random()*3+2 });
+        }
+    }
+    
+    function createSmoke(x, y) {
+        for(let i=0; i<15; i++) {
+            smokeParticles.push({ x: x + (Math.random()-0.5)*30, y: y + (Math.random()-0.5)*30, vx: (Math.random()-0.5)*50, vy: (Math.random()-0.5)*50 - 50, life: 1.0, r: Math.random()*10+5 });
+        }
+    }
+
+    function triggerCoinRain() {
+        for(let i=0; i<100; i++) {
+            coins.push({ x: Math.random() * document.getElementById('aviatorCanvas').width, y: -20 - Math.random()*100, vx: 0, vy: 200 + Math.random()*200, r: Math.random()*4+4, life: 3.0 });
+        }
     }
     
     function startBettingPhase() {
@@ -1731,6 +1850,21 @@
             const data = await res.json();
             aviatorState.crashPoint = data.crashPoint;
             aviatorState.roundId = data.roundId;
+            aviatorState.history = data.history || [];
+            aviatorState.serverHash = data.serverHash;
+            updateAviatorHistoryBar();
+            
+            // Mock Top bets and Chat
+            const names = ['Alem', 'Besh', 'Mese', 'Tiru', 'Yonas', 'Dawit'];
+            const rName = () => names[Math.floor(Math.random()*names.length)];
+            const rAmt = () => Math.floor(Math.random()*500 + 10);
+            const liveBetsHtml = Array.from({length: 5}).map(()=> `<div style="display:flex; justify-content:space-between; margin-bottom:2px;"><span>${rName()}</span><span style="color:var(--gold-color);">${rAmt()} Gems</span></div>`).join('');
+            document.getElementById('aviatorLiveBetsPanel').innerHTML = liveBetsHtml;
+            
+            const msgs = ['Let\'s go!', 'Cash out early?', 'Waiting for 10x', 'Scary...', 'wow'];
+            const chatHtml = Array.from({length: 3}).map(()=> `<div style="margin-bottom:2px;"><span style="color:var(--accent-color); font-weight:bold;">${rName()}:</span> ${msgs[Math.floor(Math.random()*msgs.length)]}</div>`).join('');
+            document.getElementById('aviatorChatOverlay').innerHTML = chatHtml;
+            
         } catch(e) {
             console.error(e);
             // Fallback fair math if offline
@@ -1764,16 +1898,20 @@
         animationFrameId = requestAnimationFrame(drawAviatorFrame);
     }
 
-    function triggerCrash() {
+    function triggerCrash(isDisconnect = false, planeX = 0, planeY = 0) {
+        if(aviatorState.status === 'crashed') return;
         aviatorState.status = 'crashed';
+        aviatorState.crashTimer = 0;
         
         const engine = document.getElementById('audioEngine');
         engine.pause();
         engine.currentTime = 0;
         
         document.getElementById('audioCrash').play().catch(()=>{});
+        if(planeX && planeY) createSmoke(planeX, planeY);
         
         document.getElementById('aviatorMultiplier').style.color = "var(--danger-color)";
+        document.getElementById('aviatorCrashText').innerText = isDisconnect ? "CONNECTION LOST" : "FLEW AWAY!";
         document.getElementById('aviatorCrashText').style.opacity = '1';
         
         // Reset bets
@@ -1784,15 +1922,66 @@
                 btn.className = "bet-btn idle";
                 btn.innerText = "Bet";
                 bet.active = false;
+            }
+            
+            // Re-enable inputs if not autoplaying
+            const autoPlay = document.getElementById(`aviatorAutoPlay${bet.id}`).checked;
+            if(!autoPlay) {
                 document.getElementById(`aviatorBet${bet.id}`).disabled = false;
                 document.getElementById(`aviatorAuto${bet.id}`).disabled = false;
             }
         });
         
-        // Schedule next round betting phase
+        updateAviatorHistoryBar();
+        
         setTimeout(() => {
+            // Check AutoPlay
+            aviatorState.bets.forEach(bet => {
+                if(document.getElementById(`aviatorAutoPlay${bet.id}`).checked) {
+                    document.getElementById(`aviatorBet${bet.id}`).disabled = true;
+                    document.getElementById(`aviatorAuto${bet.id}`).disabled = true;
+                    bet.active = true;
+                    bet.cashedOut = false;
+                    bet.amount = parseFloat(document.getElementById(`aviatorBet${bet.id}`).value) || 0;
+                    bet.auto = parseFloat(document.getElementById(`aviatorAuto${bet.id}`).value) || null;
+                    const btn = document.getElementById(`aviatorBtn${bet.id}`);
+                    btn.className = "bet-btn waiting";
+                    btn.innerText = "Cancel";
+                }
+            });
             startBettingPhase();
-        }, 2000);
+        }, 3000);
+    }
+
+    function updateAviatorHistoryBar() {
+        const bar = document.getElementById('aviatorHistoryBar');
+        if(!bar) return;
+        if(!aviatorState.history || aviatorState.history.length === 0) return;
+        
+        let html = '';
+        aviatorState.history.slice().reverse().forEach(mult => {
+            let color = "var(--primary-color)"; // blue
+            if(mult >= 10.0) color = "var(--gold-color)";
+            else if(mult >= 2.0) color = "var(--accent-color)"; // purple
+            html += `<span class="history-pill" style="color:${color}; border-color:${color};">${mult.toFixed(2)}x</span>`;
+        });
+        bar.innerHTML = html;
+    }
+    
+    function showProvablyFair() {
+        if(!aviatorState.serverHash) return showToast("No active round data");
+        alert(`PROVABLY FAIR\n\nServer Hash (SHA-256):\n${aviatorState.serverHash}\n\nUnchangeable and cryptographically secure.`);
+    }
+
+    function switchAviatorTab(tab) {
+        document.querySelectorAll('.aviator-tab').forEach(t => t.classList.remove('active'));
+        event.target.classList.add('active');
+        const p = document.getElementById('aviatorLiveBetsPanel');
+        if(tab === 'bets') {
+            p.innerHTML = `<div style="text-align:center; margin-top:10px;">Waiting for players...</div>`;
+        } else {
+            p.innerHTML = `<div style="text-align:center; margin-top:10px;">No history yet.</div>`;
+        }
     }
 
     // Call this when opening the game

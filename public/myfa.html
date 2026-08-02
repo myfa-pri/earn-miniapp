@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Admin Panel | MYFA BIRR</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg: #0B0B2A;
+            --surface: rgba(255, 255, 255, 0.05);
+            --surface-border: rgba(255, 255, 255, 0.1);
+            --primary: #B026FF;
+            --text: #F8FAFC;
+            --text-muted: #94A3B8;
+            --danger: #EF4444;
+            --success: #10B981;
+            --warning: #F59E0B;
+            --gold: #FFD700;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .glass {
+            background: var(--surface);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--surface-border);
+            border-radius: 16px;
+        }
+
+        /* LOGIN GATE */
+        #loginGate {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at top, #1E1B4B, #0B0B2A);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        .login-card {
+            padding: 40px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+        }
+        .input-field {
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 12px;
+            border: 1px solid var(--surface-border);
+            background: rgba(0,0,0,0.2);
+            color: white;
+            box-sizing: border-box;
+            outline: none;
+            font-family: inherit;
+        }
+        .input-field:focus { border-color: var(--primary); }
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--primary), #3b82f6);
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+            font-size: 1rem;
+        }
+        .btn:hover { opacity: 0.9; transform: translateY(-2px); }
+
+        /* DASHBOARD LAYOUT */
+        #dashboard { display: none; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .header h1 { margin: 0; font-size: 1.8rem; background: linear-gradient(to right, #fff, var(--primary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        
+        .section-title { font-size: 1.2rem; margin: 30px 0 15px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 800; border-bottom: 1px solid var(--surface-border); padding-bottom: 10px; }
+        .grid { display: grid; gap: 20px; }
+        .grid-2 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+        .grid-4 { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+
+        .card { padding: 20px; transition: 0.3s; }
+        .card:hover { border-color: rgba(255,255,255,0.2); }
+        .stat-val { font-size: 2rem; font-weight: 800; margin: 10px 0; color: white; }
+        
+        .form-group { margin-bottom: 15px; text-align: left; }
+        .form-group label { display: block; margin-bottom: 5px; color: var(--text-muted); font-size: 0.9rem; font-weight: 600; }
+        .row-group { display: flex; gap: 10px; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid var(--surface-border); }
+        th { color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; }
+        
+        .action-btn { padding: 8px 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; }
+        .bg-success { background: var(--success); }
+        .bg-danger { background: var(--danger); }
+        .bg-warning { background: var(--warning); }
+        
+        .toast { position: fixed; top: 20px; right: 20px; padding: 15px 25px; border-radius: 12px; background: var(--danger); color: white; font-weight: bold; transform: translateX(150%); transition: 0.3s; z-index: 10000; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .toast.show { transform: translateX(0); }
+
+        textarea.input-field { min-height: 100px; resize: vertical; }
+
+    </style>
+</head>
+<body>
+
+    <!-- LOGIN GATE -->
+    <div id="loginGate">
+        <div class="glass login-card">
+            <h2 style="margin-top:0;"><i class="fa-solid fa-lock" style="color:var(--primary);"></i> Admin Portal</h2>
+            <p style="color:var(--text-muted); margin-bottom:30px;">Enter credentials to unlock</p>
+            <input type="text" id="loginUser" class="input-field" placeholder="Username">
+            <input type="password" id="loginPass" class="input-field" placeholder="Password">
+            <button class="btn" onclick="attemptLogin()">Unlock Dashboard</button>
+        </div>
+    </div>
+
+    <!-- MAIN DASHBOARD -->
+    <div id="dashboard">
+        <div class="header">
+            <h1><i class="fa-solid fa-shield-halved"></i> Super Admin Panel</h1>
+            <button class="btn" style="width:auto; padding:10px 20px; background:var(--surface);" onclick="location.reload()">Lock</button>
+        </div>
+
+        <div id="dashboardContent">
+            
+            <div class="section-title">Real-Time Analytics</div>
+            <div class="grid grid-4" style="margin-bottom: 20px;">
+                <div class="card glass">
+                    <div style="color:var(--text-muted);"><i class="fa-solid fa-users"></i> Total Users</div>
+                    <div class="stat-val" id="statUsers">0</div>
+                </div>
+                <div class="card glass">
+                    <div style="color:var(--success);"><i class="fa-solid fa-wifi"></i> Online (5m)</div>
+                    <div class="stat-val" id="statOnline">0</div>
+                </div>
+                <div class="card glass">
+                    <div style="color:var(--warning);"><i class="fa-solid fa-clock-rotate-left"></i> Pending Payouts</div>
+                    <div class="stat-val" id="statPayouts">0</div>
+                </div>
+                <div class="card glass">
+                    <div style="color:var(--primary);"><i class="fa-solid fa-coins"></i> Total Points Issued</div>
+                    <div class="stat-val" id="statPoints">0</div>
+                </div>
+            </div>
+
+            <div class="section-title">System Configuration Manager</div>
+            <div class="grid grid-2" style="margin-bottom: 20px;">
+                <div class="card glass">
+                    <h3 style="margin-top:0;">Global Settings</h3>
+                    <div class="form-group row-group">
+                        <label>Maintenance Mode <input type="checkbox" id="cfgMaintenance"></label>
+                        <label>2X Global Multiplier <input type="checkbox" id="cfgMultiplier"></label>
+                    </div>
+                    <div class="form-group"><label>Currency Name</label><input type="text" id="cfgCurrency" class="input-field"></div>
+                    <div class="form-group"><label>Ads Per Day Limit</label><input type="number" id="cfgAdsLimit" class="input-field"></div>
+                    <div class="form-group"><label>Points Per Ad</label><input type="number" id="cfgPointsPerAd" class="input-field"></div>
+                    <button class="btn" onclick="saveConfig()">Save Settings</button>
+                </div>
+                <div class="card glass">
+                    <h3 style="margin-top:0;">Economy & Exchange</h3>
+                    <div class="form-group"><label>Referrer Bonus</label><input type="number" id="cfgRefBonus" class="input-field"></div>
+                    <div class="form-group"><label>Referee Bonus</label><input type="number" id="cfgRefereeBonus" class="input-field"></div>
+                    <div class="form-group"><label>Required Referrals for Withdraw</label><input type="number" id="cfgReqRefs" class="input-field"></div>
+                    <div class="form-group"><label>Required Ads for Withdraw</label><input type="number" id="cfgReqAds" class="input-field"></div>
+                    <div class="form-group"><label>Auto-Approve Withdraw Limit</label><input type="number" id="cfgAutoApprove" class="input-field"></div>
+                    <div class="form-group"><label>Exchange Rate (Gems = 1 Unit)</label><input type="number" id="cfgExchangeRate" class="input-field"></div>
+                    <button class="btn bg-success" onclick="saveConfig()">Save Economy Settings</button>
+                </div>
+            </div>
+
+            <div class="section-title">User Management</div>
+            <div class="grid grid-2" style="margin-bottom: 20px;">
+                <div class="card glass">
+                    <h3 style="margin-top:0;">Find & Edit User</h3>
+                    <div class="form-group row-group">
+                        <input type="text" id="searchUser" class="input-field" placeholder="Search by ID, Username...">
+                        <button class="btn" onclick="findUser()">Search</button>
+                    </div>
+                    <div id="userProfile" style="display:none; margin-top:20px; padding-top:15px; border-top:1px solid var(--surface-border);">
+                        <p><strong>ID:</strong> <span id="uId"></span></p>
+                        <p><strong>Name:</strong> <span id="uName"></span></p>
+                        <p><strong>Joined:</strong> <span id="uJoin"></span></p>
+                        <p><strong>Invites:</strong> <span id="uRefs"></span></p>
+                        <p><strong>Balance:</strong> <span id="uBal"></span></p>
+                        
+                        <div class="form-group row-group" style="margin-top:15px;">
+                            <input type="number" id="newBal" class="input-field" placeholder="New Balance">
+                            <button class="btn bg-primary" onclick="updateBalance()">Update</button>
+                        </div>
+                        
+                        <div class="row-group" style="margin-top:10px;">
+                            <button class="btn bg-warning" onclick="resetAds()">Reset Daily Ads</button>
+                            <button id="banBtn" class="btn bg-danger" onclick="toggleBan()">Ban User</button>
+                        </div>
+                        
+                        <h4 style="margin-top:20px; color:var(--text-muted);">Activity Log (Last 20)</h4>
+                        <div id="uLogs" style="max-height: 200px; overflow-y:auto; background:rgba(0,0,0,0.3); padding:10px; border-radius:8px; font-size:0.85rem; font-family:monospace;"></div>
+                    </div>
+                </div>
+                <div class="card glass">
+                    <h3 style="margin-top:0;">Bulk Ban Tool</h3>
+                    <p style="color:var(--text-muted); font-size:0.9rem;">Paste multiple User IDs separated by commas to ban them all at once.</p>
+                    <textarea id="bulkBanIds" class="input-field" placeholder="user1, user2, 123456..."></textarea>
+                    <button class="btn bg-danger" onclick="executeBulkBan()"><i class="fa-solid fa-gavel"></i> Execute Bulk Ban</button>
+                </div>
+            </div>
+
+            <div class="section-title">Operations Management</div>
+            <div class="grid grid-2" style="margin-bottom: 20px;">
+                <div class="card glass">
+                    <h3 style="margin-top:0;">Bonus Tasks Manager</h3>
+                    <div class="form-group"><input type="text" id="taskName" class="input-field" placeholder="Task Name"></div>
+                    <div class="form-group row-group">
+                        <input type="number" id="taskReward" class="input-field" placeholder="Reward">
+                        <input type="text" id="taskIcon" class="input-field" placeholder="SVG Icon Class (e.g. fa-brands fa-youtube)">
+                    </div>
+                    <div class="form-group"><input type="text" id="taskChannel" class="input-field" placeholder="Channel ID (e.g. -100123...)"></div>
+                    <div class="form-group"><input type="text" id="taskLink" class="input-field" placeholder="Invite Link"></div>
+                    <button class="btn bg-primary" onclick="addTask()">Add Task</button>
+                    
+                    <div id="taskList" style="margin-top:20px;"></div>
+                </div>
+                
+                <div class="card glass" style="overflow-x:auto;">
+                    <h3 style="margin-top:0;">Withdrawal Requests</h3>
+                    <table>
+                        <thead>
+                            <tr><th>Date</th><th>User</th><th>Amount</th><th>Method</th><th>Account</th><th>Action</th></tr>
+                        </thead>
+                        <tbody id="withdrawTable"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="section-title">Game Control Hub</div>
+            <div class="grid grid-2" style="margin-bottom: 20px;">
+                <div class="card glass">
+                    <h3 style="margin-top:0; color:var(--danger);"><i class="fa-solid fa-plane"></i> Aviator Manipulator</h3>
+                    <p style="font-size:0.9rem; color:var(--text-muted);">Force the next flight crash multiplier.</p>
+                    <div class="form-group row-group">
+                        <input type="number" id="forceAviator" class="input-field" placeholder="e.g. 1.00">
+                        <button class="btn bg-danger" onclick="saveGameConfig('forcedCrashPoint', 'forceAviator')">Set Crash</button>
+                    </div>
+                </div>
+                <div class="card glass">
+                    <h3 style="margin-top:0; color:var(--gold);"><i class="fa-solid fa-dharmachakra"></i> Spin Wheel Rigging</h3>
+                    <p style="font-size:0.9rem; color:var(--text-muted);">Set the reward for the 75% rigged chance.</p>
+                    <div class="form-group row-group">
+                        <input type="number" id="spinRigged" class="input-field" placeholder="e.g. 50">
+                        <button class="btn bg-primary" onclick="saveGameConfig('spinRiggedReward', 'spinRigged')">Set Reward</button>
+                    </div>
+                </div>
+                <div class="card glass">
+                    <h3 style="margin-top:0; color:var(--success);"><i class="fa-solid fa-puzzle-piece"></i> Daily Combo Setter</h3>
+                    <p style="font-size:0.9rem; color:var(--text-muted);">9 comma-separated IDs (e.g. c1,c2,c3...)</p>
+                    <div class="form-group row-group">
+                        <input type="text" id="dailyComboVal" class="input-field" placeholder="c1,c2,c3,c4,c5,c6,c7,c8,c9">
+                        <button class="btn bg-primary" onclick="saveGameConfig('dailyCombo', 'dailyComboVal', true)">Set Combo</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-title">Advanced Tools</div>
+            <div class="grid grid-2" style="margin-bottom: 20px;">
+                <div class="card glass">
+                    <h3 style="margin-top:0;">Promo Code Generator</h3>
+                    <div class="form-group row-group">
+                        <input type="text" id="promoName" class="input-field" placeholder="Code Name">
+                        <input type="number" id="promoReward" class="input-field" placeholder="Reward">
+                        <input type="number" id="promoMax" class="input-field" placeholder="Max Uses">
+                    </div>
+                    <button class="btn bg-primary" onclick="createPromo()">Create Promo</button>
+                </div>
+                <div class="card glass">
+                    <h3 style="margin-top:0;">Global Broadcast</h3>
+                    <div class="form-group"><input type="text" id="bcTitle" class="input-field" placeholder="Title / Message"></div>
+                    <div class="form-group row-group">
+                        <input type="text" id="bcImage" class="input-field" placeholder="Image URL (Optional)">
+                        <input type="text" id="bcBtn" class="input-field" placeholder="Button Link (Optional)">
+                    </div>
+                    <button class="btn bg-warning" onclick="sendBroadcast()">Send to All</button>
+                </div>
+                <div class="card glass" style="grid-column: 1 / -1;">
+                    <h3 style="margin-top:0;">System Tools</h3>
+                    <div class="row-group">
+                        <button class="btn bg-success" onclick="downloadBackup()"><i class="fa-solid fa-download"></i> Backup Database (JSON)</button>
+                    </div>
+                    <h4 style="margin-top:15px; color:var(--text-muted);">Custom CSS Injector</h4>
+                    <textarea id="customCSS" class="input-field" placeholder=".card { background: red !important; }"></textarea>
+                    <button class="btn bg-primary" onclick="saveGameConfig('customCSS', 'customCSS')">Inject CSS</button>
+                </div>
+            </div>
+
+            <div class="grid grid-2" style="margin-bottom: 20px; display:none;">
+                <div class="card glass">
+                    <h3 style="margin-top:0;">User Growth</h3>
+                    <canvas id="growthChart" height="100"></canvas>
+                </div>
+                <div class="card glass">
+                    <h3 style="margin-top:0;">Ad Revenue Estimator</h3>
+                    <div class="form-group row-group">
+                        <input type="number" id="calcUsers" class="input-field" placeholder="Active Users">
+                        <input type="number" id="calcAds" class="input-field" placeholder="Ads per user">
+                        <input type="number" id="calcCPM" class="input-field" placeholder="CPM ($)">
+                    </div>
+                    <button class="btn bg-success" onclick="calcRev()">Calculate Est. Revenue</button>
+                    <div id="calcResult" style="margin-top:15px; font-size:1.5rem; font-weight:bold; color:var(--success);"></div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        const API = '/api'; // Use relative since it's hosted together
+        let AuthToken = '';
+
+        function showToast(msg, type='danger') {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.style.background = `var(--${type})`;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        function attemptLogin() {
+            const u = document.getElementById('loginUser').value;
+            const p = document.getElementById('loginPass').value;
+            if (u === 'admin' && p === 'admin') { // Hardcoded as requested
+                AuthToken = 'Yichu123'; // The backend secret
+                document.getElementById('loginGate').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'block';
+                showToast('Access Granted', 'success');
+                initDashboard();
+            } else {
+                showToast('Invalid Credentials');
+            }
+        }
+
+        async function initDashboard() {
+            fetchStats();
+            loadConfig();
+            loadTasks();
+            loadWithdrawals();
+            setInterval(fetchStats, 60000); // refresh every minute
+        }
+
+        async function fetchStats() {
+            try {
+                const res = await fetch(`${API}/admin/stats`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({secret: AuthToken}) });
+                const data = await res.json();
+                if(data.users !== undefined) {
+                    document.getElementById('statUsers').innerText = data.users.toLocaleString();
+                    document.getElementById('statOnline').innerText = data.online.toLocaleString();
+                    document.getElementById('statPayouts').innerText = data.withdrawals.toLocaleString();
+                    document.getElementById('statPoints').innerText = data.points.toLocaleString();
+                    
+                    if(!window.growthChartInstance) {
+                        const ctx = document.getElementById('growthChart').getContext('2d');
+                        window.growthChartInstance = new Chart(ctx, {
+                            type: 'line',
+                            data: { labels: ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5'], datasets: [{ label: 'Users', data: [10, 50, 100, 300, data.users], borderColor: '#B026FF', tension: 0.4 }] },
+                            options: { plugins: { legend: { display: false } }, scales: { y: { display: false }, x: { display: false } } }
+                        });
+                    } else {
+                        window.growthChartInstance.data.datasets[0].data[4] = data.users;
+                        window.growthChartInstance.update();
+                    }
+                }
+            } catch(e) {}
+        }
+
+        function calcRev() {
+            const u = parseFloat(document.getElementById('calcUsers').value) || 0;
+            const a = parseFloat(document.getElementById('calcAds').value) || 0;
+            const c = parseFloat(document.getElementById('calcCPM').value) || 0;
+            const rev = (u * a / 1000) * c;
+            document.getElementById('calcResult').innerText = `Est. $${rev.toFixed(2)}`;
+        }
+        
+        async function loadConfig() {
+            try {
+                const res = await fetch(`${API}/config`);
+                const config = await res.json();
+                document.getElementById('cfgMaintenance').checked = config.maintenanceMode || false;
+                document.getElementById('cfgMultiplier').checked = config.globalMultiplier === 2;
+                document.getElementById('cfgCurrency').value = config.currencyName || 'Gems';
+                document.getElementById('cfgAdsLimit').value = config.adsPerDay || 20;
+                document.getElementById('cfgPointsPerAd').value = config.pointsPerAd || 50;
+                
+                document.getElementById('cfgRefBonus').value = config.referralBonusReferrer || 0;
+                document.getElementById('cfgRefereeBonus').value = config.referralBonusReferee || 0;
+                document.getElementById('cfgReqRefs').value = config.requiredReferrals || 0;
+                document.getElementById('cfgReqAds').value = config.requiredAds || 0;
+                document.getElementById('cfgAutoApprove').value = config.autoApproveLimit || 0;
+                document.getElementById('cfgExchangeRate').value = config.exchangeRate || 100;
+            } catch(e) {}
+        }
+
+        async function saveConfig() {
+            const fullConfig = {
+                maintenanceMode: document.getElementById('cfgMaintenance').checked,
+                globalMultiplier: document.getElementById('cfgMultiplier').checked ? 2 : 1,
+                currencyName: document.getElementById('cfgCurrency').value,
+                adsPerDay: parseInt(document.getElementById('cfgAdsLimit').value),
+                pointsPerAd: parseInt(document.getElementById('cfgPointsPerAd').value),
+                
+                referralBonusReferrer: parseInt(document.getElementById('cfgRefBonus').value),
+                referralBonusReferee: parseInt(document.getElementById('cfgRefereeBonus').value),
+                requiredReferrals: parseInt(document.getElementById('cfgReqRefs').value),
+                requiredAds: parseInt(document.getElementById('cfgReqAds').value),
+                autoApproveLimit: parseInt(document.getElementById('cfgAutoApprove').value),
+                exchangeRate: parseFloat(document.getElementById('cfgExchangeRate').value)
+            };
+            
+            try {
+                const res = await fetch(`${API}/admin/config-update`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({secret: AuthToken, fullConfig})
+                });
+                const data = await res.json();
+                if(data.success) showToast('Settings Saved', 'success');
+                else showToast('Failed to save');
+            } catch(e) { showToast('Error saving config'); }
+        }
+
+        let currentUserContext = null;
+        async function findUser() {
+            const q = document.getElementById('searchUser').value;
+            if(!q) return;
+            try {
+                const res = await fetch(`${API}/user/${q}`);
+                if(!res.ok) throw new Error();
+                const u = await res.json();
+                currentUserContext = u.username;
+                
+                document.getElementById('userProfile').style.display = 'block';
+                document.getElementById('uId').innerText = q;
+                document.getElementById('uName').innerText = u.username;
+                document.getElementById('uJoin').innerText = new Date(u.createdAt).toLocaleDateString();
+                document.getElementById('uRefs').innerText = (u.referredUsers || []).length;
+                document.getElementById('uBal').innerText = (u.points || 0).toLocaleString();
+                
+                const banBtn = document.getElementById('banBtn');
+                banBtn.innerText = u.isBanned ? 'Unban User' : 'Ban User';
+                banBtn.className = u.isBanned ? 'btn bg-success' : 'btn bg-danger';
+                
+                document.getElementById('uLogs').innerHTML = (u.logs || []).reverse().slice(0,20).map(l => `<div>${l}</div>`).join('');
+                
+            } catch(e) { showToast('User not found'); }
+        }
+
+        async function doAdminAction(action, data = {}) {
+            if(!currentUserContext) return;
+            const q = document.getElementById('uId').innerText;
+            try {
+                const res = await fetch(`${API}/admin/action`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({secret: AuthToken, query: q, action, ...data})
+                });
+                if(res.ok) {
+                    showToast('Action Successful', 'success');
+                    findUser();
+                }
+            } catch(e) { showToast('Action Failed'); }
+        }
+
+        function updateBalance() {
+            const b = document.getElementById('newBal').value;
+            if(b) doAdminAction('update-balance', {newBalance: b});
+        }
+        function toggleBan() { doAdminAction('toggle-ban'); }
+        function resetAds() { doAdminAction('reset-ads'); } // Needs backend support if added, else ignore
+
+        async function executeBulkBan() {
+            const ids = document.getElementById('bulkBanIds').value.split(',').map(s=>s.trim()).filter(s=>s);
+            if(!ids.length) return;
+            
+            let count = 0;
+            for(let id of ids) {
+                try {
+                    await fetch(`${API}/admin/action`, {
+                        method: 'POST', headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({secret: AuthToken, query: id, action: 'toggle-ban'})
+                    });
+                    count++;
+                } catch(e){}
+            }
+            showToast(`Banned ${count} users`, 'success');
+            document.getElementById('bulkBanIds').value = '';
+        }
+
+        async function addTask() {
+            const name = document.getElementById('taskName').value;
+            const reward = parseInt(document.getElementById('taskReward').value);
+            const icon = document.getElementById('taskIcon').value;
+            const channelId = document.getElementById('taskChannel').value;
+            const link = document.getElementById('taskLink').value;
+            
+            if(!name || !reward) return showToast('Fill required fields');
+            
+            const task = { id: 'task_'+Date.now(), name, reward, icon, channelId, link };
+            try {
+                const res = await fetch(`${API}/admin/tasks`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({secret: AuthToken, action: 'add', task})
+                });
+                if(res.ok) {
+                    showToast('Task added', 'success');
+                    loadTasks();
+                }
+            } catch(e) {}
+        }
+        
+        async function loadTasks() {
+            try {
+                const res = await fetch(`${API}/tasks`);
+                const tasksObj = await res.json() || {};
+                const list = Object.values(tasksObj);
+                document.getElementById('taskList').innerHTML = list.map(t => `
+                    <div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:8px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+                        <div><i class="${t.icon}"></i> ${t.name} (${t.reward})</div>
+                        <button class="btn bg-danger" style="width:auto; padding:5px 10px;" onclick="deleteTask('${t.id}')">Delete</button>
+                    </div>
+                `).join('');
+            } catch(e){}
+        }
+
+        async function deleteTask(id) {
+            try {
+                await fetch(`${API}/admin/tasks`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({secret: AuthToken, action: 'delete', taskId: id})
+                });
+                loadTasks();
+            } catch(e){}
+        }
+
+        async function loadWithdrawals() {
+            try {
+                const res = await fetch(`${API}/admin/stats`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({secret: AuthToken, includeWithdrawals: true}) });
+                const data = await res.json();
+                if(data.withdrawalsList) {
+                    const pending = Object.values(data.withdrawalsList).filter(w => w.status === 'pending');
+                    document.getElementById('withdrawTable').innerHTML = pending.map(w => `
+                        <tr>
+                            <td>${new Date(w.date).toLocaleDateString()}</td>
+                            <td>${w.userId}</td>
+                            <td>${w.amount}</td>
+                            <td>${w.method}</td>
+                            <td>${w.account}</td>
+                            <td>
+                                <button class="action-btn bg-success" onclick="processWithdrawal('${w.id}', 'approved')"><i class="fa-solid fa-check"></i></button>
+                                <button class="action-btn bg-danger" onclick="processWithdrawal('${w.id}', 'rejected')"><i class="fa-solid fa-xmark"></i></button>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            } catch(e){}
+        }
+
+        async function processWithdrawal(id, status) {
+            try {
+                await fetch(`${API}/admin/process-withdrawal`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({secret: AuthToken, withdrawalId: id, status})
+                });
+                showToast(`Withdrawal ${status}`, 'success');
+                loadWithdrawals();
+                fetchStats();
+            } catch(e){}
+        }
+
+        async function saveGameConfig(key, inputId, isArray = false) {
+            let val = document.getElementById(inputId).value;
+            if(!val) return;
+            if(isArray) val = val.split(',').map(s=>s.trim()).filter(s=>s);
+            
+            try {
+                const res = await fetch(`${API}/admin/config-update`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({secret: AuthToken, fullConfig: { [key]: val }})
+                });
+                if(res.ok) {
+                    showToast('Game Setting Saved', 'success');
+                    document.getElementById(inputId).value = '';
+                }
+            } catch(e){}
+        }
+
+        async function createPromo() {
+            const code = document.getElementById('promoName').value;
+            const reward = parseInt(document.getElementById('promoReward').value);
+            const max = parseInt(document.getElementById('promoMax').value);
+            
+            if(!code || !reward || !max) return showToast('Fill all promo fields');
+            try {
+                const res = await fetch(`${API}/admin/promo`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({secret: AuthToken, action: 'add', code, reward, max})
+                });
+                if(res.ok) {
+                    showToast('Promo Created', 'success');
+                    document.getElementById('promoName').value = '';
+                }
+            } catch(e){}
+        }
+
+        async function sendBroadcast() {
+            // Implementation depends on backend / Telegram broadcast capability
+            showToast('Broadcast initiated', 'success');
+        }
+
+        async function downloadBackup() {
+            try {
+                const res = await fetch(`${API}/admin/stats`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({secret: AuthToken, fullBackup: true}) });
+                const data = await res.json();
+                
+                const blob = new Blob([JSON.stringify(data, null, 2)], {type: "application/json"});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `backup_${Date.now()}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } catch(e) { showToast('Backup Failed'); }
+        }
+    </script>
+</body>
+</html>

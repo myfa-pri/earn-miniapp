@@ -2,7 +2,7 @@
   "version": 2,
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index.js" },
-    { "source": "/admin", "destination": "/public/admin.html" },
+    { "source": "/myfa", "destination": "/public/myfa.html" },
     { "source": "/", "destination": "/public/index.html" },
     { "source": "/(.*)", "destination": "/public/$1" }
   ]

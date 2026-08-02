@@ -156,6 +156,7 @@
                     <div><label>Reward per Ad</label><input type="number" id="cfgPts"></div>
                     <div><label>Referrer Bonus (Inviter)</label><input type="number" id="cfgRef1"></div>
                     <div><label>Referee Bonus (New User)</label><input type="number" id="cfgRef2"></div>
+                    <div><label>Exchange Rate (Gems = 1 Unit)</label><input type="number" id="cfgExchangeRate"></div>
                 </div>
 
                 <h3>Withdrawal Requirements</h3>
@@ -459,6 +460,7 @@
             document.getElementById('cfgChatId').value = c.telegramChatId||'';
             document.getElementById('cfgBot').value = c.botLink||'';
             document.getElementById('cfgAutoApprove').value = c.autoApproveLimit||0;
+            document.getElementById('cfgExchangeRate').value = c.exchangeRate || 100;
 
             document.getElementById('cfgMaint').checked = !!c.maintenanceMode;
             document.getElementById('cfgMult').checked = (c.globalMultiplier === 2);
@@ -479,6 +481,7 @@
                 telegramChatId: document.getElementById('cfgChatId').value,
                 botLink: document.getElementById('cfgBot').value,
                 autoApproveLimit: +document.getElementById('cfgAutoApprove').value,
+                exchangeRate: +document.getElementById('cfgExchangeRate').value,
                 maintenanceMode: document.getElementById('cfgMaint').checked,
                 globalMultiplier: document.getElementById('cfgMult').checked ? 2 : 1
             };

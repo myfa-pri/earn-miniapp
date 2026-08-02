@@ -264,7 +264,7 @@ app.post('/api/exchange', async (req, res) => {
     const { userId, gemsToExchange } = req.body;
     const u = await dbGet(`users/${userId}`);
     const c = await dbGet('config') || {};
-    const rate = c.exchangeRate || 10; // e.g. 10 Gems = 1 Unit
+    const rate = c.exchangeRate || 100; // e.g. 100 Gems = 1 Unit
     
     if(u.points < gemsToExchange) return res.status(400).json({error: "Not enough Gems"});
     

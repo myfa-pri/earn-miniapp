@@ -418,3 +418,81 @@ body.day-mode .glass-panel {
     background: var(--card-bg);
     color: var(--text-dark);
 }
+
+/* --- GAME HUB: BEAUTIFUL LIST METHOD --- */
+.game-hub-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding-bottom: 20px;
+}
+
+.game-list-card {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: transform 0.2s ease, background-color 0.3s ease;
+}
+
+.game-list-card:active {
+    transform: scale(0.97);
+}
+
+.game-icon-box {
+    width: 50px;
+    height: 50px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 15px;
+    flex-shrink: 0;
+}
+
+.game-icon-box svg {
+    width: 28px;
+    height: 28px;
+    filter: drop-shadow(0 0 8px currentColor);
+}
+
+.game-details {
+    flex-grow: 1;
+}
+
+.game-details h3 {
+    font-size: 1.1rem;
+    font-weight: 800;
+    margin-bottom: 3px;
+    color: var(--text-dark);
+}
+
+.game-details p {
+    font-size: 0.8rem;
+    color: #888;
+    font-weight: 600;
+}
+
+.play-btn {
+    background: var(--gradient-main);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 0.8rem;
+    box-shadow: 0 4px 10px rgba(176, 38, 255, 0.3);
+}
+
+/* --- EXCHANGE SECTION --- */
+.exchange-balance-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.exchange-balance-cards .card {
+    margin-bottom: 0;
+    text-align: center;
+    padding: 20px 15px;
+}

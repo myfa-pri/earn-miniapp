@@ -229,42 +229,65 @@
         <!-- NEW GAME HUB (Phase 2) -->
         <div id="gameHub" class="content-section" style="display: none;">
             <h2 style="font-weight: 800; margin-bottom: 15px; color: var(--text-dark);"><i class="fa-solid fa-gamepad"></i> Game Hub</h2>
-            <div class="game-hub-container">
-                <!-- Game 1: Spin Wheel -->
-                <div class="glass-panel game-card" onclick="openGame('spin')">
-                    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95.49-7.41-2.42-7.93-6.37l2.84-.71c.36 2.37 2.45 4.15 4.88 4.15 2.76 0 5-2.24 5-5s-2.24-5-5-5c-2.43 0-4.52 1.78-4.88 4.15l-2.84-.71c.52-3.95 3.98-6.86 7.93-6.37 3.55.44 6.33 3.32 6.64 6.89.39 4.35-3.04 8.01-7.39 8.01-.08 0-.17 0-.25-.04z"/></svg>
-                    <h3 style="font-size: 1.1rem; color: var(--text-dark);">Pro Spin Wheel</h3>
-                    <p style="font-size: 0.8rem; color: #666;">Win massive Gems!</p>
+            <div class="game-hub-list">
+                <!-- Game 1: Aviator -->
+                <div class="glass game-list-card" onclick="openGame('aviator')">
+                    <div class="game-icon-box" style="background: rgba(239, 68, 68, 0.2); color: var(--danger-color);">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>
+                    </div>
+                    <div class="game-details">
+                        <h3>Aviator</h3>
+                        <p>Hold for multipliers!</p>
+                    </div>
+                    <div class="play-btn">Play</div>
                 </div>
-                <!-- Game 2: Combo -->
-                <div class="glass-panel game-card" onclick="openGame('combo')">
-                    <svg viewBox="0 0 24 24"><path d="M4 4h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4zM4 10h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4zM4 16h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4z"/></svg>
-                    <h3 style="font-size: 1.1rem; color: var(--text-dark);">Daily Combo</h3>
-                    <p style="font-size: 0.8rem; color: #666;">Drag & Drop Puzzle</p>
+
+                <!-- Game 2: Multi OX -->
+                <div class="glass game-list-card" onclick="openGame('ox')">
+                    <div class="game-icon-box" style="background: rgba(176, 38, 255, 0.2); color: var(--accent-color);">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-8 14H7v-4h4v4zm0-6H7V7h4v4zm6 6h-4v-4h4v4zm0-6h-4V7h4v4z"/></svg>
+                    </div>
+                    <div class="game-details">
+                        <h3>Multi OX</h3>
+                        <p>Tic-Tac-Toe Wagering</p>
+                    </div>
+                    <div class="play-btn">Play</div>
                 </div>
-                <!-- Game 3: Aviator -->
-                <div class="glass-panel game-card" onclick="openGame('aviator')">
-                    <svg viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>
-                    <h3 style="font-size: 1.1rem; color: var(--text-dark);">Aviator Crash</h3>
-                    <p style="font-size: 0.8rem; color: #666;">Hold for multipliers!</p>
+
+                <!-- Game 3: Daily Combo -->
+                <div class="glass game-list-card" onclick="openGame('combo')">
+                    <div class="game-icon-box" style="background: rgba(16, 185, 129, 0.2); color: var(--success-color);">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4zM4 10h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4zM4 16h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4z"/></svg>
+                    </div>
+                    <div class="game-details">
+                        <h3>Daily Combo</h3>
+                        <p>Drag & Drop Puzzle</p>
+                    </div>
+                    <div class="play-btn">Play</div>
                 </div>
-                <!-- Game 4: OX -->
-                <div class="glass-panel game-card" onclick="openGame('ox')">
-                    <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-8 14H7v-4h4v4zm0-6H7V7h4v4zm6 6h-4v-4h4v4zm0-6h-4V7h4v4z"/></svg>
-                    <h3 style="font-size: 1.1rem; color: var(--text-dark);">Multi-player OX</h3>
-                    <p style="font-size: 0.8rem; color: #666;">Tic-Tac-Toe Wagering</p>
+
+                <!-- Game 4: Pro Spin -->
+                <div class="glass game-list-card" onclick="openGame('spin')">
+                    <div class="game-icon-box" style="background: rgba(255, 179, 71, 0.2); color: var(--gold-color);">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95.49-7.41-2.42-7.93-6.37l2.84-.71c.36 2.37 2.45 4.15 4.88 4.15 2.76 0 5-2.24 5-5s-2.24-5-5-5c-2.43 0-4.52 1.78-4.88 4.15l-2.84-.71c.52-3.95 3.98-6.86 7.93-6.37 3.55.44 6.33 3.32 6.64 6.89.39 4.35-3.04 8.01-7.39 8.01-.08 0-.17 0-.25-.04z"/></svg>
+                    </div>
+                    <div class="game-details">
+                        <h3>Pro Spin</h3>
+                        <p>Win massive Gems!</p>
+                    </div>
+                    <div class="play-btn">Play</div>
                 </div>
-                <!-- Game 5: Mines -->
-                <div class="glass-panel game-card" onclick="openGame('mines')">
-                    <svg viewBox="0 0 24 24"><path d="M20.5 10.5l-2.4-2.4c.3-.8.4-1.6.4-2.5 0-2.8-2.2-5-5-5-1.6 0-3 .7-3.9 1.9l-3.3-3.3-1.4 1.4 17.2 17.2 1.4-1.4-3-3zM8 4c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zM3 13.5C3 16.5 5.5 19 8.5 19H10v3h4v-3h1.5c1.4 0 2.6-.5 3.5-1.4l-14-14C3.8 9.3 3 11.3 3 13.5zm10.5 4H12v-2h1.5c1.1 0 2-.9 2-2v-1.5l1.6 1.6c-.3 1.1-1.3 2-2.6 2z"/></svg>
-                    <h3 style="font-size: 1.1rem; color: var(--text-dark);">Mines Sweeper</h3>
-                    <p style="font-size: 0.8rem; color: #666;">Clear without boom!</p>
-                </div>
-                <!-- Game 6: Plinko -->
-                <div class="glass-panel game-card" onclick="openGame('plinko')">
-                    <svg viewBox="0 0 24 24"><path d="M12 2L1 21h22L12 2zm0 3.5l7 12.5H5l7-12.5zM12 9c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-.5 0-1 .4-1 1s.4 1 1 1 1-.4 1-1-.4-1-1-1z"/></svg>
-                    <h3 style="font-size: 1.1rem; color: var(--text-dark);">Gem Plinko</h3>
-                    <p style="font-size: 0.8rem; color: #666;">Drop & Multiply!</p>
+
+                <!-- Game 5: Scratch Card (Navigates to Home -> Scratch Card) -->
+                <div class="glass game-list-card" onclick="navigateTo('games')">
+                    <div class="game-icon-box" style="background: rgba(59, 130, 246, 0.2); color: #3B82F6;">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-1.04 14.74l-6.84-6.84c.3-.82.46-1.71.46-2.65 0-3.87-3.13-7-7-7-.94 0-1.83.16-2.65.46l15.54 15.54c.18-.15.33-.33.49-.51z"/></svg>
+                    </div>
+                    <div class="game-details">
+                        <h3>Scratch Card</h3>
+                        <p>Scratch to win!</p>
+                    </div>
+                    <div class="play-btn">Play</div>
                 </div>
             </div>
         </div>
@@ -279,14 +302,36 @@
                  <p style="font-size: 0.9rem; color: #666;">Passively mining...</p>
                  <div style="font-size: 1.5rem; font-weight: bold; margin-top: 10px;">+ <span id="idleMinerVal">0.00</span></div>
              </div>
+        </div>
 
-             <!-- Exchange System -->
-             <div class="glass-panel" style="padding: 15px; margin-bottom: 15px; text-align: center;">
-                 <h3 style="color: var(--accent-color);"><i class="fa-solid fa-money-bill-transfer"></i> Exchange</h3>
-                 <p style="font-size: 0.8rem; color: #666;">Rate: 10 Gems = 1 Unit</p>
-                 <input type="number" id="exchangeAmount" placeholder="Amount" style="padding: 8px; border-radius: 8px; border: 1px solid #ccc; margin-top: 10px;">
-                 <button class="btn btn-primary" onclick="processExchange()" style="margin-top: 10px; width: 100%;">Convert</button>
-             </div>
+        <!-- NEW EXCHANGE SECTION (Tab) -->
+        <div id="exchangeSection" class="content-section" style="display: none;">
+            <h2 style="font-weight: 800; margin-bottom: 15px; color: var(--text-dark);"><i class="fa-solid fa-money-bill-transfer"></i> Exchange</h2>
+
+            <div class="exchange-balance-cards">
+                <div class="glass card">
+                    <div style="font-size: 0.8rem; color: #666; font-weight: 600;">Current Gems</div>
+                    <div style="font-size: 1.5rem; font-weight: 900; color: var(--accent-color); margin-top: 5px;"><i class="fa-solid fa-gem"></i> <span id="exchangeGemsBal">0</span></div>
+                </div>
+                <div class="glass card">
+                    <div style="font-size: 0.8rem; color: #666; font-weight: 600;">Real Money Balance</div>
+                    <div style="font-size: 1.5rem; font-weight: 900; color: var(--success-color); margin-top: 5px;"><i class="fa-solid fa-wallet"></i> <span id="exchangeRealBal">0.00</span></div>
+                </div>
+            </div>
+
+            <div class="glass card" style="margin-top: 20px; text-align: center;">
+                <h3 style="margin-bottom: 10px; color: var(--text-dark);">Convert Gems to Cash</h3>
+                <p style="font-size: 0.85rem; color: #888; margin-bottom: 15px;">Rate: <span id="exchangeRateDisplay">100 Gems = 1 Unit</span></p>
+
+                <div style="position: relative; margin-bottom: 20px;">
+                    <i class="fa-solid fa-gem" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--accent-color);"></i>
+                    <input type="number" id="exchangeAmount" class="input-field" placeholder="Gems to exchange" style="padding-left: 45px; font-weight: bold; font-size: 1.1rem; margin-bottom: 0;">
+                </div>
+
+                <button class="btn btn-primary" onclick="processExchange()" id="exchangeBtn" style="font-size: 1.1rem;">
+                    <i class="fa-solid fa-money-bill-transfer"></i> Convert to Real Money
+                </button>
+            </div>
         </div>
 
         <!-- FLOATING ACTION BUTTON (Support/Help) -->
@@ -304,6 +349,7 @@
             <a href="javascript:void(0)" class="nav-item active" data-page="home"><i class="fa-solid fa-house"></i><span data-lang="nav_home">Home</span></a>
             <a href="javascript:void(0)" class="nav-item" data-page="tasks"><i class="fa-solid fa-list-check"></i><span data-lang="nav_tasks">Tasks</span></a>
             <a href="javascript:void(0)" class="nav-item" data-page="games"><i class="fa-solid fa-gamepad"></i><span data-lang="nav_games">Games</span></a>
+            <a href="javascript:void(0)" class="nav-item" data-page="exchange"><i class="fa-solid fa-money-bill-transfer"></i><span>Exchange</span></a>
             <a href="javascript:void(0)" class="nav-item" data-page="leaderboard"><i class="fa-solid fa-trophy"></i><span data-lang="nav_top">Top</span></a>
             <a href="javascript:void(0)" class="nav-item" data-page="referral"><i class="fa-solid fa-user-group"></i><span data-lang="nav_invite">Invite</span></a>
             <a href="javascript:void(0)" class="nav-item" data-page="withdraw"><i class="fa-solid fa-wallet"></i><span data-lang="nav_pay">Pay</span></a>
@@ -558,7 +604,7 @@
 
             // Swipe Navigation
             let startX = 0;
-            const pages = ['home', 'tasks', 'games', 'leaderboard', 'referral', 'withdraw'];
+            const pages = ['home', 'tasks', 'games', 'exchange', 'leaderboard', 'referral', 'withdraw'];
             document.getElementById('mainContent').addEventListener('touchstart', e => startX = e.changedTouches[0].screenX);
             document.getElementById('mainContent').addEventListener('touchend', e => {
                 let endX = e.changedTouches[0].screenX;
@@ -621,6 +667,7 @@
                 if(page === 'home') renderHome(content);
                 if(page === 'tasks') renderTasks(content);
                 if(page === 'games') renderGames(content);
+                if(page === 'exchange') renderExchange(content);
                 if(page === 'referral') renderReferral(content);
                 if(page === 'leaderboard') renderLeaderboard(content);
                 if(page === 'withdraw') renderWithdraw(content);
@@ -1092,6 +1139,14 @@
                 if(window.scrollY > 300) btn.style.display = 'flex';
                 else btn.style.display = 'none';
             });
+        }
+
+        function renderExchange(container) {
+            document.getElementById('exchangeSection').style.display = 'block';
+
+            document.getElementById('exchangeGemsBal').textContent = (currentUser.points || 0).toLocaleString();
+            document.getElementById('exchangeRealBal').textContent = (currentUser.realBalance || 0).toFixed(2);
+            document.getElementById('exchangeRateDisplay').textContent = `${AppConfig.exchangeRate || 100} Gems = 1 Unit`;
         }
 
         // --- API INTERACTION ---
@@ -1904,11 +1959,45 @@
     }, 60000); // Every minute
 
     // Exchange Logic (Frontend Mock)
-    function processExchange() {
+    async function processExchange() {
         const amt = parseFloat(document.getElementById('exchangeAmount').value);
-        if(!amt || amt <= 0) return alert("Enter valid amount");
-        // Simulated exchange conversion (10 Gems = 1 Unit)
-        const units = amt / 10;
-        alert(`Successfully converted ${amt} Gems to ${units} Units! (Frontend Mock)`);
+        if(!amt || amt <= 0) return showToast("Enter valid amount", "error");
+
+        const btn = document.getElementById('exchangeBtn');
+        const oldHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Converting...';
+        btn.disabled = true;
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/exchange`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: userId, gemsToExchange: amt })
+            });
+            const data = await res.json();
+
+            if(data.success) {
+                // Play success sound & confetti
+                playSuccessSound();
+                triggerConfetti();
+                showToast(`Converted! Added ${data.realMoney.toFixed(2)} to Real Balance`, "success");
+
+                // Update local user state
+                currentUser.points -= amt;
+                currentUser.realBalance = (currentUser.realBalance || 0) + data.realMoney;
+
+                // Refresh UI
+                updateUI();
+                renderExchange(document.getElementById('mainContent'));
+                document.getElementById('exchangeAmount').value = '';
+            } else {
+                showToast(data.error || "Exchange failed", "error");
+            }
+        } catch(e) {
+            showToast("Network error during exchange.", "error");
+        } finally {
+            btn.innerHTML = oldHtml;
+            btn.disabled = false;
+        }
     }
 </script>

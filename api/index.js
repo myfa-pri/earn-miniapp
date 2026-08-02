@@ -790,13 +790,5 @@ app.post('/api/admin/backup-db', checkAdmin, async (req, res) => {
     res.json({ success: true, db: { users, withdrawals, config, bonusTasks, promos }});
 });
 
-app.use(express.static(path.join(__dirname, '../public')));
-
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, '../public/index.html')));
-app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, '../public/admin.html')));
-app.get('/admin.html', (req, res) => res.sendFile(path.join(__dirname, '../public/admin.html')));
-
 // Export for Vercel
 export default app;
-
-app.listen(3000, () => console.log('Server running on 3000'));

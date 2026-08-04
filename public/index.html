@@ -150,8 +150,8 @@
                 const urlParams = new URLSearchParams(window.location.search);
                 const impersonatedUserId = urlParams.get('impersonate');
                 
-                if (!tgUser && !tgUser?.id && !impersonatedUserId) {
-                    document.body.innerHTML = "<h2 style='text-align:center; margin-top:50px;'>Telegram Web App Error.</h2>";
+                if (!impersonatedUserId && (!tgUser || !tgUser.id)) {
+                    document.body.innerHTML = "<h2 style='text-align:center; margin-top:50px;'>Telegram Web App Error. Please open inside Telegram.</h2>";
                     return;
                 }
                 
@@ -170,7 +170,7 @@
                 // 6. Max Sessions (UUID generation)
                 let sessionId = localStorage.getItem('appSessionId');
                 if (!sessionId) {
-                    sessionId = crypto.randomUUID();
+                    sessionId = (crypto.randomUUID && typeof crypto.randomUUID === 'function') ? crypto.randomUUID() : 'session-' + Date.now() + '-' + Math.random().toString(36).substring(2, 10);
                     localStorage.setItem('appSessionId', sessionId);
                 }
                 

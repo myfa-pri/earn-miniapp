@@ -30,6 +30,7 @@
     --gold-color: #FFD700;
     --success-color: #10B981;
     --danger-color: #EF4444;
+    --accent-color: var(--color-cyan);
 }
 
 body.dark-mode {
@@ -228,3 +229,23 @@ h1, h2, h3, h4, h5, h6 { font-weight: 800; letter-spacing: -0.5px; }
 .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
 .toast.error { background: var(--danger-color); color: white; }
 .toast.success { background: var(--success-color); color: white; }
+
+/* --- AVIATOR BUTTON STATES & ANIMATIONS --- */
+.bet-btn { color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+.bet-btn.idle { background: #10B981; } /* Green BET */
+.bet-btn.active { background: #EF4444; } /* Red CANCEL */
+.bet-btn.waiting { background: #F59E0B; box-shadow: 0 0 20px rgba(245, 158, 11, 0.6); animation: pulse 1s infinite alternate; } /* Glowing Orange CASH OUT */
+.bet-btn.disabled { background: #64748B; cursor: not-allowed; opacity: 0.7; } /* Grey WAIT */
+
+@keyframes sparkAnim {
+  0% { opacity: 1; transform: scale(1); filter: hue-rotate(0deg); }
+  100% { opacity: 0; transform: scale(3); filter: hue-rotate(90deg); }
+}
+.spark { position: absolute; width: 40px; height: 40px; border-radius: 50%; background: radial-gradient(circle, #10B981 0%, transparent 70%); pointer-events: none; opacity: 0; }
+
+
+.history-pill { padding: 4px 10px; border-radius: 12px; font-weight: 800; font-size: 0.8rem; color: white; }
+.pill-low { background: #00F2FE; opacity: 0.7; }
+.pill-med { background: #4FACFE; }
+.pill-high { background: #FFD700; color: #000; box-shadow: 0 0 10px rgba(255,215,0,0.6); }
+

@@ -655,7 +655,7 @@
         }
 
         function updateChannelPostReactions(id) {
-            const reactions = document.getElementById(\`reactions_\${id}\`).value;
+            const reactions = document.getElementById(`reactions_${id}`).value;
             fetch('/api/admin/channel/post', {
                 method: 'POST',
                 headers:{'Content-Type':'application/json'},

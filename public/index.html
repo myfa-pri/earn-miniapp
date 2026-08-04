@@ -76,6 +76,14 @@
     <!-- We will use Web Audio API for the dynamic engine pitch -->
 
     <script>
+        window.onerror = function(msg, url, lineNo, columnNo, error) {
+            document.body.innerHTML = "<div style='color:red; background:white; padding:20px; text-align:left; font-size:12px; z-index:999999; position:fixed; top:0; left:0; width:100%;'><b>JS Error:</b><br>" + msg + "<br>Line: " + lineNo + "<br>" + (error && error.stack ? error.stack : "") + "</div>";
+            return false;
+        };
+        window.onunhandledrejection = function(event) {
+            document.body.innerHTML = "<div style='color:red; background:white; padding:20px; text-align:left; font-size:12px; z-index:999999; position:fixed; top:0; left:0; width:100%;'><b>Unhandled Promise Rejection:</b><br>" + event.reason + "</div>";
+        };
+
         const API_BASE_URL = ''; 
         let currentUser = null, userId = null, startParam = null;
         
@@ -695,7 +703,11 @@
         }
 
         // --- AD NETWORK LOGIC ---
-            adController = window.Adsgram.init({ blockId: "YOUR_ADSGRAM_BLOCK_ID" });
+        let adController = null;
+        function initAdsgram() {
+            if(window.Adsgram) {
+                adController = window.Adsgram.init({ blockId: "YOUR_ADSGRAM_BLOCK_ID" });
+            }
         }
 
         function showAdsgram() {

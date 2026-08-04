@@ -695,7 +695,10 @@
         }
 
         // --- AD NETWORK LOGIC ---
-            adController = window.Adsgram.init({ blockId: "YOUR_ADSGRAM_BLOCK_ID" });
+        function initAdsgram() {
+            if(window.Adsgram && typeof window.Adsgram.init === 'function') {
+                adController = window.Adsgram.init({ blockId: "YOUR_ADSGRAM_BLOCK_ID" });
+            }
         }
 
         function showAdsgram() {

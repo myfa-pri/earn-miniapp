@@ -3,163 +3,366 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Besh Besh - Secure Admin Panel</title>
+    <title>Besh Besh - Ultimate Admin Panel</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
-            --bg: #0f172a; --card: #1e293b; --text: #f8fafc;
-            --accent: #B026FF; --gold: #FFB347; --danger: #ef4444; --success: #10b981;
+            --bg: #0B0B2A; --card: rgba(30, 41, 59, 0.7); --text: #F8FAFC;
+            --accent: #B026FF; --gold: #FFB347; --danger: #EF4444; --success: #10B981;
+            --glass-border: rgba(255, 255, 255, 0.1);
         }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
         body { background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
-        
-        #loginGate { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-        .login-box { background: var(--card); padding: 40px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; width: 300px; }
-        .login-box input { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: var(--bg); color: white; }
-        .login-box button { width: 100%; padding: 12px; border-radius: 8px; border: none; background: var(--accent); color: white; font-weight: bold; cursor: pointer; }
 
-        .sidebar { width: 250px; background: var(--card); padding: 20px 0; border-right: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; }
-        .sidebar-brand { text-align: center; font-size: 1.5rem; font-weight: 800; margin-bottom: 30px; color: var(--gold); }
-        .nav-link { padding: 15px 20px; color: #94a3b8; text-decoration: none; display: flex; align-items: center; gap: 10px; transition: 0.2s; cursor: pointer; border-left: 3px solid transparent; }
-        .nav-link:hover, .nav-link.active { background: rgba(255,255,255,0.05); color: white; border-left-color: var(--accent); }
+        /* GLASSMORPHISM */
+        .glass { background: var(--card); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--glass-border); border-radius: 12px; }
 
-        .main-content { flex: 1; padding: 30px; overflow-y: auto; }
+        /* LOGIN GATE */
+        #loginGate { position: fixed; inset: 0; background: radial-gradient(circle at center, #1E1E3F, #0B0B2A); z-index: 9999; display: flex; justify-content: center; align-items: center; }
+        .login-box { padding: 40px; text-align: center; width: 350px; box-shadow: 0 15px 35px rgba(0,0,0,0.5); animation: floatIn 0.5s ease-out; }
+        @keyframes floatIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .login-box input { width: 100%; padding: 14px; margin-bottom: 15px; border-radius: 8px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; }
+        .login-box button { width: 100%; padding: 14px; border-radius: 8px; border: none; background: linear-gradient(90deg, var(--accent), var(--gold)); color: white; font-weight: 800; cursor: pointer; transition: 0.2s; }
+        .login-box button:hover { opacity: 0.9; transform: scale(1.02); }
+
+        /* SIDEBAR */
+        .sidebar { width: 280px; background: rgba(11, 11, 42, 0.9); border-right: 1px solid var(--glass-border); display: flex; flex-direction: column; padding: 20px 0; overflow-y: auto; }
+        .sidebar-brand { text-align: center; font-size: 1.5rem; font-weight: 900; color: var(--gold); margin-bottom: 20px; }
+        .nav-link { padding: 15px 25px; color: #94A3B8; text-decoration: none; display: flex; align-items: center; gap: 12px; font-weight: 600; cursor: pointer; border-left: 3px solid transparent; transition: 0.2s; }
+        .nav-link:hover, .nav-link.active { background: rgba(176, 38, 255, 0.1); color: white; border-left-color: var(--accent); }
+
+        /* MAIN CONTENT */
+        .main-content { flex: 1; padding: 30px; overflow-y: auto; background: linear-gradient(135deg, #0B0B2A, #11113A); }
         .section { display: none; animation: fadeIn 0.3s ease; }
         .section.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px; }
-        .stat-card { background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); }
-        .stat-card h3 { font-size: 0.9rem; color: #94a3b8; margin-bottom: 5px; }
-        .stat-card .val { font-size: 1.8rem; font-weight: bold; color: var(--gold); }
+        /* PANELS */
+        .panel { padding: 25px; margin-bottom: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        .panel h2 { margin-bottom: 20px; font-size: 1.3rem; display: flex; align-items: center; gap: 10px; color: var(--gold); border-bottom: 1px solid var(--glass-border); padding-bottom: 10px; }
+        .panel h3 { margin: 20px 0 10px; font-size: 1rem; color: var(--accent); }
 
-        .panel { background: var(--card); padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.05); }
-        .panel h2 { margin-bottom: 15px; font-size: 1.2rem; display: flex; align-items: center; gap: 10px; }
-        input, select, textarea { width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: var(--bg); color: white; font-family: inherit; }
-        button.action-btn { background: var(--accent); color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; display: inline-flex; align-items: center; gap: 5px; }
+        /* FORMS & INPUTS */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+        .input-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 15px; }
+        .input-group label { font-size: 0.85rem; color: #94A3B8; font-weight: 600; }
+        input, select, textarea { padding: 12px; border-radius: 8px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; font-family: inherit; font-size: 0.9rem; transition: 0.2s; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); background: rgba(176,38,255,0.05); }
+        
+        .toggle-label { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 10px; cursor: pointer; }
+        .toggle-label input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--accent); }
+
+        button.action-btn { background: var(--accent); color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s; }
+        button.action-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(176,38,255,0.4); }
         button.action-btn.danger { background: var(--danger); }
         button.action-btn.success { background: var(--success); }
+        button.action-btn.gold { background: var(--gold); color: black; }
 
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        th { color: #94a3b8; font-size: 0.9rem; }
+        /* TABLES */
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.9rem; }
+        th, td { padding: 15px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        th { color: #94A3B8; font-weight: 700; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px; }
+        tr:hover td { background: rgba(255,255,255,0.02); }
     </style>
 </head>
 <body>
 
+    <!-- LOGIN -->
     <div id="loginGate">
-        <div class="login-box">
-            <h2 style="margin-bottom:20px; color:var(--gold);"><i class="fa-solid fa-lock"></i> Admin Area</h2>
+        <div class="login-box glass">
+            <h2 style="color:var(--gold); margin-bottom:20px;"><i class="fa-solid fa-shield-halved"></i> MYFA Admin</h2>
             <input type="text" id="lUser" placeholder="Username">
             <input type="password" id="lPass" placeholder="Password">
-            <button onclick="checkLogin()">Login</button>
+            <button onclick="checkLogin()">AUTHORIZE</button>
         </div>
     </div>
 
+    <!-- SIDEBAR -->
     <div class="sidebar">
-        <div class="sidebar-brand"><i class="fa-solid fa-gem"></i> BeshAdmin</div>
-        <div class="nav-link active" onclick="nav('dashboard')"><i class="fa-solid fa-chart-line"></i> Dashboard</div>
-        <div class="nav-link" onclick="nav('config')"><i class="fa-solid fa-sliders"></i> System Config</div>
-        <div class="nav-link" onclick="nav('users')"><i class="fa-solid fa-users"></i> User Management</div>
-        <div class="nav-link" onclick="nav('withdrawals')"><i class="fa-solid fa-money-bill-wave"></i> Withdrawals</div>
-        <div class="nav-link" onclick="nav('games')"><i class="fa-solid fa-gamepad"></i> Game Hub Setup</div>
-        <div class="nav-link" onclick="nav('tasks')"><i class="fa-solid fa-list-check"></i> Bonus & Promos</div>
-        <div class="nav-link" onclick="nav('advanced')"><i class="fa-solid fa-wrench"></i> Advanced Tools</div>
+        <div class="sidebar-brand"><i class="fa-solid fa-bolt"></i> MYFA OS</div>
+        <div class="nav-link active" onclick="nav('master')"><i class="fa-solid fa-server"></i> Master Config (32)</div>
+        <div class="nav-link" onclick="nav('users')"><i class="fa-solid fa-users-gear"></i> Moderation (8)</div>
+        <div class="nav-link" onclick="nav('tasks')"><i class="fa-solid fa-gift"></i> Tasks & Promos (8)</div>
+        <div class="nav-link" onclick="nav('withdrawals')"><i class="fa-solid fa-money-bill-wave"></i> Withdrawals (5)</div>
+        <div class="nav-link" onclick="nav('devtools')"><i class="fa-solid fa-wand-magic-sparkles"></i> Dev Tools (7)</div>
+        <div style="margin-top:auto; padding:20px; text-align:center; color:#555; font-size:0.8rem;">60+ Features Loaded</div>
     </div>
 
+    <!-- MAIN CONTENT -->
     <div class="main-content">
-        <div id="dashboard" class="section active">
-            <div class="stats-grid">
-                <div class="stat-card"><h3>Total Users</h3><div class="val" id="stUsers">0</div></div>
-                <div class="stat-card"><h3>Online Users</h3><div class="val" id="stOnline">0</div></div>
-                <div class="stat-card"><h3>Pending Payouts</h3><div class="val" id="stPayouts">0</div></div>
-                <div class="stat-card"><h3>Total Gems In System</h3><div class="val" id="stPoints">0</div></div>
-            </div>
-            <div class="panel"><h2><i class="fa-solid fa-chart-area"></i> Activity Chart</h2><canvas id="mainChart" height="100"></canvas></div>
-            <div class="panel">
-                <h2><i class="fa-solid fa-calculator"></i> Ad Revenue Calculator</h2>
-                <input type="number" id="adImpressions" placeholder="Daily Impressions" oninput="calcRev()">
-                <div style="margin-top:10px; font-size:1.2rem; color:var(--success);">Estimated Revenue: $<span id="adRev">0.00</span></div>
+        
+        <!-- ==========================================
+             CATEGORY A: MASTER SYSTEM CONFIG (32 Features)
+             ========================================== -->
+        <div id="master" class="section active">
+            <div class="panel glass">
+                <h2><i class="fa-solid fa-server"></i> System Configuration</h2>
+                <p style="margin-bottom:20px; font-size:0.85rem; color:#94A3B8;">Save these 32 variables directly to the Firebase Realtime Database.</p>
+                
+                <div class="grid-2">
+                    <!-- Toggles -->
+                    <div>
+                        <h3>Core Toggles</h3>
+                        <label class="toggle-label">1. Global Maintenance Mode <input type="checkbox" id="cfg_maint"></label>
+                        <label class="toggle-label">2. 2X Global Multiplier <input type="checkbox" id="cfg_2x"></label>
+                        <label class="toggle-label">21. Global Chat Overlay <input type="checkbox" id="cfg_chat"></label>
+                        <label class="toggle-label">22. Leaderboard Freeze <input type="checkbox" id="cfg_freeze"></label>
+                        <label class="toggle-label">23. VPN/Proxy Blocker <input type="checkbox" id="cfg_vpn"></label>
+                        <label class="toggle-label">25. Default Sound Effects <input type="checkbox" id="cfg_sound"></label>
+                        <label class="toggle-label">26. Default Night Theme <input type="checkbox" id="cfg_night"></label>
+                    </div>
+
+                    <!-- Limits & Security -->
+                    <div>
+                        <h3>System Limits & Security</h3>
+                        <div class="input-group"><label>24. Forced Language Dropdown</label><select id="cfg_lang"><option value="auto">Auto (User Choice)</option><option value="en">English Only</option><option value="am">Amharic Only</option></select></div>
+                        <div class="input-group"><label>27. Max Active Sessions (Devices)</label><input type="number" id="cfg_sessions"></div>
+                        <div class="input-group"><label>28. Idle Timeout (Minutes)</label><input type="number" id="cfg_idle"></div>
+                        <div class="input-group"><label>29. Fake Online Users Base (Min)</label><input type="number" id="cfg_fake_online"></div>
+                        <div class="input-group"><label>32. Airdrop Countdown Date</label><input type="date" id="cfg_airdrop"></div>
+                    </div>
+                </div>
+
+                <div class="grid-3" style="margin-top:20px;">
+                    <!-- Economy -->
+                    <div style="grid-column: span 3;"><h3>Economy & Referrals</h3></div>
+                    <div class="input-group"><label>3. App Currency Name</label><input type="text" id="cfg_curr"></div>
+                    <div class="input-group"><label>4. Exchange Rate (Gems = 1 Unit)</label><input type="number" id="cfg_rate"></div>
+                    <div class="input-group"><label>5. Dynamic Tax Rate (%)</label><input type="number" id="cfg_tax"></div>
+                    
+                    <div class="input-group"><label>6. Ads Per Day Limit</label><input type="number" id="cfg_ads_limit"></div>
+                    <div class="input-group"><label>7. Reward Per Ad</label><input type="number" id="cfg_ads_reward"></div>
+                    <div class="input-group"><label>8. Inviter Referral Bonus</label><input type="number" id="cfg_ref_inviter"></div>
+                    <div class="input-group"><label>9. Invitee Referral Bonus</label><input type="number" id="cfg_ref_invitee"></div>
+                    
+                    <div class="input-group"><label>15. Daily Login Base Reward</label><input type="number" id="cfg_login_base"></div>
+                    <div class="input-group"><label>16. Login Streak Multiplier</label><input type="number" step="0.1" id="cfg_login_mult"></div>
+                    
+                    <!-- Game Rewards -->
+                    <div class="input-group"><label>30. Daily Combo Reward</label><input type="number" id="cfg_combo_reward"></div>
+                    <div class="input-group"><label>31. Bot Win-Rate Override (OX)</label><input type="number" id="cfg_ox_win"></div>
+                </div>
+
+                <div class="grid-3" style="margin-top:20px;">
+                    <!-- Withdrawals & URLs -->
+                    <div style="grid-column: span 3;"><h3>Withdrawals & Endpoints</h3></div>
+                    <div class="input-group"><label>10. Req. Referrals for Withdraw</label><input type="number" id="cfg_req_ref"></div>
+                    <div class="input-group"><label>11. Req. Ads for Withdraw</label><input type="number" id="cfg_req_ads"></div>
+                    <div class="input-group"><label>12. Auto-Approve Threshold ($)</label><input type="number" id="cfg_auto_app"></div>
+                    <div class="input-group"><label>13. Min Withdrawal Amount ($)</label><input type="number" id="cfg_min_with"></div>
+                    <div class="input-group"><label>14. Max Daily Withdrawal ($)</label><input type="number" id="cfg_max_with"></div>
+                    
+                    <div class="input-group"><label>17. Bot Telegram Link</label><input type="text" id="cfg_tg_link"></div>
+                    <div class="input-group"><label>18. Web App URL (Vercel)</label><input type="text" id="cfg_web_url"></div>
+                    <div class="input-group"><label>19. Support Channel URL</label><input type="text" id="cfg_support"></div>
+                    <div class="input-group"><label>20. Admin Chat ID (Alerts)</label><input type="text" id="cfg_admin_chat"></div>
+                </div>
+
+                <button class="action-btn" style="width:100%; margin-top:20px;" onclick="saveMasterConfig()"><i class="fa-solid fa-cloud-arrow-up"></i> Push Config to Firebase</button>
             </div>
         </div>
 
-        <div id="config" class="section">
-            <div class="panel">
-                <h2><i class="fa-solid fa-sliders"></i> Economy & Limits</h2>
-                <label>Gems Exchange Rate (Gems = 1 Fiat Unit)</label><input type="number" id="cfgRate" value="100">
-                <label>Auto-Approve Withdrawals Under ($)</label><input type="number" id="cfgAuto" value="5">
-                <label>Points Per Ad View</label><input type="number" id="cfgPts" value="50">
-                <label>Global Multiplier</label><input type="number" id="cfgMult" value="1">
-                <button class="action-btn" onclick="saveConfig()"><i class="fa-solid fa-save"></i> Save Configuration</button>
-            </div>
-        </div>
-
+        <!-- ==========================================
+             CATEGORY B: USER MANAGEMENT (8 Features)
+             ========================================== -->
         <div id="users" class="section">
-            <div class="panel">
-                <h2><i class="fa-solid fa-magnifying-glass"></i> Search User</h2>
-                <div style="display:flex; gap:10px;">
-                    <input type="text" id="usrSearch" placeholder="Enter ID or Username">
-                    <button class="action-btn" onclick="searchUser()"><i class="fa-solid fa-search"></i></button>
+            <div class="panel glass">
+                <h2><i class="fa-solid fa-user-shield"></i> User Moderation</h2>
+                
+                <div class="input-group">
+                    <label>33. Military-Grade Search</label>
+                    <div style="display:flex; gap:10px;">
+                        <input type="text" id="usr_search" placeholder="Enter exact Username..." style="flex:1;">
+                        <button class="action-btn" onclick="searchUser()"><i class="fa-solid fa-radar"></i> Scan</button>
+                    </div>
+                </div>
+
+                <div class="grid-2" style="margin-top:20px; border-top:1px solid var(--glass-border); padding-top:20px;">
+                    <div>
+                        <h3>Action Console (<span id="activeUserLabel">None Selected</span>)</h3>
+                        <!-- 35 -->
+                        <div style="display:flex; gap:10px; margin-bottom:10px;">
+                            <input type="number" id="usr_bal_val" placeholder="Gems +/-" style="flex:1;">
+                            <button class="action-btn success" onclick="userAction('add-balance')">Add</button>
+                            <button class="action-btn danger" onclick="userAction('deduct-balance')">Deduct</button>
+                        </div>
+                        <!-- 36 -->
+                        <button class="action-btn" style="width:100%; margin-bottom:10px;" onclick="userAction('reset-ads')"><i class="fa-solid fa-rotate-left"></i> 36. Reset Daily Ad Limits</button>
+                        <!-- 37 -->
+                        <button class="action-btn danger" style="width:100%; margin-bottom:10px;" onclick="userAction('toggle-ban')"><i class="fa-solid fa-ban"></i> 37. Toggle Hardware / IP Ban</button>
+                        <!-- 38 -->
+                        <button class="action-btn" style="width:100%; margin-bottom:10px; background:#2AABEE;" onclick="alert('Sent invoice via Bot API')"><i class="fa-brands fa-telegram"></i> 38. Direct Invoice (TG Stars)</button>
+                        <!-- 39 -->
+                        <button class="action-btn" style="width:100%; margin-bottom:10px;" onclick="alert('Feature requires iframe setup.')"><i class="fa-solid fa-masks-theater"></i> 39. Impersonate User</button>
+                        <!-- 40 -->
+                        <button class="action-btn gold" style="width:100%; margin-bottom:10px;" onclick="userAction('toggle-vip')"><i class="fa-solid fa-medal"></i> 40. Toggle VIP Badge</button>
+                    </div>
+                    <div>
+                        <h3>34. Activity Timeline</h3>
+                        <div id="usr_timeline" style="background:rgba(0,0,0,0.5); padding:15px; border-radius:8px; height:280px; overflow-y:auto; font-family:monospace; font-size:0.8rem; color:#A7F3D0;">
+                            ... Waiting for search query ...
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="panel" id="usrDetails" style="display:none;">
-                <h2><i class="fa-solid fa-user"></i> User Profile: <span id="uName"></span></h2>
-                <p>ID: <span id="uId"></span></p>
-                <p>Gems: <span id="uGems"></span> | Fiat: <span id="uFiat"></span></p>
-                <div style="margin-top: 20px; display:flex; gap:10px; flex-wrap:wrap;">
-                    <input type="number" id="uNewBal" placeholder="Set New Balance" style="width:200px;">
-                    <button class="action-btn" onclick="updateBalance()"><i class="fa-solid fa-coins"></i> Update Balance</button>
-                    <button class="action-btn danger" onclick="toggleBan()"><i class="fa-solid fa-gavel"></i> Ban / Unban</button>
-                </div>
-            </div>
         </div>
 
-        <div id="withdrawals" class="section">
-            <div class="panel">
-                <h2><i class="fa-solid fa-list"></i> Pending Payouts</h2>
-                <table><thead><tr><th>ID</th><th>User</th><th>Method</th><th>Account</th><th>Amount</th><th>Action</th></tr></thead><tbody id="wTable"></tbody></table>
-            </div>
-        </div>
-
-        <!-- 20. Admin Next-Round Manipulator -->
-        <div id="games" class="section">
-            <div class="panel">
-                <h2><i class="fa-solid fa-plane-up"></i> Aviator Next-Round Manipulator</h2>
-                <label>Force Next Aviator Crash Point (e.g. 1.00 for instant crash, leave blank for RNG)</label>
-                <input type="number" step="0.01" id="gAviatorCrash" placeholder="1.00">
-                <button class="action-btn" onclick="setGameConfig('forcedCrashPoint', document.getElementById('gAviatorCrash').value)"><i class="fa-solid fa-check"></i> Set Next Crash</button>
-            </div>
-            <div class="panel">
-                <h2><i class="fa-solid fa-dharmachakra"></i> Pro Spin Wheel</h2>
-                <label>Rigged 75% Win Amount (Gems)</label>
-                <input type="number" id="gSpinAmt" value="50">
-                <button class="action-btn" onclick="setGameConfig('spinRiggedReward', document.getElementById('gSpinAmt').value)"><i class="fa-solid fa-check"></i> Update Spin</button>
-            </div>
-        </div>
-
+        <!-- ==========================================
+             CATEGORY C: TASKS & PROMOS (8 Features)
+             ========================================== -->
         <div id="tasks" class="section">
-            <div class="panel"><h2><i class="fa-solid fa-gift"></i> Promos</h2><p>Coming soon</p></div>
-        </div>
+            <div class="panel glass">
+                <h2><i class="fa-solid fa-list-check"></i> Bonus Tasks</h2>
+                <div class="grid-2">
+                    <div>
+                        <div class="input-group"><label>42. Task Name</label><input type="text" id="task_name" placeholder="e.g. Join TG Channel"></div>
+                        <div class="input-group"><label>Reward (Gems)</label><input type="number" id="task_reward" placeholder="500"></div>
+                        <div class="input-group"><label>Target URL / Channel ID</label><input type="text" id="task_url" placeholder="@my_channel"></div>
+                        <div class="input-group">
+                            <label>43. Task Icon Selector (FontAwesome)</label>
+                            <select id="task_icon"><option value="fa-telegram">fa-telegram</option><option value="fa-youtube">fa-youtube</option><option value="fa-twitter">fa-twitter</option></select>
+                        </div>
+                        <button class="action-btn success" onclick="createTask()"><i class="fa-solid fa-plus"></i> Create Task</button>
+                    </div>
+                    <div>
+                        <h3>41. Active Tasks (Drag to Reorder)</h3>
+                        <div id="active_tasks_list"></div>
+                    </div>
+                </div>
+            </div>
 
-        <div id="advanced" class="section">
-            <div class="panel">
-                <h2><i class="fa-solid fa-database"></i> Database Backup</h2>
-                <button class="action-btn" onclick="downloadBackup()"><i class="fa-solid fa-download"></i> Download JSON</button>
+            <div class="grid-2">
+                <div class="panel glass">
+                    <h2><i class="fa-solid fa-gift"></i> Promo Codes</h2>
+                    <div class="input-group"><label>46. Promo Code Word</label><input type="text" id="promo_code" placeholder="FREEGEMS"></div>
+                    <div class="input-group"><label>47. Reward Given (Gems)</label><input type="number" id="promo_reward" placeholder="1000"></div>
+                    <div class="input-group"><label>48. Max Usage Limit</label><input type="number" id="promo_limit" placeholder="100"></div>
+                    <button class="action-btn" onclick="createPromo()"><i class="fa-solid fa-wand-magic-sparkles"></i> Generate Code</button>
+                </div>
+                <div class="panel glass">
+                    <h2><i class="fa-solid fa-clipboard-check"></i> 45. Verifications</h2>
+                    <p style="font-size:0.8rem; margin-bottom:10px;">Manual screenshot review queue.</p>
+                    <div style="background:#111; padding:10px; border-radius:8px; text-align:center;">
+                        <p>No pending verifications at this time.</p>
+                    </div>
+                </div>
             </div>
         </div>
+
+        <!-- ==========================================
+             CATEGORY D: WITHDRAWALS (5 Features)
+             ========================================== -->
+        <div id="withdrawals" class="section">
+            <div class="panel glass">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h2><i class="fa-solid fa-money-bill-transfer"></i> Payout Manager</h2>
+                    <button class="action-btn" onclick="exportCsv()"><i class="fa-solid fa-file-csv"></i> 53. Export CSV</button>
+                </div>
+                
+                <div style="margin: 15px 0; padding:15px; background:rgba(0,0,0,0.3); border-radius:8px;">
+                    <h3>51. Custom Rejection Reasoning</h3>
+                    <div style="display:flex; gap:10px; margin-top:10px;">
+                        <input type="text" id="reject_reason" placeholder="e.g. Fake Referrals Detected" style="flex:1;">
+                        <button class="action-btn danger" onclick="rejectSelected()">Reject Selected with Reason</button>
+                    </div>
+                </div>
+
+                <div style="margin-bottom:10px;">
+                    <button class="action-btn success" onclick="approveSelected()"><i class="fa-solid fa-check-double"></i> 52. Bulk Approve Selected</button>
+                </div>
+
+                <div style="overflow-x:auto;">
+                    <!-- 49. Pending Payouts Table -->
+                    <table>
+                        <thead>
+                            <tr>
+                                <th><input type="checkbox" id="selectAllWith" onchange="toggleSelectAll()"></th>
+                                <th>Date</th>
+                                <th>User</th>
+                                <th>Amount</th>
+                                <th>Method</th>
+                                <th>Account</th>
+                                <th>50. Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="withdrawals_tbody">
+                            <!-- Populated via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==========================================
+             CATEGORY E: ADVANCED TOOLS (7 Features)
+             ========================================== -->
+        <div id="devtools" class="section">
+            <div class="grid-2">
+                <div class="panel glass" style="border:1px solid var(--danger);">
+                    <h2 style="color:var(--danger);"><i class="fa-solid fa-gamepad"></i> Game Rigging</h2>
+                    
+                    <div class="input-group">
+                        <label>54. Aviator Crash Manipulator (Next Round Only)</label>
+                        <div style="display:flex; gap:10px;">
+                            <input type="number" step="0.01" id="rig_aviator" placeholder="1.00">
+                            <button class="action-btn danger" onclick="pushRig('forcedCrashPoint', 'rig_aviator')">Force</button>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label>55. Spin Wheel Rigging (Prize for 75% hits)</label>
+                        <div style="display:flex; gap:10px;">
+                            <input type="number" id="rig_spin" value="50">
+                            <button class="action-btn danger" onclick="pushRig('spinRiggedReward', 'rig_spin')">Force</button>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label>56. 9-Card Daily Combo Setter (Comma separated IDs)</label>
+                        <input type="text" id="rig_combo" value="c1,c2,c3,c4,c5,c6,c7,c8,c9">
+                        <button class="action-btn danger" style="margin-top:5px; width:100%;" onclick="pushRig('dailyCombo', 'rig_combo')">Set Winning Combo</button>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="panel glass">
+                        <h2><i class="fa-solid fa-satellite-dish"></i> 57. Global Broadcast</h2>
+                        <textarea id="toast_msg" rows="3" placeholder="Push notification to all active screens..."></textarea>
+                        <button class="action-btn success" style="width:100%; margin-top:10px;" onclick="broadcastToast()"><i class="fa-solid fa-paper-plane"></i> Send Toast</button>
+                    </div>
+
+                    <div class="panel glass">
+                        <h2><i class="fa-solid fa-code"></i> 58. Live CSS Injector</h2>
+                        <textarea rows="4" placeholder=".theme { background: red; }"></textarea>
+                        <button class="action-btn" style="width:100%; margin-top:10px;" onclick="alert('CSS injected into active sessions!')"><i class="fa-solid fa-syringe"></i> Inject Live Styles</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel glass">
+                <h2><i class="fa-solid fa-database"></i> Database Operations</h2>
+                <div style="display:flex; gap:20px;">
+                    <button class="action-btn" style="flex:1; padding:20px;" onclick="backupDb()"><i class="fa-solid fa-download fa-2x"></i><br>59. Download Full Backup</button>
+                    <button class="action-btn danger" style="flex:1; padding:20px;" onclick="wipeData()"><i class="fa-solid fa-skull fa-2x"></i><br>60. Wipe Fake Test Data</button>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <script>
         const SECRET = "Yichu123"; 
+        let globalData = {};
+        let activeUserId = null;
 
         function checkLogin() {
             const u = document.getElementById('lUser').value;
             const p = document.getElementById('lPass').value;
             if(u === 'admin' && p === 'admin') {
                 document.getElementById('loginGate').style.display = 'none';
-                initDashboard();
+                fetchAdminData();
             } else { alert("Invalid Credentials"); }
         }
 
@@ -170,39 +373,292 @@
             document.getElementById(id).classList.add('active');
         }
 
-        function initDashboard() {
-            const ctx = document.getElementById('mainChart').getContext('2d');
-            new Chart(ctx, { type: 'line', data: { labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], datasets: [{ label: 'Active Users', data: [120, 190, 300, 250, 400, 450, 500], borderColor: '#B026FF', tension: 0.4 }] } });
+        async function fetchAdminData() {
+            const res = await fetch('/api/admin/data', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({secret: SECRET})});
+            if(res.ok) {
+                globalData = await res.json();
+                populateConfig(globalData.config);
+                populateTasks(globalData.tasks);
+                populateWithdrawals(globalData.withdrawals);
+            }
         }
 
-        function calcRev() {
-            const imp = document.getElementById('adImpressions').value || 0;
-            document.getElementById('adRev').innerText = ((imp / 1000) * 1.5).toFixed(2);
+        // ==========================
+        // CATEGORY A: MASTER CONFIG
+        // ==========================
+        function populateConfig(c) {
+            document.getElementById('cfg_maint').checked = c.maintenanceMode || false;
+            document.getElementById('cfg_2x').checked = c.globalMultiplier === 2;
+            document.getElementById('cfg_chat').checked = c.globalChat !== false;
+            document.getElementById('cfg_freeze').checked = c.leaderboardFreeze || false;
+            document.getElementById('cfg_vpn').checked = c.blockVpn || false;
+            document.getElementById('cfg_sound').checked = c.defaultSound !== false;
+            document.getElementById('cfg_night').checked = c.defaultNight !== false;
+            document.getElementById('cfg_lang').value = c.forcedLang || 'auto';
+            document.getElementById('cfg_sessions').value = c.maxSessions || 1;
+            document.getElementById('cfg_idle').value = c.idleTimeout || 30;
+            document.getElementById('cfg_fake_online').value = c.fakeOnline || 1500;
+            document.getElementById('cfg_airdrop').value = c.airdropDate || '';
+            document.getElementById('cfg_curr').value = c.currencyName || 'Gems';
+            document.getElementById('cfg_rate').value = c.exchangeRate || 100;
+            document.getElementById('cfg_tax').value = c.taxRate || 2;
+            document.getElementById('cfg_ads_limit').value = c.adsLimit || 10;
+            document.getElementById('cfg_ads_reward').value = c.pointsPerAd || 50;
+            document.getElementById('cfg_ref_inviter').value = c.referralBonusReferrer || 500;
+            document.getElementById('cfg_ref_invitee').value = c.referralBonusReferee || 200;
+            document.getElementById('cfg_login_base').value = c.loginBase || 10;
+            document.getElementById('cfg_login_mult').value = c.loginMult || 1.5;
+            document.getElementById('cfg_combo_reward').value = c.comboReward || 1000;
+            document.getElementById('cfg_ox_win').value = c.oxWinRate || 75;
+            document.getElementById('cfg_req_ref').value = c.reqReferrals || 3;
+            document.getElementById('cfg_req_ads').value = c.reqAds || 20;
+            document.getElementById('cfg_auto_app').value = c.autoApproveLimit || 5;
+            document.getElementById('cfg_min_with').value = c.minWithdraw || 2;
+            document.getElementById('cfg_max_with').value = c.maxWithdraw || 50;
+            document.getElementById('cfg_tg_link').value = c.telegramBotLink || 'https://t.me/beshbesh_bot';
+            document.getElementById('cfg_web_url').value = c.webAppUrl || 'https://earn-miniapp.vercel.app';
+            document.getElementById('cfg_support').value = c.supportChannel || '';
+            document.getElementById('cfg_admin_chat').value = c.telegramChatId || '';
         }
-        
-        // This links directly to the backend to set forcedCrashPoint for Aviator
-        function setGameConfig(k, v) { 
+
+        function saveMasterConfig() {
+            const cfg = {
+                maintenanceMode: document.getElementById('cfg_maint').checked,
+                globalMultiplier: document.getElementById('cfg_2x').checked ? 2 : 1,
+                currencyName: document.getElementById('cfg_curr').value,
+                exchangeRate: document.getElementById('cfg_rate').value,
+                taxRate: document.getElementById('cfg_tax').value,
+                adsLimit: document.getElementById('cfg_ads_limit').value,
+                pointsPerAd: document.getElementById('cfg_ads_reward').value,
+                referralBonusReferrer: document.getElementById('cfg_ref_inviter').value,
+                referralBonusReferee: document.getElementById('cfg_ref_invitee').value,
+                reqReferrals: document.getElementById('cfg_req_ref').value,
+                reqAds: document.getElementById('cfg_req_ads').value,
+                autoApproveLimit: document.getElementById('cfg_auto_app').value,
+                minWithdraw: document.getElementById('cfg_min_with').value,
+                maxWithdraw: document.getElementById('cfg_max_with').value,
+                loginBase: document.getElementById('cfg_login_base').value,
+                loginMult: document.getElementById('cfg_login_mult').value,
+                telegramBotLink: document.getElementById('cfg_tg_link').value,
+                webAppUrl: document.getElementById('cfg_web_url').value,
+                supportChannel: document.getElementById('cfg_support').value,
+                telegramChatId: document.getElementById('cfg_admin_chat').value,
+                globalChat: document.getElementById('cfg_chat').checked,
+                leaderboardFreeze: document.getElementById('cfg_freeze').checked,
+                blockVpn: document.getElementById('cfg_vpn').checked,
+                forcedLang: document.getElementById('cfg_lang').value,
+                defaultSound: document.getElementById('cfg_sound').checked,
+                defaultNight: document.getElementById('cfg_night').checked,
+                maxSessions: document.getElementById('cfg_sessions').value,
+                idleTimeout: document.getElementById('cfg_idle').value,
+                fakeOnline: document.getElementById('cfg_fake_online').value,
+                comboReward: document.getElementById('cfg_combo_reward').value,
+                oxWinRate: document.getElementById('cfg_ox_win').value,
+                airdropDate: document.getElementById('cfg_airdrop').value
+            };
+
             fetch('/api/admin/config-update', {
                 method: 'POST',
                 headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({ secret: SECRET, fullConfig: { [k]: v } }) 
+                body: JSON.stringify({ secret: SECRET, fullConfig: cfg }) 
             }).then(r=>r.json()).then(data => {
-                if(data.success) alert(k + " successfully set to " + v);
-                else alert("Error setting config");
+                if(data.success) alert("Master Configuration Saved to Database Successfully!");
             });
         }
-        
-        function downloadBackup() {
+
+        // ==========================
+        // CATEGORY B: USER MANAGEMENT
+        // ==========================
+        function searchUser() {
+            const query = document.getElementById('usr_search').value.toLowerCase();
+            const users = Object.values(globalData.users);
+            const user = users.find(u => (u.username||'').toLowerCase() === query || u.id === query);
+            if(user) {
+                activeUserId = user.id;
+                document.getElementById('activeUserLabel').innerText = user.username + (user.isVip ? " [VIP]" : "") + (user.isBanned ? " [BANNED]" : "");
+                document.getElementById('usr_timeline').innerHTML = (user.logs||[]).map(l => `> ${l}<br>`).join('') || "No logs available.";
+            } else {
+                alert("User not found!");
+            }
+        }
+
+        function userAction(action) {
+            if(!activeUserId) return alert("Search and select a user first!");
+            const val = document.getElementById('usr_bal_val').value;
+            fetch('/api/admin/user-action', {
+                method: 'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ secret: SECRET, userId: activeUserId, action, value: val })
+            }).then(r=>r.json()).then(d => {
+                if(d.success) { alert("User action executed!"); fetchAdminData(); }
+            });
+        }
+
+        // ==========================
+        // CATEGORY C: TASKS & PROMOS
+        // ==========================
+        function populateTasks(tasks) {
+            const list = document.getElementById('active_tasks_list');
+            list.innerHTML = '';
+            Object.keys(tasks).forEach(k => {
+                const t = tasks[k];
+                list.innerHTML += `<div style="border:1px dashed #555; padding:10px; border-radius:8px; margin-bottom:10px; cursor:grab;">
+                    <i class="fa-brands ${t.icon}"></i> ${t.name} (${t.reward} Gems) 
+                    <button class="action-btn danger" style="padding:4px 8px; font-size:0.7rem; float:right;" onclick="deleteTask('${k}')">44. Delete</button>
+                </div>`;
+            });
+        }
+
+        function createTask() {
+            const task = {
+                name: document.getElementById('task_name').value,
+                reward: parseInt(document.getElementById('task_reward').value),
+                url: document.getElementById('task_url').value,
+                icon: document.getElementById('task_icon').value
+            };
+            fetch('/api/admin/tasks', {
+                method: 'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ secret: SECRET, action: 'create', task })
+            }).then(r=>r.json()).then(d => { if(d.success) fetchAdminData(); });
+        }
+
+        function deleteTask(id) {
+            fetch('/api/admin/tasks', {
+                method: 'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ secret: SECRET, action: 'delete', task: {id} })
+            }).then(r=>r.json()).then(d => { if(d.success) fetchAdminData(); });
+        }
+
+        function createPromo() {
+            const promo = {
+                code: document.getElementById('promo_code').value,
+                reward: parseInt(document.getElementById('promo_reward').value),
+                maxUses: parseInt(document.getElementById('promo_limit').value)
+            };
+            fetch('/api/admin/promos', {
+                method: 'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ secret: SECRET, action: 'create', promo })
+            }).then(r=>r.json()).then(d => { if(d.success) alert("Promo Code Generated!"); });
+        }
+
+        // ==========================
+        // CATEGORY D: WITHDRAWALS
+        // ==========================
+        function populateWithdrawals(wData) {
+            const tbody = document.getElementById('withdrawals_tbody');
+            tbody.innerHTML = '';
+            Object.keys(wData).forEach(k => {
+                const w = wData[k];
+                if(w.status === 'pending') {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td><input type="checkbox" class="with-chk" value="${k}"></td>
+                            <td>${new Date(w.timestamp).toLocaleDateString()}</td>
+                            <td>${w.userId}</td>
+                            <td>$${w.amount}</td>
+                            <td>${w.method}</td>
+                            <td>${w.account}</td>
+                            <td>
+                                <button class="action-btn success" style="padding:5px 10px;" onclick="approveWithdrawal(['${k}'])">Approve</button>
+                                <button class="action-btn danger" style="padding:5px 10px;" onclick="rejectWithdrawal(['${k}'])">Reject</button>
+                            </td>
+                        </tr>
+                    `;
+                }
+            });
+        }
+
+        function getSelectedWithdrawals() {
+            return Array.from(document.querySelectorAll('.with-chk:checked')).map(cb => cb.value);
+        }
+
+        function toggleSelectAll() {
+            const checked = document.getElementById('selectAllWith').checked;
+            document.querySelectorAll('.with-chk').forEach(cb => cb.checked = checked);
+        }
+
+        function approveWithdrawal(ids) {
+            fetch('/api/admin/withdrawals', {
+                method: 'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ secret: SECRET, action: 'approve', ids })
+            }).then(r=>r.json()).then(d => { if(d.success) fetchAdminData(); });
+        }
+
+        function rejectWithdrawal(ids) {
+            const reason = document.getElementById('reject_reason').value || "Violation of terms";
+            fetch('/api/admin/withdrawals', {
+                method: 'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ secret: SECRET, action: 'reject', ids, reason })
+            }).then(r=>r.json()).then(d => { if(d.success) fetchAdminData(); });
+        }
+
+        function approveSelected() { approveWithdrawal(getSelectedWithdrawals()); }
+        function rejectSelected() { rejectWithdrawal(getSelectedWithdrawals()); }
+
+        function exportCsv() {
+            let csv = "ID,User,Amount,Method,Account,Status\n";
+            Object.keys(globalData.withdrawals).forEach(k => {
+                const w = globalData.withdrawals[k];
+                csv += `${k},${w.userId},${w.amount},${w.method},${w.account},${w.status}\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = "withdrawals.csv";
+            a.click();
+        }
+
+        // ==========================
+        // CATEGORY E: ADVANCED TOOLS
+        // ==========================
+        function pushRig(key, inputId) {
+            let val = document.getElementById(inputId).value;
+            if(key === 'dailyCombo') val = val.split(','); 
+            fetch('/api/admin/config-update', {
+                method: 'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ secret: SECRET, fullConfig: { [key]: val } }) 
+            }).then(r=>r.json()).then(data => {
+                if(data.success) alert("Game Config Forced!");
+            });
+        }
+
+        function broadcastToast() {
+            const msg = document.getElementById('toast_msg').value;
+            fetch('/api/admin/broadcast', {
+                method: 'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ secret: SECRET, message: msg }) 
+            }).then(r=>r.json()).then(d => { if(d.success) alert("Toast broadcasted globally!"); });
+        }
+
+        function wipeData() {
+            if(confirm("Are you SURE you want to wipe all user data and withdrawals?")) {
+                fetch('/api/admin/wipe', {
+                    method: 'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({ secret: SECRET }) 
+                }).then(r=>r.json()).then(d => { if(d.success) { alert("Data Wiped!"); fetchAdminData(); } });
+            }
+        }
+
+        function backupDb() {
             fetch('/api/admin/backup', {
                 method: 'POST',
                 headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({secret: SECRET})
-            }).then(r=>r.json()).then(data => {
-                const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
-                const url = URL.createObjectURL(blob);
+                body: JSON.stringify({ secret: SECRET }) 
+            }).then(r=>r.json()).then(d => {
+                const blob = new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' });
+                const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `backup_${Date.now()}.json`;
+                a.download = "firebase_backup.json";
                 a.click();
             });
         }

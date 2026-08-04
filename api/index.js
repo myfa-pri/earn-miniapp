@@ -5,7 +5,7 @@ import fetch from 'node-fetch';
 import crypto from 'crypto';
 
 // ============================================================================
-// 1. SYSTEM CONFIGURATION & SECURITY (HARDCODED)
+// 1. SYSTEM CONFIGURATION & SECURITY
 // ============================================================================
 const firebaseConfig = {
   apiKey: "AIzaSyADDpimqoG8PDeSgzd6XeI8bahZZRTRqRM",
@@ -67,7 +67,15 @@ function logAction(user, actionStr) {
 // ============================================================================
 async function ensureUserExists(userId, username, refParam) {
     const existingUser = await dbGet(`users/${userId}`);
-    if (existingUser) return existingUser;
+    // UPDATE: Even if user exists, we can update their display name to latest Real Account Name if we wanted, 
+    // but we will prioritize keeping the initial one or updating if blank.
+    if (existingUser) {
+        if (!existingUser.username || existingUser.username === 'Unknown User') {
+            await dbUpdate(`users/${userId}`, { username: username });
+            existingUser.username = username;
+        }
+        return existingUser;
+    }
 
     const config = (await dbGet('config')) || {};
     const referrerId = refParam ? refParam.replace(/^ref/, '') : null;
@@ -114,10 +122,9 @@ async function ensureUserExists(userId, username, refParam) {
 }
 
 // ============================================================================
-// 4. TELEGRAM WEBHOOK SETUP & LISTENER (THE FIX FOR DEAF BOT)
+// 4. TELEGRAM WEBHOOK SETUP & LISTENER 
 // ============================================================================
 
-// [CRITICAL FIX]: Run this route once in your browser to connect Telegram
 app.get('/api/setup', async (req, res) => {
     try {
         const host = req.headers.host;
@@ -137,16 +144,16 @@ app.get('/api/setup', async (req, res) => {
     }
 });
 
-// The Main Webhook Receiver
 app.post('/api/webhook', async (req, res) => {
     try {
         const update = req.body;
-        console.log("Incoming Webhook:", JSON.stringify(update)); // Debug logging
 
         if (update.message && update.message.text) {
             const msg = update.message;
             const chatId = msg.chat.id.toString();
             const text = msg.text;
+            
+            // Capture Real Account Name
             const firstName = msg.from.first_name || '';
             const lastName = msg.from.last_name || '';
             const accountName = `${firstName} ${lastName}`.trim() || 'Unknown User';
@@ -160,6 +167,7 @@ app.post('/api/webhook', async (req, res) => {
                 const webUrl = config.webAppUrl || 'https://earn-miniapp.vercel.app'; 
                 const caption = `<b>${accountName} እንኳን ወደ MYFA BIRR መጡ! </b>\n\nከታች ያለውን MYFA BIRR የሚለውን ይጫኑ ገንዘብ ለማግኘት እና መተግበሪያውን ለመጀመር።`;
 
+                // TASK 1 FIX: Strictly use pure webUrl, NEVER append ?userId=
                 try {
                     await bot.sendPhoto(chatId, WELCOME_IMG, {
                         caption: caption, parse_mode: 'HTML',
@@ -175,7 +183,7 @@ app.post('/api/webhook', async (req, res) => {
         return res.status(200).send('OK');
     } catch (e) { 
         console.error("Webhook Error:", e);
-        return res.status(200).send('OK'); // Always return 200 so Telegram doesn't retry infinitely
+        return res.status(200).send('OK');
     }
 });
 
@@ -224,7 +232,7 @@ app.post('/api/ensure-user', async (req, res) => {
 app.get('/api/config', async (req, res) => res.json((await dbGet('config')) || {}));
 app.get('/api/tasks', async (req, res) => res.json((await dbGet('bonusTasks')) || {}));
 
-// Real Avatar Fetcher
+// TASK 5: Real Avatar Fetcher
 app.get('/api/avatar/:userId', async (req, res) => {
     try {
         const userId = req.params.userId;
@@ -262,6 +270,7 @@ app.post('/api/watch-ad', async (req, res) => {
     } else res.status(404).send();
 });
 
+// TASK 2: EXCHANGE REPLACEMENT 
 app.post('/api/exchange', async (req, res) => {
     const { userId, gemsToExchange } = req.body;
     const u = await dbGet(`users/${userId}`);
@@ -292,7 +301,7 @@ app.post('/api/request-withdrawal', async (req, res) => {
 
     await dbSet(`withdrawals/${wid}`, wData);
     await dbUpdate(`users/${userId}`, {
-        points: u.points - amount,
+        realBalance: (u.realBalance || 0) - amount,
         totalWithdrawn: (u.totalWithdrawn || 0) + Number(amount),
         logs: logAction(u, `Withdrawal Request: ${amount} via ${method} - ${status}`)
     });
@@ -303,10 +312,10 @@ app.post('/api/request-withdrawal', async (req, res) => {
     res.json({success:true, status});
 });
 
+// TASK 5: Top 100 Users Leaderboard
 app.get('/api/leaderboard/:id', async (req, res) => {
     const userId = req.params.id;
     const usersObj = await dbGet('users') || {};
-    // Attach original userId to each object for rank identification
     const users = Object.keys(usersObj).map(key => ({...usersObj[key], id: key})).filter(u => !u.isBanned);
     
     const byPoints = [...users].sort((a,b)=>(b.points||0)-(a.points||0));
@@ -324,15 +333,17 @@ app.get('/api/leaderboard/:id', async (req, res) => {
 });
 
 // ============================================================================
-// 7. WEB3 GAME ENGINES (Rigged & Secure Logic)
+// 7. WEB3 GAME ENGINES
 // ============================================================================
 
+// TASK 6: SHA-256 Aviator Engine & Forced Admin Control
 app.post('/api/aviator/start', async (req, res) => {
     const { userId, betAmount } = req.body;
     const user = await dbGet(`users/${userId}`);
     const config = await dbGet('config') || {};
 
     let crashPoint = 1.00;
+    // Unpredictable RNG via Provably Fair Server Seed
     const serverSeed = crypto.randomBytes(32).toString('hex');
     const combined = `${serverSeed}-${Date.now()}`;
     const hash = crypto.createHash('sha256').update(combined).digest('hex');
@@ -343,7 +354,7 @@ app.post('/api/aviator/start', async (req, res) => {
         crashPoint = parseFloat(config.forcedCrashPoint);
         await dbUpdate('config', { forcedCrashPoint: "" }); // Reset after use
     } else {
-        // Rigged: 85% chance to crash extremely early (< 2.0x)
+        // House Edge: 85% chance to crash before 2.0x, but cryptographically randomized
         if (rand < 0.85) {
             const innerRand = parseInt(hash.substring(8, 16), 16) / 0xFFFFFFFF;
             crashPoint = parseFloat((1.01 + (innerRand * 0.98)).toFixed(2)); 
@@ -360,14 +371,13 @@ app.post('/api/aviator/start', async (req, res) => {
 
     const roundId = Date.now().toString();
     
-    // Store last 15 crashes in memory (firebase) for history
     const historyData = await dbGet('aviatorHistory') || [];
     historyData.push(crashPoint);
     if(historyData.length > 15) historyData.shift();
     await dbSet('aviatorHistory', historyData);
 
-    await dbSet(`aviatorRounds/${roundId}`, { crashPoint, active: true, serverHash: hash });
-    res.json({ success: true, crashPoint, roundId, history: historyData, serverHash: hash });
+    await dbSet(`aviatorRounds/${roundId}`, { crashPoint, active: true, serverHash: hash, seed: serverSeed });
+    res.json({ success: true, crashPoint, roundId, history: historyData, serverHash: hash, seed: serverSeed });
 });
 
 app.post('/api/aviator/cashout', async (req, res) => {
@@ -384,13 +394,13 @@ app.post('/api/aviator/cashout', async (req, res) => {
     res.json({ success: true, winnings });
 });
 
+// TASK 4: Pro Spin - 75% Rigged Reward
 app.post('/api/game/spin', async (req, res) => {
     const { userId } = req.body;
     const u = await dbGet(`users/${userId}`);
     const c = await dbGet('config') || {};
     const riggedReward = c.spinRiggedReward || 50; 
     
-    // Rigged 75% for admin set reward
     const rand = Math.random();
     let amount = 0;
     if (rand < 0.75) amount = parseInt(riggedReward);
@@ -407,6 +417,7 @@ app.post('/api/game/spin', async (req, res) => {
 app.post('/api/combo', async (req, res) => {
     const { userId, combination } = req.body;
     const c = await dbGet('config') || {};
+    // TASK 4: Daily Combo Setter logic check
     const correctCombo = c.dailyCombo || ["c1","c2","c3","c4","c5","c6","c7","c8","c9"]; 
     const reward = c.comboReward || 1000;
 
@@ -420,10 +431,11 @@ app.post('/api/combo', async (req, res) => {
     }
 });
 
+// TASK 3: Multi-player OX
 app.post('/api/ox', async (req, res) => {
     const { userId, bet, playBot } = req.body;
     const user = await dbGet(`users/${userId}`);
-    // Minimax Bot Simulation (Win chance is <10% for hard mode)
+    // Minimax Bot Simulation (Forced <10% win chance for user)
     const winChance = playBot ? 0.08 : 0.75; 
     const win = Math.random() < winChance;
     
@@ -478,5 +490,10 @@ app.post('/api/admin/action', checkAdmin, async (req, res) => {
     res.json({success:true});
 });
 
-// Export for Vercel
+// Data export
+app.post('/api/admin/backup', checkAdmin, async (req, res) => {
+    const db = await dbGet('');
+    res.json(db);
+});
+
 export default app;

@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="index.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     
     <!-- AD NETWORKS: ADSGRAM & MONETAG -->
     <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
@@ -17,38 +18,53 @@
 <body class="dark-mode">
 
     <div class="app-container" id="app-container">
+        <!-- FLOATING PILL (DAY/NIGHT, SOUND & LANG) -->
+        <div class="floating-pill glass" style="position: fixed; top: 15px; right: 15px; z-index: 1000; display: flex; gap: 10px; padding: 8px 15px; border-radius: 30px;">
+            <div id="soundToggle" style="cursor:pointer;" onclick="toggleSound()"><i class="fa-solid fa-volume-high"></i></div>
+            <div style="width:1px; background:rgba(255,255,255,0.2);"></div>
+            <div id="themeToggle" style="cursor:pointer;" onclick="toggleTheme()"><i class="fa-solid fa-moon"></i></div>
+            <div style="width:1px; background:rgba(255,255,255,0.2);"></div>
+            <div id="langToggle" style="cursor:pointer; font-weight:700; font-size:0.9rem;" onclick="toggleLang()">EN</div>
+        </div>
+
         <!-- HEADER -->
-        <div id="pageHeader" class="page-header glass" style="position: sticky; top: 0; z-index: 10; margin-bottom: 20px; display: none;">
-            <div style="display:flex; align-items:center; gap:10px;">
-                <div class="profile-pic" id="pageHeaderAvatar" style="width:40px; height:40px; position:static; transform:none; border:2px solid var(--accent-color);"></div>
-                <div>
-                    <div style="font-weight:700;" id="pageHeaderName">User</div>
-                    <div class="badge badge-silver" id="pageHeaderStatus" style="font-size: 0.6rem; padding: 2px 6px; background: rgba(255,255,255,0.2); border-radius:10px;">Member</div>
+        <div id="pageHeader" class="page-header glass">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div class="avatar-ring">
+                    <div class="avatar-inner" id="pageHeaderAvatar"></div>
+                </div>
+                <div style="display:flex; flex-direction:column; justify-content:center;">
+                    <div style="font-weight:800; font-size:1.1rem; line-height:1;" id="pageHeaderName">User</div>
+                    <div style="font-size:0.75rem; color:#64748B; font-weight:700; margin-top:2px;" id="pageHeaderStatus">Member</div>
+                    <div style="font-size:0.65rem; color:var(--success-color); font-weight:bold; margin-top:2px;" id="onlineCounter"><i class="fa-solid fa-circle" style="font-size:0.5rem; animation: pulse 2s infinite;"></i> 0 Online</div>
                 </div>
             </div>
-            <div style="text-align: right;">
-                <div style="font-weight:800; color:var(--accent-color); font-size: 1.1rem;"><i class="fa-solid fa-gem"></i> <span id="pageHeaderBalance">0</span></div>
+            <div class="balances">
+                <div class="bal-gems"><i class="fa-solid fa-gem"></i> <span id="pageHeaderBalance" class="odometer">0</span></div>
+                <div class="bal-real"><i class="fa-solid fa-money-bill-wave"></i> $<span id="pageHeaderRealBalance">0.00</span></div>
             </div>
         </div>
 
         <!-- CONTENT AREA -->
-        <div id="mainContent" class="content-section" style="min-height: 50vh;"></div>
+        <div id="mainContent" class="content-section"></div>
 
         <!-- GAMES WRAPPER -->
         <div id="gameCanvasWrapper" style="display: none; padding: 20px;">
-            <div style="position: sticky; top: 0; z-index: 100; background: var(--bg-color); padding: 10px 0; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+            <div style="position: sticky; top: 0; z-index: 100; background: var(--bg-color); padding: 10px 0; margin-bottom: 15px; border-bottom: 1px solid var(--glass-border);">
                 <button class="btn btn-secondary" onclick="closeGame()"><i class="fa-solid fa-arrow-left"></i> Back to Hub</button>
             </div>
             <div id="activeGameCanvas"></div>
         </div>
 
         <div id="toast" class="toast"><i class="fa-solid fa-circle-info"></i> <span id="toast-msg"></span></div>
-        <div id="leaderboardFooter" class="sticky-footer" style="display: none;">Your Rank: 99+</div>
+        <div id="leaderboardFooter" class="sticky-footer glass" style="display: none;">Your Rank: 99+</div>
 
         <!-- NAVIGATION -->
-        <div class="bottom-nav glass">
+        <div class="bottom-nav glass" id="bottomNav">
             <a class="nav-item active" data-page="home" onclick="nav('home')"><i class="fa-solid fa-house"></i><span>Home</span></a>
+            <a class="nav-item" data-page="tasks" onclick="nav('tasks')"><i class="fa-solid fa-list-check"></i><span>Tasks</span></a>
             <a class="nav-item" data-page="games" onclick="nav('games')"><i class="fa-solid fa-gamepad"></i><span>Hub</span></a>
+            <a class="nav-item" data-page="referrals" onclick="nav('referrals')"><i class="fa-solid fa-user-group"></i><span>Invite</span></a>
             <a class="nav-item" data-page="leaderboard" onclick="nav('leaderboard')"><i class="fa-solid fa-trophy"></i><span>Top</span></a>
             <a class="nav-item" data-page="withdraw" onclick="nav('withdraw')"><i class="fa-solid fa-wallet"></i><span>Pay</span></a>
         </div>
@@ -68,29 +84,120 @@
         let aviatorActive = false;
         let audioCtx = null, oscillator = null, gainNode = null;
         
+        let currentLang = localStorage.getItem('appLang');
+        let soundEnabled = localStorage.getItem('appSound') !== 'false';
+        let appConfig = {};
+        let globalTotalUsers = 10;
+        
         document.addEventListener('DOMContentLoaded', async () => {
             try {
+                // Fetch Global Config First
+                const globRes = await fetch(`${API_BASE_URL}/api/public/globals`);
+                if(globRes.ok) {
+                    const data = await globRes.json();
+                    appConfig = data.config || {};
+                    globalTotalUsers = data.totalUsers || 10;
+                }
+
+                // 1. Maintenance Mode
+                if (appConfig.maintenanceMode) {
+                    document.body.innerHTML = `
+                        <div style="height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center; background:rgba(0,0,0,0.8); backdrop-filter:blur(20px);">
+                            <i class="fa-solid fa-triangle-exclamation" style="font-size:5rem; color:#EF4444; margin-bottom:20px; filter:drop-shadow(0 0 20px rgba(239,68,68,0.5));"></i>
+                            <h1 style="color:white; font-size:2rem; text-align:center;">System Under Maintenance</h1>
+                            <p style="color:#A7F3D0; margin-top:10px;">Please check back later.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // 2. Forced Language
+                if (appConfig.forcedLang && appConfig.forcedLang.toLowerCase() !== 'auto') {
+                    currentLang = appConfig.forcedLang.toUpperCase();
+                    document.getElementById('langToggle').style.display = 'none';
+                    // also hide its separator
+                    document.getElementById('langToggle').previousElementSibling.style.display = 'none';
+                } else if (!currentLang) {
+                    currentLang = 'EN';
+                }
+                document.getElementById('langToggle').innerText = currentLang;
+
+                // 3. Default Theme
+                if (!localStorage.getItem('appTheme') && typeof appConfig.defaultNight === 'boolean') {
+                    if (!appConfig.defaultNight) {
+                        document.body.classList.remove('dark-mode');
+                        localStorage.setItem('appTheme', 'light');
+                    }
+                }
+                if (document.body.classList.contains('dark-mode') || localStorage.getItem('appTheme') === 'dark') {
+                    document.body.classList.add('dark-mode');
+                    document.getElementById('themeToggle').innerHTML = '<i class="fa-solid fa-moon"></i>';
+                } else {
+                    document.body.classList.remove('dark-mode');
+                    document.getElementById('themeToggle').innerHTML = '<i class="fa-solid fa-sun"></i>';
+                }
+
+                // 4. Default Sound
+                if (!localStorage.getItem('appSound') && typeof appConfig.defaultSound === 'boolean') {
+                    soundEnabled = appConfig.defaultSound;
+                }
+                document.getElementById('soundToggle').innerHTML = soundEnabled ? '<i class="fa-solid fa-volume-high"></i>' : '<i class="fa-solid fa-volume-xmark"></i>';
+
                 const tg = window.Telegram.WebApp;
                 tg.expand();
 
                 const tgUser = tg.initDataUnsafe?.user;
-                if (!tgUser || !tgUser.id) {
+                const urlParams = new URLSearchParams(window.location.search);
+                const impersonatedUserId = urlParams.get('impersonate');
+                
+                if (!tgUser && !tgUser?.id && !impersonatedUserId) {
                     document.body.innerHTML = "<h2 style='text-align:center; margin-top:50px;'>Telegram Web App Error.</h2>";
                     return;
                 }
-                userId = tgUser.id.toString();
+                
+                // 5. VPN / Proxy Check
+                if (appConfig.blockVpn) {
+                    try {
+                        const ipRes = await fetch(`${API_BASE_URL}/api/check-ip`);
+                        const ipData = await ipRes.json();
+                        if (!ipData.allowed) {
+                            document.body.innerHTML = "<h2 style='text-align:center; color:red; margin-top:50px;'>Access Denied (VPN/Proxy Detected)</h2>";
+                            return;
+                        }
+                    } catch(e) {}
+                }
+
+                // 6. Max Sessions (UUID generation)
+                let sessionId = localStorage.getItem('appSessionId');
+                if (!sessionId) {
+                    sessionId = crypto.randomUUID();
+                    localStorage.setItem('appSessionId', sessionId);
+                }
+                
+                userId = impersonatedUserId || tgUser.id.toString();
                 startParam = tg.initDataUnsafe?.start_param || null;
 
-                const realName = tgUser.first_name + (tgUser.last_name ? " " + tgUser.last_name : "");
+                if (impersonatedUserId) {
+                    const banner = document.createElement('div');
+                    banner.style = "background:red; color:white; text-align:center; padding:5px; font-weight:bold; position:fixed; top:0; width:100%; z-index:9999;";
+                    banner.innerText = "ADMIN IMPERSONATION MODE: " + userId;
+                    document.body.appendChild(banner);
+                }
 
-                let res = await fetch(`${API_BASE_URL}/api/user/${userId}`);
+                const realName = tgUser ? (tgUser.first_name + (tgUser.last_name ? " " + tgUser.last_name : "")) : "Impersonated User";
+
+                let res = await fetch(`${API_BASE_URL}/api/user/${userId}?sessionId=${sessionId}`);
+                if (res.status === 401) {
+                    document.body.innerHTML = "<h2 style='text-align:center; color:red; margin-top:50px;'>Session Revoked. Too many active devices.</h2>";
+                    return;
+                }
                 if(!res.ok) {
                     res = await fetch(`${API_BASE_URL}/api/ensure-user`, {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({ userId, username: realName, refParam: startParam })
                     });
-                    res = await fetch(`${API_BASE_URL}/api/user/${userId}`);
+                    res = await fetch(`${API_BASE_URL}/api/user/${userId}?sessionId=${sessionId}`);
                 }
                 currentUser = await res.json();
                 
@@ -98,15 +205,142 @@
                     document.body.innerHTML = "<h2 style='text-align:center; color:red; margin-top:50px;'>ACCOUNT BANNED</h2>";
                     return;
                 }
+                
+                // 7. Idle Timeout
+                if (appConfig.idleTimeout && appConfig.idleTimeout > 0) {
+                    let idleTimer;
+                    const resetTimer = () => {
+                        clearTimeout(idleTimer);
+                        idleTimer = setTimeout(() => {
+                            document.body.innerHTML = `
+                                <div style="height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center; background:rgba(0,0,0,0.8); backdrop-filter:blur(20px);">
+                                    <i class="fa-solid fa-clock-rotate-left" style="font-size:5rem; color:#EF4444; margin-bottom:20px;"></i>
+                                    <h1 style="color:white; font-size:2rem; text-align:center;">Session Timeout</h1>
+                                    <p style="color:#A7F3D0; margin-top:10px;">You were inactive for too long.</p>
+                                    <button class="btn btn-primary" style="margin-top:20px;" onclick="location.reload()">Reload Application</button>
+                                </div>
+                            `;
+                        }, appConfig.idleTimeout * 60000);
+                    };
+                    ['touchstart', 'mousemove', 'keydown', 'scroll', 'click'].forEach(evt => 
+                        document.addEventListener(evt, resetTimer, { passive: true })
+                    );
+                    resetTimer();
+                }
+                
+                // 8. 2X Event Badge
+                if (appConfig.globalMultiplier == 2) {
+                    const badge = document.createElement('div');
+                    badge.innerHTML = `<i class="fa-solid fa-bolt"></i> 2X EVENT ACTIVE`;
+                    badge.style = "position:fixed; top:20px; left:50%; transform:translateX(-50%); background:linear-gradient(90deg, #FF007A, #9D00FF); color:white; padding:5px 15px; border-radius:20px; font-weight:900; font-size:0.8rem; z-index:9999; box-shadow:0 0 15px #FF007A; animation: pulse 1s infinite alternate;";
+                    document.body.appendChild(badge);
+                    
+                    const style = document.createElement('style');
+                    style.innerHTML = `@keyframes pulse { from { opacity: 0.8; transform: translateX(-50%) scale(1); } to { opacity: 1; transform: translateX(-50%) scale(1.05); } }`;
+                    document.head.appendChild(style);
+                }
+                
+                // 9. Fake Online & Global Chat
+                let totalOnline = globalTotalUsers;
+                if (appConfig.fakeOnlineToggle) {
+                    totalOnline = appConfig.fakeOnlineCount || 1000;
+                    // Add random fluctuation
+                    totalOnline += Math.floor(Math.random() * 50) - 25;
+                }
+                document.getElementById('onlineCounter').innerHTML = `<i class="fa-solid fa-circle" style="font-size:0.5rem; animation: pulse 2s infinite;"></i> ${totalOnline} Online`;
+
+                if (appConfig.globalChatToggle !== false) {
+                    const chatBtn = document.createElement('div');
+                    chatBtn.innerHTML = `<i class="fa-solid fa-messages"></i>`;
+                    chatBtn.style = "position:fixed; bottom:80px; right:20px; width:50px; height:50px; border-radius:50%; background:var(--gradient-main); display:flex; justify-content:center; align-items:center; color:white; font-size:1.5rem; box-shadow:0 0 20px var(--color-magenta); z-index:999; cursor:pointer;";
+                    chatBtn.onclick = () => showToast("Global Chat is currently in Beta!", "info");
+                    document.body.appendChild(chatBtn);
+                }
+
                 nav('home');
+                startCSSListener();
             } catch (e) {
                 console.error("Init Error", e);
             }
         });
+        
+        async function startCSSListener() {
+            let lastToastTime = 0;
+            setInterval(async () => {
+                try {
+                    const res = await fetch(`${API_BASE_URL}/api/public/globals`);
+                    if(res.ok) {
+                        const data = await res.json();
+                        // Handle CSS
+                        if(data.css && data.css.css) {
+                            let styleTag = document.getElementById('admin-injected-css');
+                            if(!styleTag) {
+                                styleTag = document.createElement('style');
+                                styleTag.id = 'admin-injected-css';
+                                document.head.appendChild(styleTag);
+                            }
+                            if(styleTag.innerHTML !== data.css.css) {
+                                styleTag.innerHTML = data.css.css;
+                            }
+                        }
+                        // Handle Toast Broadcast
+                        if(data.toast && data.toast.timestamp > lastToastTime) {
+                            if(lastToastTime !== 0) { // Don't show on initial load
+                                showToast("Global: " + data.toast.message, "info");
+                            }
+                            lastToastTime = data.toast.timestamp;
+                        }
+                    }
+                } catch(e) {}
+            }, 5000);
+        }
+
+        function toggleTheme() {
+            const isDark = document.body.classList.contains('dark-mode');
+            if (isDark) {
+                document.body.classList.remove('dark-mode');
+                localStorage.setItem('appTheme', 'light');
+                document.getElementById('themeToggle').innerHTML = '<i class="fa-solid fa-sun"></i>';
+            } else {
+                document.body.classList.add('dark-mode');
+                localStorage.setItem('appTheme', 'dark');
+                document.getElementById('themeToggle').innerHTML = '<i class="fa-solid fa-moon"></i>';
+            }
+        }
+
+        function toggleLang() {
+            currentLang = currentLang === 'EN' ? 'AM' : 'EN';
+            localStorage.setItem('appLang', currentLang);
+            document.getElementById('langToggle').innerText = currentLang;
+            showToast(`Language switched to ${currentLang}`, 'success');
+            nav(document.querySelector('.nav-item.active').dataset.page);
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            localStorage.setItem('appSound', soundEnabled);
+            document.getElementById('soundToggle').innerHTML = soundEnabled ? '<i class="fa-solid fa-volume-high"></i>' : '<i class="fa-solid fa-volume-xmark"></i>';
+            showToast(soundEnabled ? "Sound Enabled" : "Sound Muted", 'info');
+        }
+
+        function postTelegramStory() {
+            if(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.shareToStory) {
+                window.Telegram.WebApp.shareToStory('https://images.unsplash.com/photo-1621504450181-5d356f61d307?q=80&w=1000&auto=format&fit=crop', {
+                    text: 'Join me and earn Gems! ' + currentUser.username
+                });
+            } else {
+                showToast("Story API not supported on this client.", "error");
+            }
+        }
 
         function updateUI() {
             document.getElementById('pageHeaderName').textContent = currentUser.username;
             document.getElementById('pageHeaderBalance').innerText = (currentUser.points || 0).toLocaleString();
+            document.getElementById('pageHeaderRealBalance').innerText = (currentUser.realBalance || 0).toFixed(2);
+            document.getElementById('pageHeaderStatus').innerHTML = currentUser.isVip ? '<i class="fa-solid fa-crown"></i> VIP' : 'Member';
+            
+            const avatarUrl = window.Telegram.WebApp.initDataUnsafe?.user?.photo_url || currentUser.avatarUrl || `https://ui-avatars.com/api/?name=${currentUser.username}&background=00F2FE&color=fff`;
+            document.getElementById('pageHeaderAvatar').style.backgroundImage = `url('${avatarUrl}')`;
         }
 
         function showToast(msg, type='info') {
@@ -132,30 +366,335 @@
             if(page === 'games') renderGames(content);
             if(page === 'leaderboard') renderLeaderboard(content);
             if(page === 'withdraw') renderWithdraw(content);
+            if(page === 'tasks') renderTasks(content);
+            if(page === 'referrals') renderReferrals(content);
         }
 
         function renderHome(c) {
+            const avatarUrl = window.Telegram.WebApp.initDataUnsafe?.user?.photo_url || currentUser.avatarUrl || `https://ui-avatars.com/api/?name=${currentUser.username}&background=00F2FE&color=fff`;
+            
             c.innerHTML = `
-                <div class="card glass" style="text-align:center; padding: 40px 20px;">
-                    <div class="profile-pic" style="background-image:url('https://ui-avatars.com/api/?name=${currentUser.username}&background=B026FF&color=fff'); position:relative; top:0; transform:none; margin: 0 auto 15px;"></div>
-                    <h2>${currentUser.username}</h2>
-                    <div class="points-display" style="font-size: 2rem;"><i class="fa-solid fa-gem"></i> ${currentUser.points}</div>
+                <!-- 1. Hero Profile -->
+                <div class="card glass" style="text-align:center; padding: 30px 20px; position:relative; overflow:hidden;">
+                    <div style="position:absolute; top:-50px; left:-50px; width:150px; height:150px; background:var(--color-magenta); filter:blur(60px); opacity:0.3; border-radius:50%;"></div>
+                    <div style="position:absolute; bottom:-50px; right:-50px; width:150px; height:150px; background:var(--color-cyan); filter:blur(60px); opacity:0.3; border-radius:50%;"></div>
+                    
+                    <div class="avatar-ring" style="width:100px; height:100px; margin: 0 auto 15px;">
+                        <div class="avatar-inner" style="background-image:url('${avatarUrl}'); border-width: 4px;"></div>
+                    </div>
+                    <h2 style="font-size:1.6rem; margin-bottom:5px;">${currentUser.username}</h2>
+                    <div style="font-size: 2.5rem; color:var(--color-cyan); font-weight:800; text-shadow: 0 0 20px rgba(0, 242, 254, 0.5); margin: 10px 0;">
+                        <i class="fa-solid fa-gem"></i> <span class="odometer">${currentUser.points}</span>
+                    </div>
+                    
+                    <!-- 7-day Login Streak -->
+                    <div class="timeline">
+                        ${[1,2,3,4,5,6,7].map(day => `
+                            <div class="time-node ${currentUser.loginStreak >= day ? 'completed' : ''}">${day}</div>
+                        `).join('')}
+                    </div>
+                    <div style="font-size:0.85rem; color:#64748B; font-weight:700; margin-top:-15px;">Daily Streak</div>
                 </div>
                 
-                <div class="card glass" style="margin-top: 20px; text-align: center;">
-                    <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-video" style="color: var(--accent-color);"></i> Watch Ads & Earn</h3>
-                    <div style="display:flex; gap:10px; justify-content:center;">
-                        <button class="btn btn-primary" onclick="showAdsgram()"><i class="fa-solid fa-play"></i> Adsgram Ad</button>
-                        <button class="btn btn-secondary" onclick="showMonetag()"><i class="fa-solid fa-play"></i> Monetag Ad</button>
+                <!-- 2. Action Buttons (50/50 Split) -->
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-top:20px;">
+                    <button class="btn btn-primary" onclick="postTelegramStory()">
+                        <i class="fa-solid fa-camera-retro"></i> Post Story
+                    </button>
+                    <button class="btn btn-secondary" onclick="nav('withdraw')">
+                        <i class="fa-solid fa-money-bill-transfer"></i> Withdraw
+                    </button>
+                </div>
+
+                <!-- 3. 6 Stats Grid (3x2) -->
+                <div class="stat-grid">
+                    <div class="stat-box glass">
+                        <div class="stat-icon" style="color:var(--color-cyan); background:rgba(0, 242, 254, 0.1);"><i class="fa-solid fa-users"></i></div>
+                        <div style="font-size:1.2rem; font-weight:800;">${currentUser.referredUsers?.length || 0}</div>
+                        <div style="font-size:0.7rem; color:#64748B; font-weight:600;">Referrals</div>
+                    </div>
+                    <div class="stat-box glass">
+                        <div class="stat-icon" style="color:var(--color-magenta); background:rgba(240, 147, 251, 0.1);"><i class="fa-solid fa-trophy"></i></div>
+                        <div style="font-size:1.2rem; font-weight:800;">#99+</div>
+                        <div style="font-size:0.7rem; color:#64748B; font-weight:600;">Global Rank</div>
+                    </div>
+                    <div class="stat-box glass">
+                        <div class="stat-icon" style="color:var(--color-purple); background:rgba(79, 172, 254, 0.1);"><i class="fa-solid fa-video"></i></div>
+                        <div style="font-size:1.2rem; font-weight:800;">${10 - (currentUser.dailyAdsWatched || 0)}</div>
+                        <div style="font-size:0.7rem; color:#64748B; font-weight:600;">Ads Left</div>
+                    </div>
+                    <div class="stat-box glass">
+                        <div class="stat-icon" style="color:var(--gold-color); background:rgba(255, 215, 0, 0.1);"><i class="fa-solid fa-eye"></i></div>
+                        <div style="font-size:1.2rem; font-weight:800;">${currentUser.dailyAdsWatched || 0}</div>
+                        <div style="font-size:0.7rem; color:#64748B; font-weight:600;">Ads Watched</div>
+                    </div>
+                    <div class="stat-box glass">
+                        <div class="stat-icon" style="color:var(--success-color); background:rgba(16, 185, 129, 0.1);"><i class="fa-solid fa-list-check"></i></div>
+                        <div style="font-size:1.2rem; font-weight:800;">0</div>
+                        <div style="font-size:0.7rem; color:#64748B; font-weight:600;">Tasks Done</div>
+                    </div>
+                    <div class="stat-box glass">
+                        <div class="stat-icon" style="color:var(--danger-color); background:rgba(239, 68, 68, 0.1);"><i class="fa-solid fa-wallet"></i></div>
+                        <div style="font-size:1.2rem; font-weight:800;">$0.00</div>
+                        <div style="font-size:0.7rem; color:#64748B; font-weight:600;">Withdrawn</div>
                     </div>
                 </div>
             `;
         }
 
+        async function renderTasks(c) {
+            let tasksHtml = '';
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/tasks`);
+                const tasksObj = await res.json();
+                const claimed = currentUser.claimedBonuses || [];
+                
+                Object.keys(tasksObj).forEach(id => {
+                    const t = tasksObj[id];
+                    const isClaimed = claimed.includes(id);
+                    tasksHtml += `
+                        <div class="task-row glass" data-name="${t.name.toLowerCase()}">
+                            <div class="icon-sq">
+                                <i class="fa-brands ${t.icon}" style="color:var(--color-cyan);"></i>
+                            </div>
+                            <div class="mid">
+                                <h4 style="font-weight:800; font-size:1.1rem; line-height:1.2;">${t.name}</h4>
+                                <div style="color:var(--success-color); font-weight:700; font-size:0.9rem;">+${t.reward} Gems</div>
+                            </div>
+                            ${isClaimed 
+                                ? `<button class="task-pill-btn done"><i class="fa-solid fa-check"></i> Done</button>`
+                                : `<button class="task-pill-btn start" onclick="startTask('${id}', '${t.url}')">Start</button>`
+                            }
+                        </div>
+                    `;
+                });
+            } catch(e) {
+                tasksHtml = '<div style="text-align:center; padding:20px;">Failed to load tasks.</div>';
+            }
+
+            const adsWatched = currentUser.dailyAdsWatched || 0;
+            const adsLimit = 10;
+            const limitReached = adsWatched >= adsLimit;
+
+            c.innerHTML = `
+                <!-- Daily Earning Top Ad Grid -->
+                <div class="ad-grid">
+                    <!-- Monetag Ad -->
+                    <div class="ad-card glass" onclick="triggerMonetagAd()">
+                        <i class="fa-brands fa-youtube" style="font-size:3.5rem; color:#EF4444; filter:drop-shadow(0 0 15px rgba(239,68,68,0.6)); margin-bottom:12px; display:inline-block;"></i>
+                        <div style="font-weight:800; font-size:1.1rem; margin-bottom:5px;">Watch Ad</div>
+                        ${limitReached 
+                            ? `<div style="color:var(--danger-color); font-weight:700; font-size:0.9rem;">Limit Reached</div>`
+                            : `<div style="color:var(--success-color); font-weight:800; font-size:0.95rem;">+50 Gems</div>`
+                        }
+                    </div>
+                    <!-- Adsgram Ad -->
+                    <div class="ad-card glass" onclick="triggerAdsgramAd()">
+                        <i class="fa-solid fa-fire" style="font-size:3.5rem; color:var(--gold-color); filter:drop-shadow(0 0 15px rgba(255,215,0,0.6)); margin-bottom:12px; display:inline-block;"></i>
+                        <div style="font-weight:800; font-size:1.1rem; margin-bottom:5px;">Special Ad</div>
+                        <div style="color:var(--success-color); font-weight:800; font-size:0.95rem;">+50 Gems</div>
+                    </div>
+                </div>
+
+                <div class="search-bar glass">
+                    <i class="fa-solid fa-magnifying-glass" style="color:var(--color-cyan);"></i>
+                    <input type="text" id="taskSearch" placeholder="Search tasks..." oninput="filterTasks(this.value)">
+                </div>
+
+                <div id="tasksContainer">${tasksHtml || '<div style="text-align:center; color:#94A3B8; padding:20px;">No active tasks available.</div>'}</div>
+            `;
+        }
+        
+        function filterTasks(query) {
+            const rows = document.querySelectorAll('.task-row');
+            const q = query.toLowerCase();
+            rows.forEach(r => {
+                if(r.dataset.name.includes(q)) {
+                    r.style.display = 'flex';
+                } else {
+                    r.style.display = 'none';
+                }
+            });
+        }
+
+        function triggerMonetagAd() {
+            const adsWatched = currentUser.dailyAdsWatched || 0;
+            if(adsWatched >= 10) return showToast("Daily limit reached!", "error");
+            
+            try {
+                if(typeof show_10024038 === 'function') {
+                    show_10024038().then(() => {
+                        rewardUserForAd('monetag');
+                    }).catch(() => {
+                        showToast("Ad blocked or failed to load. Please disable ad-blocker.", "error");
+                    });
+                } else {
+                    showToast("Monetag SDK not loaded.", "error");
+                }
+            } catch(e) { showToast("Ad error occurred.", "error"); }
+        }
+
+        function triggerAdsgramAd() {
+            showAdsgram();
+        }
+
+        function startTask(taskId, url) {
+            window.open(url, '_blank');
+            // Show verification upload modal
+            const overlay = document.createElement('div');
+            overlay.style = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:10000; display:flex; justify-content:center; align-items:center; backdrop-filter:blur(5px);";
+            overlay.innerHTML = `
+                <div class="card glass" style="width:90%; max-width:400px; padding:20px; text-align:center;">
+                    <h3 style="margin-bottom:15px; color:var(--color-cyan);">Submit Task Proof</h3>
+                    <p style="font-size:0.9rem; color:#A7F3D0; margin-bottom:20px;">Please upload a screenshot showing you completed the task.</p>
+                    <input type="file" id="proofFile" accept="image/*" style="margin-bottom:20px; width:100%; color:#fff;">
+                    <div style="display:flex; gap:10px;">
+                        <button class="btn btn-secondary" style="flex:1;" onclick="this.parentElement.parentElement.parentElement.remove()">Cancel</button>
+                        <button class="btn btn-primary" style="flex:1;" onclick="submitProof('${taskId}', this)">Submit</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+        }
+
+        async function submitProof(taskId, btn) {
+            const fileInput = document.getElementById('proofFile');
+            if(!fileInput.files || fileInput.files.length === 0) return showToast("Please select a screenshot.", "error");
+            
+            btn.innerText = "Uploading...";
+            btn.disabled = true;
+
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                // Compress image via Canvas
+                const img = new Image();
+                img.onload = async function() {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 800;
+                    const scaleSize = MAX_WIDTH / img.width;
+                    canvas.width = MAX_WIDTH;
+                    canvas.height = img.height * scaleSize;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    const base64 = canvas.toDataURL('image/jpeg', 0.5); // 50% quality
+
+                    try {
+                        const res = await fetch(`${API_BASE_URL}/api/verify/upload`, {
+                            method: 'POST',
+                            headers:{'Content-Type':'application/json'},
+                            body: JSON.stringify({ userId, taskId, imageBase64: base64 })
+                        });
+                        if(res.ok) {
+                            showToast("Proof submitted! Awaiting admin review.", "success");
+                            btn.parentElement.parentElement.parentElement.remove();
+                        } else {
+                            showToast("Failed to submit.", "error");
+                            btn.innerText = "Submit"; btn.disabled = false;
+                        }
+                    } catch(err) {
+                        showToast("Network error.", "error");
+                        btn.innerText = "Submit"; btn.disabled = false;
+                    }
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function renderReferrals(c) {
+            const refLink = `https://t.me/beshbesh_bot/earn?startapp=ref${userId}`;
+            
+            c.innerHTML = `
+                <div class="card glass" style="text-align:center; padding:30px 20px; position:relative; overflow:hidden;">
+                    <!-- Ambient Glow -->
+                    <div style="position:absolute; top:-50px; left:-50px; width:150px; height:150px; background:var(--color-cyan); filter:blur(60px); opacity:0.3; border-radius:50%;"></div>
+                    
+                    <div class="hero-floating-icon" style="margin-bottom:15px; font-size:4rem; color:var(--color-cyan); text-shadow:0 0 20px rgba(0,242,254,0.6);">
+                        <i class="fa-solid fa-user-astronaut"></i>
+                    </div>
+                    <h2 style="font-size:1.8rem; margin-bottom:5px; background:var(--gradient-main); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">Invite & Earn</h2>
+                    <div style="color:#94A3B8; font-size:0.95rem; margin-bottom:25px; font-weight:600;">Earn 100 Gems for every friend you invite!</div>
+                    
+                    <div class="qr-glow-box">
+                        <div id="qrCodeContainer"></div>
+                    </div>
+
+                    <div style="background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.1); padding:15px; border-radius:10px; font-family:monospace; font-size:0.85rem; word-break:break-all; margin-bottom:20px; color:#E2E8F0;">
+                        ${refLink}
+                    </div>
+
+                    <div style="display:flex; gap:10px;">
+                        <button class="btn btn-secondary" style="flex:1;" onclick="copyRefLink('${refLink}')"><i class="fa-solid fa-copy"></i> Copy</button>
+                        <button class="btn btn-primary" style="flex:1;" onclick="shareRefLink('${refLink}')"><i class="fa-solid fa-share-nodes"></i> Share</button>
+                    </div>
+                </div>
+
+                <div class="card glass" style="margin-top:20px;">
+                    <h3 style="margin-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px; display:flex; justify-content:space-between;">
+                        <span><i class="fa-solid fa-users" style="color:var(--color-purple);"></i> My Network</span>
+                        <span style="color:var(--color-cyan); font-weight:900;">${currentUser.referredUsers?.length || 0}</span>
+                    </h3>
+                    <div id="invitesList" style="max-height:300px; overflow-y:auto; padding-right:5px;">
+                        <div style="text-align:center; padding:20px; color:#94A3B8;"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</div>
+                    </div>
+                </div>
+            `;
+
+            // Generate QR Code
+            setTimeout(() => {
+                new QRCode(document.getElementById("qrCodeContainer"), {
+                    text: refLink,
+                    width: 130,
+                    height: 130,
+                    colorDark : "#000000",
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.H
+                });
+            }, 100);
+
+            // Fetch Referrals
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/referrer/${userId}`);
+                const refs = await res.json();
+                const list = document.getElementById('invitesList');
+                if(refs.length === 0) {
+                    list.innerHTML = `
+                        <div style="text-align:center; padding:30px 10px;">
+                            <i class="fa-solid fa-ghost" style="font-size:3rem; color:rgba(255,255,255,0.1); margin-bottom:15px;"></i>
+                            <div style="color:#94A3B8; font-weight:600;">No invites yet. Start sharing your link!</div>
+                        </div>
+                    `;
+                } else {
+                    list.innerHTML = refs.map(r => `
+                        <div class="referral-list-item glass">
+                            <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(r.accountName||'U')}&background=random&color=fff" style="width:40px; height:40px; border-radius:10px;">
+                            <div class="mid">
+                                <div style="font-weight:800; font-size:1rem;">${r.accountName}</div>
+                                <div style="font-size:0.75rem; color:#94A3B8;">${new Date(r.createdAt).toLocaleDateString()}</div>
+                            </div>
+                            <div style="color:var(--success-color); font-weight:900; font-size:1rem;">+100 Gems</div>
+                        </div>
+                    `).join('');
+                }
+            } catch(e) {}
+        }
+
+        function copyRefLink(link) {
+            navigator.clipboard.writeText(link);
+            showToast("Copied to clipboard!", "success");
+        }
+
+        function shareRefLink(link) {
+            if(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openTelegramLink) {
+                const text = encodeURIComponent(`Join me on MYFA BIRR and let's earn Gems together! 🚀`);
+                window.Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${text}`);
+            } else {
+                window.open(`https://t.me/share/url?url=${encodeURIComponent(link)}`, '_blank');
+            }
+        }
+
         // --- AD NETWORK LOGIC ---
-        let adController = null;
-        if(window.Adsgram) {
-            // Replace blockId with your actual Adsgram block ID from the dashboard
             adController = window.Adsgram.init({ blockId: "YOUR_ADSGRAM_BLOCK_ID" });
         }
 
@@ -196,59 +735,197 @@
 
         function renderGames(c) {
             c.innerHTML = `
-                <h2 style="margin-bottom: 15px;"><i class="fa-solid fa-gamepad" style="color:var(--accent-color);"></i> Game Hub</h2>
+                <h2 style="margin-bottom: 20px;"><i class="fa-solid fa-gamepad" style="color:var(--color-purple);"></i> Game Hub</h2>
                 <div class="game-hub-list">
-                    <div class="glass game-list-card-horizontal" onclick="openGame('aviator')">
-                        <div class="game-icon-box" style="background: rgba(239,68,68,0.2); color: var(--danger-color); text-shadow: 0 0 10px rgba(239,68,68,0.8);"><i class="fa-solid fa-plane-up fa-2x"></i></div>
-                        <div class="game-details"><h3>Aviator</h3><p>Hold for high multipliers!</p></div>
-                        <div class="play-btn-pill">Play</div>
+                    <div class="game-row glass" onclick="openGame('aviator')">
+                        <div class="game-icon-box" style="color:var(--danger-color);"><i class="fa-solid fa-plane-up"></i></div>
+                        <div class="mid">
+                            <h3>Aviator</h3>
+                            <p>Hold for high multipliers!</p>
+                        </div>
+                        <button class="game-play-btn">Play</button>
                     </div>
-                    <div class="glass game-list-card-horizontal" onclick="showToast('Multi OX coming soon!', 'info')">
-                        <div class="game-icon-box" style="background: rgba(59,130,246,0.2); color: #3B82F6; text-shadow: 0 0 10px rgba(59,130,246,0.8);"><i class="fa-solid fa-xmarks-lines fa-2x"></i></div>
-                        <div class="game-details"><h3>Multi OX</h3><p>Tic-Tac-Toe with real players.</p></div>
-                        <div class="play-btn-pill">Play</div>
+                    <div class="game-row glass" onclick="openGame('multiox')">
+                        <div class="game-icon-box" style="color:var(--color-cyan);"><i class="fa-solid fa-xmarks-lines"></i></div>
+                        <div class="mid">
+                            <h3>Multi OX</h3>
+                            <p>Tic-Tac-Toe against the bot.</p>
+                        </div>
+                        <button class="game-play-btn">Play</button>
                     </div>
-                    <div class="glass game-list-card-horizontal" onclick="showToast('Daily Combo coming soon!', 'info')">
-                        <div class="game-icon-box" style="background: rgba(255,179,71,0.2); color: var(--gold-color); text-shadow: 0 0 10px rgba(255,179,71,0.8);"><i class="fa-solid fa-puzzle-piece fa-2x"></i></div>
-                        <div class="game-details"><h3>Daily Combo</h3><p>Solve the puzzle for huge gems.</p></div>
-                        <div class="play-btn-pill">Play</div>
+                    <div class="game-row glass" onclick="openGame('dailycombo')">
+                        <div class="game-icon-box" style="color:var(--gold-color);"><i class="fa-solid fa-puzzle-piece"></i></div>
+                        <div class="mid">
+                            <h3>Daily Combo</h3>
+                            <p>Select 3 cards to win.</p>
+                        </div>
+                        <button class="game-play-btn">Play</button>
                     </div>
-                    <div class="glass game-list-card-horizontal" onclick="showToast('Pro Spin coming soon!', 'info')">
-                        <div class="game-icon-box" style="background: rgba(176,38,255,0.2); color: var(--accent-color); text-shadow: 0 0 10px rgba(176,38,255,0.8);"><i class="fa-solid fa-dharmachakra fa-2x"></i></div>
-                        <div class="game-details"><h3>Pro Spin</h3><p>Spin the wheel of fortune.</p></div>
-                        <div class="play-btn-pill">Play</div>
+                    <div class="game-row glass" onclick="openGame('prospin')">
+                        <div class="game-icon-box" style="color:var(--color-magenta);"><i class="fa-solid fa-dharmachakra"></i></div>
+                        <div class="mid">
+                            <h3>Pro Spin</h3>
+                            <p>Spin the wheel of fortune.</p>
+                        </div>
+                        <button class="game-play-btn">Play</button>
                     </div>
-                    <div class="glass game-list-card-horizontal" onclick="showToast('Scratch Card coming soon!', 'info')">
-                        <div class="game-icon-box" style="background: rgba(16,185,129,0.2); color: var(--success-color); text-shadow: 0 0 10px rgba(16,185,129,0.8);"><i class="fa-solid fa-ticket fa-2x"></i></div>
-                        <div class="game-details"><h3>Scratch Card</h3><p>Instant win scratch tickets.</p></div>
-                        <div class="play-btn-pill">Play</div>
+                    <div class="game-row glass" onclick="openGame('scratchcard')">
+                        <div class="game-icon-box" style="color:var(--success-color);"><i class="fa-solid fa-ticket"></i></div>
+                        <div class="mid">
+                            <h3>Scratch Card</h3>
+                            <p>Instant win scratch tickets.</p>
+                        </div>
+                        <button class="game-play-btn">Play</button>
                     </div>
                 </div>`;
         }
 
         function renderWithdraw(c) {
             const realBal = currentUser.realBalance || 0;
+            const curInvites = currentUser.referredUsers ? currentUser.referredUsers.length : 0;
+            const curAds = currentUser.totalAdsWatchedLifetime || 0;
+            const curTasks = currentUser.claimedBonuses ? currentUser.claimedBonuses.length : 0;
+            const reqInvites = appConfig.reqReferrals || 5;
+            const reqAds = appConfig.reqAds || 50;
+            const reqTasks = appConfig.reqTasks || 3;
+            
+            const req1Done = curInvites >= reqInvites;
+            const req2Done = curAds >= reqAds;
+            const req3Done = curTasks >= reqTasks;
+            const allReqsMet = req1Done && req2Done && req3Done;
+
             c.innerHTML = `
-                <h2 style="margin-bottom: 15px;"><i class="fa-solid fa-wallet" style="color:var(--success-color);"></i> Wallet & Exchange</h2>
-                <div class="card glass" style="display:flex; justify-content:space-around; text-align:center;">
-                    <div>
-                        <p style="font-size:0.85rem; color:#94a3b8; font-weight:bold;">Current Gems</p>
-                        <h3 style="color:var(--accent-color);"><i class="fa-solid fa-gem"></i> ${currentUser.points}</h3>
+                <div style="text-align:center; padding: 20px 0;">
+                    <h2><i class="fa-solid fa-money-bill-transfer" style="color:var(--success-color); font-size: 2rem; margin-bottom: 10px; filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.5));"></i><br>Pay & Exchange</h2>
+                    <p style="font-size:0.85rem; color:#94A3B8;">Convert Gems to Real Cash</p>
+                </div>
+                
+                <!-- Balances & Exchange Section -->
+                <div class="card glass" style="margin-bottom:20px; padding:25px 20px; position:relative; overflow:hidden;">
+                    <div style="position:absolute; top:-30px; left:-30px; width:100px; height:100px; background:var(--color-cyan); filter:blur(40px); opacity:0.2;"></div>
+                    
+                    <div style="display:grid; grid-template-columns:1fr 1px 1fr; gap:15px; text-align:center; margin-bottom:25px;">
+                        <div>
+                            <div style="font-size:0.75rem; color:#94A3B8; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:5px;">Gems</div>
+                            <div style="color:var(--color-cyan); font-weight:900; font-size:1.5rem;"><i class="fa-solid fa-gem"></i> <span id="exchangeGemsBal">${currentUser.points}</span></div>
+                        </div>
+                        <div style="background:rgba(255,255,255,0.1);"></div>
+                        <div>
+                            <div style="font-size:0.75rem; color:#94A3B8; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:5px;">Cash</div>
+                            <div style="color:var(--success-color); font-weight:900; font-size:1.5rem;"><i class="fa-solid fa-dollar-sign"></i> <span id="exchangeRealBal">${realBal.toFixed(2)}</span></div>
+                        </div>
                     </div>
-                    <div style="width:1px; background:rgba(255,255,255,0.1);"></div>
-                    <div>
-                        <p style="font-size:0.85rem; color:#94a3b8; font-weight:bold;">Real Money</p>
-                        <h3 style="color:var(--success-color);"><i class="fa-solid fa-dollar-sign"></i> ${realBal.toFixed(2)}</h3>
+
+                    <h3 style="margin-bottom:10px; font-size:1.1rem;"><i class="fa-solid fa-right-left" style="color:var(--color-magenta);"></i> Quick Exchange</h3>
+                    <div style="font-size:0.75rem; color:#94A3B8; margin-bottom:15px; font-weight:600;">Live Rate: 100 Gems = $1.00</div>
+                    
+                    <div style="position:relative; margin-bottom:15px;">
+                        <input type="number" id="exchangeAmount" class="input-field" style="padding-left:40px; margin-bottom:0;" placeholder="Gems to Exchange" min="100" oninput="document.getElementById('exchangePreview').innerText = (this.value/100).toFixed(2)">
+                        <i class="fa-solid fa-gem" style="position:absolute; left:15px; top:50%; transform:translateY(-50%); color:var(--color-cyan);"></i>
+                    </div>
+                    
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div style="font-size:0.85rem; color:white; font-weight:700;">You receive: <span style="color:var(--success-color);">$<span id="exchangePreview">0.00</span></span></div>
+                        <button class="btn btn-primary" style="width:auto; padding:8px 20px;" onclick="processExchange()"><i class="fa-solid fa-coins"></i> Convert</button>
                     </div>
                 </div>
 
-                <div class="card glass">
-                    <h3 style="margin-bottom:10px;"><i class="fa-solid fa-right-left"></i> Exchange Gems</h3>
-                    <p style="font-size:0.8rem; margin-bottom:15px; color:#94a3b8;">Convert your gems into real cash.</p>
-                    <input type="number" id="exchangeAmount" class="input-field" placeholder="Amount of Gems to Exchange" min="100">
-                    <button class="btn btn-primary" onclick="processExchange()"><i class="fa-solid fa-coins"></i> Exchange to Money</button>
+                <!-- Withdrawal Requirements Checklist -->
+                <div class="card glass" style="margin-bottom:20px; border-left:4px solid ${allReqsMet ? 'var(--success-color)' : 'var(--danger-color)'};">
+                    <h3 style="margin-bottom:15px; font-size:1.1rem;"><i class="fa-solid fa-list-check" style="color:var(--color-cyan);"></i> Unlock Withdrawal</h3>
+                    
+                    <div style="display:flex; flex-direction:column; gap:12px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.05);">
+                            <span style="color:${req1Done ? 'var(--success-color)' : '#94A3B8'}; font-weight:600;"><i class="fa-solid ${req1Done ? 'fa-circle-check' : 'fa-circle'}"></i> 1. Refer Friends</span>
+                            <span style="font-weight:800; color:${req1Done ? 'var(--success-color)' : 'white'}; background:rgba(255,255,255,0.05); padding:2px 8px; border-radius:5px;">${curInvites} / ${reqInvites}</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.05);">
+                            <span style="color:${req2Done ? 'var(--success-color)' : '#94A3B8'}; font-weight:600;"><i class="fa-solid ${req2Done ? 'fa-circle-check' : 'fa-circle'}"></i> 2. Watch Ads</span>
+                            <span style="font-weight:800; color:${req2Done ? 'var(--success-color)' : 'white'}; background:rgba(255,255,255,0.05); padding:2px 8px; border-radius:5px;">${curAds} / ${reqAds}</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span style="color:${req3Done ? 'var(--success-color)' : '#94A3B8'}; font-weight:600;"><i class="fa-solid ${req3Done ? 'fa-circle-check' : 'fa-circle'}"></i> 3. Complete Tasks</span>
+                            <span style="font-weight:800; color:${req3Done ? 'var(--success-color)' : 'white'}; background:rgba(255,255,255,0.05); padding:2px 8px; border-radius:5px;">${curTasks} / ${reqTasks}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Withdrawal Form -->
+                <div class="card glass" style="position:relative; overflow:hidden;">
+                    ${!allReqsMet ? `
+                        <div style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.8); backdrop-filter:blur(8px); z-index:10; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;">
+                            <i class="fa-solid fa-lock" style="font-size:3rem; color:rgba(255,255,255,0.3); margin-bottom:15px;"></i>
+                            <div style="font-weight:800; color:white;">Complete Requirements to Unlock Form</div>
+                        </div>
+                    ` : ''}
+                    
+                    <h3 style="margin-bottom:15px; font-size:1.1rem;"><i class="fa-solid fa-paper-plane" style="color:var(--color-purple);"></i> Request Payout</h3>
+                    
+                    <div style="margin-bottom:15px;">
+                        <label style="font-size:0.75rem; color:#94A3B8; font-weight:700; margin-bottom:5px; display:block;">Select Bank</label>
+                        <select id="wdBank" class="input-field" style="color:white; background:rgba(0,0,0,0.5);">
+                            <option value="Telebirr" style="color:black;">Telebirr</option>
+                            <option value="CBE" style="color:black;">CBE (Commercial Bank of Ethiopia)</option>
+                            <option value="BOA" style="color:black;">BOA (Bank of Abyssinia)</option>
+                        </select>
+                    </div>
+
+                    <div style="margin-bottom:15px;">
+                        <label style="font-size:0.75rem; color:#94A3B8; font-weight:700; margin-bottom:5px; display:block;">Account Number</label>
+                        <input type="text" id="wdAccount" class="input-field" placeholder="e.g. 1000123456789">
+                    </div>
+
+                    <div style="margin-bottom:15px;">
+                        <label style="font-size:0.75rem; color:#94A3B8; font-weight:700; margin-bottom:5px; display:block;">Account Name</label>
+                        <input type="text" id="wdName" class="input-field" placeholder="e.g. Abebe Kebede">
+                    </div>
+
+                    <div style="margin-bottom:20px;">
+                        <label style="font-size:0.75rem; color:#94A3B8; font-weight:700; margin-bottom:5px; display:block;">Amount ($)</label>
+                        <input type="number" id="wdAmount" class="input-field" placeholder="0.00" max="${realBal}">
+                    </div>
+
+                    <button class="btn btn-primary" style="width:100%;" onclick="submitWithdraw()" ${!allReqsMet ? 'disabled' : ''}><i class="fa-solid fa-circle-check"></i> Submit Request</button>
                 </div>
             `;
+        }
+
+        async function submitWithdraw() {
+            const method = document.getElementById('wdBank').value;
+            const account = document.getElementById('wdAccount').value;
+            const accountName = document.getElementById('wdName').value;
+            const amount = parseFloat(document.getElementById('wdAmount').value);
+
+            if(!account || !accountName || !amount) return showToast('Please fill all fields', 'error');
+            if(amount > (currentUser.realBalance||0)) return showToast('Insufficient funds', 'error');
+            if(amount <= 0) return showToast('Invalid amount', 'error');
+
+            const btn = document.querySelector('button[onclick="submitWithdraw()"]');
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Submitting...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/request-withdrawal`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ userId, amount, method, account, accountName })
+                });
+                const data = await res.json();
+                if(data.success) {
+                    showToast('Withdrawal submitted successfully!', 'success');
+                    const uRes = await fetch(`${API_BASE_URL}/api/user/${userId}`);
+                    currentUser = await uRes.json();
+                    nav('withdraw');
+                } else {
+                    showToast('Withdrawal failed', 'error');
+                    btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Submit Request';
+                    btn.disabled = false;
+                }
+            } catch(e) {
+                showToast('Network error', 'error');
+                btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Submit Request';
+                btn.disabled = false;
+            }
         }
 
         async function processExchange() {
@@ -287,12 +964,13 @@
         async function renderLeaderboard(c) {
             c.innerHTML = `
                 <div style="text-align:center; padding: 20px 0;">
-                    <h2><i class="fa-solid fa-trophy" style="color:var(--gold-color);"></i> Top 100 Players</h2>
-                    <p style="font-size:0.85rem; color:#888;">The best of the best.</p>
+                    <h2><i class="fa-solid fa-trophy" style="color:var(--gold-color); font-size: 2rem; margin-bottom: 10px; display:inline-block; filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.5));"></i><br>Top 100 Players</h2>
+                    <p style="font-size:0.85rem; color:#94A3B8;">The best of the best.</p>
                 </div>
-                <div id="leaderboardLoading" style="text-align:center; padding: 30px;"><i class="fa-solid fa-spinner fa-spin fa-2x"></i></div>
+                <div id="leaderboardLoading" style="text-align:center; padding: 30px;"><i class="fa-solid fa-spinner fa-spin fa-2x" style="color:var(--color-cyan);"></i></div>
                 <div id="top3Container" class="top-3-container" style="display:none;"></div>
                 <div id="leaderboardList" style="display:flex; flex-direction:column; gap:10px; margin-bottom: 80px;"></div>
+                <div class="leaderboard-footer glass" id="leaderboardFooter" style="display:none; justify-content:space-between; align-items:center;"></div>
             `;
             
             try {
@@ -300,25 +978,44 @@
                 const data = await res.json();
                 
                 document.getElementById('leaderboardLoading').style.display = 'none';
+
+                if (data.frozen) {
+                    const banner = document.createElement('div');
+                    banner.style = "background:var(--danger-color); color:white; text-align:center; padding:10px; font-weight:bold; position:sticky; top:0; z-index:99; margin-bottom:15px;";
+                    banner.innerHTML = "🏆 Leaderboard is Currently Frozen for Payouts";
+                    document.getElementById('leaderboardList').parentNode.insertBefore(banner, document.getElementById('top3Container'));
+                }
                 
                 const top100 = data.byPoints || [];
                 
                 // Render Top 3
                 const top3 = top100.slice(0, 3);
-                const top3Html = top3.map((u, i) => {
-                    const rank = i + 1;
+                // We want order: 2, 1, 3 for podium layout
+                const order = [1, 0, 2]; 
+                let top3Html = '';
+                
+                order.forEach(idx => {
+                    const u = top3[idx];
+                    if(!u) return;
+                    const rank = idx + 1;
                     const avatarUrl = `${API_BASE_URL}/api/avatar/${u.id}`;
-                    return `
+                    
+                    let crownColor = '';
+                    if(rank === 1) crownColor = 'var(--gold-color)';
+                    if(rank === 2) crownColor = 'silver';
+                    if(rank === 3) crownColor = '#cd7f32'; // bronze
+
+                    top3Html += `
                         <div class="top-3-item rank-${rank}">
-                            <div class="crown"><i class="fa-solid fa-crown"></i></div>
+                            <div class="crown" style="color:${crownColor};"><i class="fa-solid fa-crown"></i></div>
                             <div class="top-avatar-box">
-                                <img src="${avatarUrl}" loading="lazy" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(u.username||'User')}&background=B026FF&color=fff';">
+                                <img src="${avatarUrl}" loading="lazy" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(u.username||'User')}&background=00F2FE&color=fff';">
                             </div>
                             <div class="top-name">${u.username || 'User'}</div>
-                            <div class="top-score"><i class="fa-solid fa-gem"></i> ${(u.points||0).toLocaleString()}</div>
+                            <div class="top-score"><i class="fa-solid fa-gem" style="color:var(--color-cyan);"></i> ${(u.points||0).toLocaleString()}</div>
                         </div>
                     `;
-                }).join('');
+                });
                 
                 const top3Cont = document.getElementById('top3Container');
                 if(top3.length > 0) {
@@ -333,11 +1030,11 @@
                     const rank = idx + 4;
                     const avatarUrl = `${API_BASE_URL}/api/avatar/${u.id}`;
                     listHtml += `
-                        <div class="glass leaderboard-list-item">
+                        <div class="leaderboard-list-item glass">
                             <div class="rank-circle">${rank}</div>
-                            <img src="${avatarUrl}" class="leaderboard-avatar" loading="lazy" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(u.username||'User')}&background=B026FF&color=fff';">
-                            <div style="flex-grow:1; font-weight:bold;">${u.username || 'User'}</div>
-                            <div style="color:var(--gold-color); font-weight:800;"><i class="fa-solid fa-gem"></i> ${(u.points||0).toLocaleString()}</div>
+                            <img src="${avatarUrl}" class="leaderboard-avatar" loading="lazy" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(u.username||'User')}&background=00F2FE&color=fff';">
+                            <div style="flex-grow:1; font-weight:800;">${u.username || 'User'}</div>
+                            <div style="color:var(--color-cyan); font-weight:800;"><i class="fa-solid fa-gem"></i> ${(u.points||0).toLocaleString()}</div>
                         </div>
                     `;
                 });
@@ -346,15 +1043,26 @@
                 // Footer Logic
                 const footer = document.getElementById('leaderboardFooter');
                 const userRank = data.userRankPoints;
-                if(userRank && userRank <= 100) {
-                    footer.innerHTML = `Your Rank: #${userRank}`;
-                } else {
-                    footer.innerHTML = `Your Rank: 99+`;
-                }
+                
+                let myAvatar = currentUser.avatarUrl || `https://ui-avatars.com/api/?name=${currentUser.username}&background=00F2FE&color=fff`;
+                
+                footer.innerHTML = `
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <img src="${myAvatar}" style="width:40px; height:40px; border-radius:50%; border:2px solid var(--color-purple);">
+                        <div>
+                            <div style="font-weight:bold; font-size:0.8rem; color:#94A3B8;">My Rank</div>
+                            <div style="font-weight:900; font-size:1.1rem; color:white;">#${(userRank && userRank <= 100) ? userRank : '99+'}</div>
+                        </div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-weight:bold; font-size:0.8rem; color:#94A3B8;">Gems</div>
+                        <div style="font-weight:900; font-size:1.1rem; color:var(--color-cyan);"><i class="fa-solid fa-gem"></i> ${currentUser.points}</div>
+                    </div>
+                `;
                 footer.style.display = 'flex';
                 
             } catch(e) {
-                document.getElementById('leaderboardLoading').innerHTML = "Failed to load leaderboard.";
+                document.getElementById('leaderboardLoading').innerHTML = "<div style='color:var(--danger-color); padding: 20px;'>Failed to load leaderboard.</div>";
             }
         }
 
@@ -363,14 +1071,20 @@
             const wrapper = document.getElementById('gameCanvasWrapper');
             const nav = document.querySelector('.bottom-nav');
             
-            main.style.animation = "fadeOut 0.3s forwards";
-            nav.style.transform = "translateY(100%)";
+            main.classList.add('game-transition-out');
+            nav.classList.add('nav-transition-out');
             
             setTimeout(() => {
                 main.style.display = 'none';
+                main.classList.remove('game-transition-out');
+                
                 wrapper.style.display = 'block';
                 wrapper.style.animation = "fadeIn 0.3s forwards";
                 if(gameId === 'aviator') renderAviatorGame(document.getElementById('activeGameCanvas'));
+                if(gameId === 'multiox') renderMultiOxGame(document.getElementById('activeGameCanvas'));
+                if(gameId === 'dailycombo') renderDailyComboGame(document.getElementById('activeGameCanvas'));
+                if(gameId === 'prospin') renderProSpinGame(document.getElementById('activeGameCanvas'));
+                if(gameId === 'scratchcard') renderScratchCardGame(document.getElementById('activeGameCanvas'));
             }, 300);
         }
         function closeGame() {
@@ -379,6 +1093,11 @@
             const nav = document.querySelector('.bottom-nav');
             
             if(typeof aviatorActive !== 'undefined') aviatorActive = false;
+            if(typeof avGameState !== 'undefined') avGameState = 'IDLE';
+            if(typeof avReq !== 'undefined') cancelAnimationFrame(avReq);
+            if(typeof chatInterval !== 'undefined') clearInterval(chatInterval);
+            if(typeof avBetTimer !== 'undefined') clearInterval(avBetTimer);
+            if(typeof stopEngineSound === 'function') stopEngineSound();
             
             wrapper.style.animation = "fadeOut 0.3s forwards";
             setTimeout(() => {
@@ -387,18 +1106,26 @@
                 
                 main.style.display = 'block';
                 main.style.animation = "fadeIn 0.3s forwards";
-                nav.style.transform = "translateY(0)";
+                nav.classList.remove('nav-transition-out');
                 updateUI();
             }, 300);
         }
 
         // ==========================================
-        // AVIATOR 20 FEATURES OVERHAUL
+        // AVIATOR 20 FEATURES OVERHAUL & STRICT 5-SECOND LOOP
         // ==========================================
         let aviatorRound = null;
         let avReq;
+        let avGameState = 'IDLE'; // IDLE, BETTING, FLYING, CRASHED
+        let avBetTimer = null;
+        let avBetTimeLeft = 5;
+
         function renderAviatorGame(c) {
             c.innerHTML = `
+                <div class="game-sticky-header" style="position:sticky; top:0; z-index:100; display:flex; justify-content:space-between; align-items:center; background:rgba(15,23,42,0.9); backdrop-filter:blur(10px); padding:10px 15px; border-bottom:1px solid rgba(255,255,255,0.1);">
+                    <button class="btn btn-secondary" onclick="closeGame()" style="width:auto; padding:5px 15px; font-size:0.9rem;"><i class="fa-solid fa-arrow-left"></i> Back to Hub</button>
+                    <div style="font-weight:bold; color:var(--accent-color);"><i class="fa-solid fa-gem"></i> <span id="avHeaderBal">${currentUser.points}</span></div>
+                </div>
                 <div class="card glass" style="padding: 10px; position: relative;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                         <h2 style="color:var(--danger-color); margin:0;"><i class="fa-solid fa-plane-up"></i> Aviator</h2>
@@ -413,7 +1140,7 @@
                     <div class="aviator-history-bar" id="avHistory"></div>
 
                     <!-- 3. Altitude/Atmosphere Canvas Shifts & 4. Dynamic Zoom -->
-                    <div class="aviator-wrapper" id="avWrapper">
+                    <div class="aviator-wrapper" id="avWrapper" style="position:relative; width:100%; height:250px; background:linear-gradient(to bottom, #0F172A, #1E293B); overflow:hidden; border-radius:15px; margin-bottom:10px;">
                         <!-- 17. Highest Win Banner -->
                         <div class="highest-win-banner" id="avBanner">🔥 Mesechebo won 15,000 Gems at 15.2x!</div>
                         
@@ -421,9 +1148,9 @@
                         <div class="aviator-chat-overlay" id="avChat"></div>
                         
                         <div id="avMult" style="position:absolute; top:40%; left:50%; transform:translate(-50%,-50%); font-size:4rem; font-weight:900; font-family:monospace; color:white; z-index:5;">1.00x</div>
-                        <div id="avCrashMsg" style="position:absolute; top:20%; left:50%; transform:translateX(-50%); font-size:2rem; font-weight:900; color:var(--danger-color); opacity:0; z-index:5;">FLEW AWAY</div>
+                        <div id="avCrashMsg" style="position:absolute; top:20%; left:50%; transform:translateX(-50%); font-size:1.5rem; font-weight:900; color:white; opacity:0; z-index:5; white-space:nowrap;">WAITING FOR NEXT ROUND</div>
                         
-                        <canvas id="avCanvas"></canvas>
+                        <canvas id="avCanvas" style="position:absolute; bottom:0; left:0; width:100%; height:100%;"></canvas>
                         
                         <!-- 19. Sparks element -->
                         <div id="avSpark" class="spark"></div>
@@ -491,10 +1218,11 @@
             `;
             initAviatorCanvas();
             loadHistory();
+            avGameState = 'IDLE';
+            startBettingPhase(); // Immediately start loop when opened
             
             // 15. Network Disconnect Auto-loss money
             window.addEventListener('offline', avForceLoss);
-
             // 10. Keyboard Shortcuts (Spacebar to bet/cashout Panel 1)
             window.addEventListener('keydown', handleSpacebar);
         }
@@ -521,7 +1249,7 @@
             else input.value = cur + val;
         }
 
-        let avCtx, avX, avY;
+        let avCtx, avX, avY, bgOffset = 0;
         function initAviatorCanvas() {
             const canvas = document.getElementById('avCanvas');
             canvas.width = canvas.parentElement.clientWidth;
@@ -530,43 +1258,72 @@
             drawPlane(0, canvas.height, 1.0);
         }
 
-        // 16. VIP Golden Plane Skin & Explosion logic
+        // 16. VIP Golden Plane Skin & Explosion logic with Bezier Curve + Parallax
         function drawPlane(x, y, scale = 1.0, exploded = false) {
             avCtx.clearRect(0,0, avCtx.canvas.width, avCtx.canvas.height);
             
-            // 4. Dynamic Camera Zoom (Scale grid curve)
+            // Parallax Grid Background (Diagonally Panning)
+            if (avGameState === 'FLYING' || avGameState === 'CRASHED') {
+                bgOffset += 2;
+                if(bgOffset > 40) bgOffset = 0;
+                avCtx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+                avCtx.lineWidth = 1;
+                avCtx.beginPath();
+                for(let i = -bgOffset; i < avCtx.canvas.width; i+=40) { avCtx.moveTo(i, 0); avCtx.lineTo(i, avCtx.canvas.height); }
+                for(let j = -bgOffset; j < avCtx.canvas.height; j+=40) { avCtx.moveTo(0, j); avCtx.lineTo(avCtx.canvas.width, j); }
+                avCtx.stroke();
+            }
+
             avCtx.save();
             avCtx.translate(0, avCtx.canvas.height * (1-scale)); 
             avCtx.scale(1, scale);
 
-            avCtx.beginPath();
-            avCtx.moveTo(0, avCtx.canvas.height);
-            avCtx.quadraticCurveTo(x/2, avCtx.canvas.height, x, y);
-            avCtx.lineWidth = 4;
-            avCtx.strokeStyle = '#EF4444';
-            avCtx.stroke();
+            if (avGameState === 'FLYING' || avGameState === 'CRASHED') {
+                // Gradient Fill Under Bezier Curve
+                avCtx.beginPath();
+                avCtx.moveTo(0, avCtx.canvas.height);
+                avCtx.quadraticCurveTo(x/2, avCtx.canvas.height, x, y);
+                avCtx.lineTo(x, avCtx.canvas.height);
+                avCtx.lineTo(0, avCtx.canvas.height);
+                const grad = avCtx.createLinearGradient(0, y, 0, avCtx.canvas.height);
+                grad.addColorStop(0, 'rgba(239,68,68,0.5)');
+                grad.addColorStop(1, 'rgba(239,68,68,0.0)');
+                avCtx.fillStyle = grad;
+                avCtx.fill();
+
+                // Draw Bezier Line
+                avCtx.beginPath();
+                avCtx.moveTo(0, avCtx.canvas.height);
+                avCtx.quadraticCurveTo(x/2, avCtx.canvas.height, x, y);
+                avCtx.lineWidth = 4;
+                avCtx.strokeStyle = '#EF4444';
+                avCtx.stroke();
+            }
+
             avCtx.restore();
 
-            if (exploded) {
-                // 12. Explosion/Smoke Trail
-                avCtx.fillStyle = '#333';
-                avCtx.beginPath();
-                avCtx.arc(x, y, 20, 0, Math.PI*2);
-                avCtx.fill();
-                avCtx.fillStyle = '#ff4444';
-                avCtx.beginPath();
-                avCtx.arc(x, y, 10, 0, Math.PI*2);
-                avCtx.fill();
-            } else {
-                const isGolden = currentUser.points > 50000; // VIP Logic
-                avCtx.fillStyle = isGolden ? '#FFD700' : 'white';
-                avCtx.shadowColor = isGolden ? '#FFD700' : 'transparent';
-                avCtx.shadowBlur = isGolden ? 15 : 0;
-                
-                avCtx.beginPath();
-                avCtx.arc(x, y, 6, 0, Math.PI*2);
-                avCtx.fill();
-                avCtx.shadowBlur = 0;
+            if (avGameState !== 'IDLE' && avGameState !== 'BETTING') {
+                if (exploded) {
+                    avCtx.fillStyle = '#333';
+                    avCtx.beginPath();
+                    avCtx.arc(x, y, 20, 0, Math.PI*2);
+                    avCtx.fill();
+                    avCtx.fillStyle = '#ff4444';
+                    avCtx.beginPath();
+                    avCtx.arc(x, y, 10, 0, Math.PI*2);
+                    avCtx.fill();
+                } else {
+                    const isGolden = currentUser.points > 50000;
+                    avCtx.fillStyle = isGolden ? '#FFD700' : 'white';
+                    avCtx.shadowColor = isGolden ? '#FFD700' : 'transparent';
+                    avCtx.shadowBlur = isGolden ? 15 : 0;
+                    
+                    // Draw Plane Body (Red SVG style simulated with arc for simplicity here)
+                    avCtx.beginPath();
+                    avCtx.arc(x, y, 6, 0, Math.PI*2);
+                    avCtx.fill();
+                    avCtx.shadowBlur = 0;
+                }
             }
         }
 
@@ -625,59 +1382,62 @@
             document.getElementById('avHistory').innerHTML = histHtml;
         }
 
-        async function avAction(panel) {
+        function avAction(panel) {
             const btn = document.getElementById(`avBtn${panel}`);
             
+            if (avGameState === 'FLYING' || avGameState === 'CRASHED') {
+                if (btn.classList.contains('waiting') && avGameState === 'FLYING') {
+                    // Cashout Request
+                    const mult = aviatorMultiplier;
+                    const bet = parseInt(btn.dataset.queuedBet) || 0;
+                    
+                    fetch(`${API_BASE_URL}/api/aviator/cashout`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ userId, roundId: aviatorRound.roundId, multiplier: mult, betAmount: bet })
+                    }).then(r => r.json()).then(data => {
+                        if(data.success) {
+                            btn.className = "bet-btn idle";
+                            btn.innerText = `WON ${data.winnings}`;
+                            document.getElementById('audioCashout').play();
+                            currentUser.points += data.winnings; // Backend already added, sync locally
+                            updateUI();
+                            if(document.getElementById('avHeaderBal')) document.getElementById('avHeaderBal').innerText = currentUser.points;
+                            triggerSpark(avX, avY);
+                            if(mult > 5.0) confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#FFD700', '#FFA500'] });
+                        }
+                    });
+                } else if(avGameState === 'FLYING') {
+                    showToast("Wait for next round.", "info");
+                }
+                return;
+            }
+
             if(btn.classList.contains('idle')) {
-                // Place Bet
+                // Place Bet during BETTING phase
                 const bet = parseInt(document.getElementById(`avBet${panel}`).value);
                 if(currentUser.points < bet) return showToast("Not enough Gems", "error");
                 
+                currentUser.points -= bet; // Local deduction for instant UI feedback
+                updateUI();
+                if(document.getElementById('avHeaderBal')) document.getElementById('avHeaderBal').innerText = currentUser.points;
+                
                 btn.className = "bet-btn active";
-                btn.innerText = "WAITING...";
+                btn.innerText = "CANCEL";
+                btn.dataset.queuedBet = bet;
                 
-                if(!aviatorActive) {
-                    // Only fetch round if not already flying
-                    const res = await fetch(`${API_BASE_URL}/api/aviator/start`, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ userId, betAmount: bet })
-                    });
-                    aviatorRound = await res.json();
-                    document.getElementById('pfHash').innerText = `Server Seed Hash:\n${aviatorRound.serverHash}`;
-                    updateHistoryBar(aviatorRound.history);
-                    startFlight();
-                } else {
-                    // Already flying, wait for next round (Simplified for demo)
-                    showToast("Flight in progress, bet queued for next round.", "info");
-                }
+                if (avGameState === 'IDLE') startBettingPhase();
             } 
-            else if (btn.classList.contains('waiting')) {
-                // Cashout
-                const mult = aviatorMultiplier;
-                const bet = parseInt(document.getElementById(`avBet${panel}`).value);
+            else if (btn.classList.contains('active') && avGameState === 'BETTING') {
+                // Cancel Bet
+                const queued = parseInt(btn.dataset.queuedBet) || 0;
+                currentUser.points += queued;
+                updateUI();
+                if(document.getElementById('avHeaderBal')) document.getElementById('avHeaderBal').innerText = currentUser.points;
                 
-                const res = await fetch(`${API_BASE_URL}/api/aviator/cashout`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ userId, roundId: aviatorRound.roundId, multiplier: mult, betAmount: bet })
-                });
-                const data = await res.json();
-                if(data.success) {
-                    btn.className = "bet-btn idle";
-                    btn.innerText = `WON ${data.winnings}`;
-                    document.getElementById('audioCashout').play();
-                    currentUser.points += (data.winnings - bet);
-                    updateUI();
-                    
-                    // 19. Live Cashout Sparks
-                    triggerSpark(avX, avY);
-
-                    // 5. Rain of Coins Animation (>5x)
-                    if(mult > 5.0) {
-                        confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#FFD700', '#FFA500'] });
-                    }
-                }
+                btn.className = "bet-btn idle";
+                btn.innerText = "BET";
+                btn.dataset.queuedBet = "0";
             }
         }
 
@@ -696,7 +1456,7 @@
             const chatBox = document.getElementById('avChat');
             const msgs = ["Wow!", "Cash out now!", "Greedy!", "Boom!", "Nice win", "RIP", "Fly high!"];
             chatInterval = setInterval(() => {
-                if(!aviatorActive) return;
+                if(avGameState !== 'FLYING') return;
                 const div = document.createElement('div');
                 div.className = 'chat-msg';
                 div.innerHTML = `<span class="user">User${Math.floor(Math.random()*999)}:</span> ${msgs[Math.floor(Math.random()*msgs.length)]}`;
@@ -705,20 +1465,72 @@
             }, 1500);
         }
 
-        function startFlight() {
-            aviatorActive = true;
+        async function startBettingPhase() {
+            if (avGameState === 'BETTING') return;
+            avGameState = 'BETTING';
+            avBetTimeLeft = 5.0;
+            const msgEl = document.getElementById('avCrashMsg');
+            msgEl.style.opacity = '1';
+            msgEl.style.color = "white";
+            
+            drawPlane(0, document.getElementById('avCanvas').height, 1.0);
+
+            avBetTimer = setInterval(() => {
+                avBetTimeLeft -= 0.1;
+                if (avBetTimeLeft <= 0) {
+                    clearInterval(avBetTimer);
+                    startFlight();
+                    return;
+                }
+                msgEl.innerText = `NEXT ROUND IN ${avBetTimeLeft.toFixed(1)}s`;
+                
+                // Draw shrinking loading bar on canvas
+                const canvas = document.getElementById('avCanvas');
+                avCtx.clearRect(0,0, canvas.width, canvas.height);
+                avCtx.fillStyle = 'rgba(255,255,255,0.2)';
+                avCtx.fillRect(20, canvas.height/2, canvas.width - 40, 10);
+                avCtx.fillStyle = '#EF4444';
+                avCtx.fillRect(20, canvas.height/2, (canvas.width - 40) * (avBetTimeLeft / 5), 10);
+            }, 100);
+        }
+
+        async function startFlight() {
+            avGameState = 'FLYING';
             aviatorMultiplier = 1.00;
             
-            // Set buttons to waiting
+            let totalBet = 0;
             [1,2].forEach(p => {
                 const btn = document.getElementById(`avBtn${p}`);
                 if(btn.classList.contains('active')) {
+                    totalBet += parseInt(btn.dataset.queuedBet) || 0;
                     btn.className = "bet-btn waiting";
                     btn.innerText = "CASHOUT";
                 }
             });
+
+            // If local bet was deducted, restore it momentarily because backend subtracts it in /start
+            if (totalBet > 0) currentUser.points += totalBet;
+
+            const res = await fetch(`${API_BASE_URL}/api/aviator/start`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ userId, betAmount: totalBet })
+            });
+            aviatorRound = await res.json();
+            
+            if (totalBet > 0) {
+                // Ensure UI is synced with backend deduction
+                const uRes = await fetch(`${API_BASE_URL}/api/user/${userId}`);
+                currentUser = await uRes.json();
+                updateUI();
+                if(document.getElementById('avHeaderBal')) document.getElementById('avHeaderBal').innerText = currentUser.points;
+            }
+
+            document.getElementById('pfHash').innerText = `Server Seed Hash:\n${aviatorRound.serverHash}`;
+            updateHistoryBar(aviatorRound.history);
             
             document.getElementById('avCrashMsg').style.opacity = '0';
+            document.getElementById('avMult').style.color = "white";
             const wrapper = document.getElementById('avWrapper');
             wrapper.className = "aviator-wrapper"; // reset bg
             
@@ -731,13 +1543,14 @@
             let t = 0;
 
             function animate() {
-                if(!aviatorActive) return;
+                if(avGameState !== 'FLYING') return;
                 t += 0.02;
                 aviatorMultiplier = 1.00 + Math.pow(t, 2) * 0.1;
                 
                 document.getElementById('avMult').innerText = aviatorMultiplier.toFixed(2) + "x";
                 
                 // 3. Atmosphere Shifts
+                const wrapper = document.getElementById('avWrapper');
                 if(aviatorMultiplier > 2 && aviatorMultiplier <= 5) wrapper.classList.add('clouds');
                 if(aviatorMultiplier > 5) wrapper.classList.add('space');
                 
@@ -777,7 +1590,7 @@
         }
 
         function avCrash(crashedAt) {
-            aviatorActive = false;
+            avGameState = 'CRASHED';
             cancelAnimationFrame(avReq);
             stopEngineSound();
             clearInterval(chatInterval);
@@ -787,6 +1600,8 @@
             wrapper.classList.remove('turbulence');
             
             document.getElementById('avCrashMsg').style.opacity = '1';
+            document.getElementById('avCrashMsg').style.color = "var(--danger-color)";
+            document.getElementById('avCrashMsg').innerText = "FLEW AWAY";
             document.getElementById('avMult').style.color = "var(--danger-color)";
             document.getElementById('avMult').innerText = (crashedAt).toFixed(2) + "x";
             
@@ -803,25 +1618,547 @@
                 // 11. Auto-Play check
                 const isAuto = document.getElementById(`avAutoPlay${p}`).checked;
                 if(isAuto) {
-                    setTimeout(() => avAction(p), 4000);
+                    // Queue for next round immediately
+                    setTimeout(() => { if (btn.classList.contains('idle')) avAction(p); }, 2000);
                 }
             });
 
-            // Reset visual state after 3s
+            // Reset visual state after 3s and restart betting
             setTimeout(() => {
                 document.getElementById('avMult').style.color = "white";
                 document.getElementById('avMult').innerText = "1.00x";
-                document.getElementById('avCrashMsg').style.opacity = '0';
                 wrapper.className = "aviator-wrapper";
                 drawPlane(0, document.getElementById('avCanvas').height, 1.0);
+                startBettingPhase();
             }, 3000);
         }
 
-        // Cleanup
-        window.addEventListener('beforeunload', () => {
-            window.removeEventListener('keydown', handleSpacebar);
-            window.removeEventListener('offline', avForceLoss);
-        });
+        // ==========================================
+        // MULTI OX GAME (Tic Tac Toe vs Bot)
+        // ==========================================
+        function renderMultiOxGame(c) {
+            c.innerHTML = `
+                <div class="game-sticky-header" style="position:sticky; top:0; z-index:100; display:flex; justify-content:space-between; align-items:center; background:rgba(15,23,42,0.9); backdrop-filter:blur(10px); padding:10px 15px; border-bottom:1px solid rgba(255,255,255,0.1);">
+                    <button class="btn btn-secondary" onclick="closeGame()" style="width:auto; padding:5px 15px; font-size:0.9rem;"><i class="fa-solid fa-arrow-left"></i> Back to Hub</button>
+                    <div style="font-weight:bold; color:var(--accent-color);"><i class="fa-solid fa-gem"></i> <span id="gameHeaderBal">${currentUser.points}</span></div>
+                </div>
+                <div class="card glass" style="padding:20px; text-align:center;">
+                    <h2 style="color:#3B82F6;"><i class="fa-solid fa-xmarks-lines"></i> Multi OX (Minimax)</h2>
+                    <p style="color:#94a3b8; font-size:0.9rem;">Wager Gems and try to beat the unbeatable Bot!</p>
+                    
+                    <div style="margin: 15px auto; display:flex; gap:10px; justify-content:center; align-items:center;">
+                        <select id="oxWager" class="input-field" style="width:100px; padding:10px; background:rgba(0,0,0,0.5); color:white; border:1px solid var(--color-cyan); border-radius:8px;">
+                            <option value="15">15 Gems</option>
+                            <option value="25">25 Gems</option>
+                            <option value="50">50 Gems</option>
+                            <option value="75">75 Gems</option>
+                            <option value="90">90 Gems</option>
+                            <option value="100">100 Gems</option>
+                            <option value="200">200 Gems</option>
+                        </select>
+                        <button class="btn btn-primary" id="oxBtnBot" onclick="startOxBot()">Play Bot</button>
+                        <button class="btn btn-secondary" id="oxBtnOnline" onclick="showToast('Searching for players... (Simulated Timeout)', 'info')">Play Online</button>
+                    </div>
+
+                    <div style="margin:20px auto; display:grid; grid-template-columns:repeat(3, 80px); gap:10px; justify-content:center; opacity:0.5; pointer-events:none;" id="oxBoardUI">
+                        ${[0,1,2,3,4,5,6,7,8].map(i => `<div class="ox-cell" id="ox-${i}" onclick="playOx(${i})" style="width:80px; height:80px; background:rgba(255,255,255,0.1); border-radius:15px; display:flex; justify-content:center; align-items:center; font-size:2.5rem; cursor:pointer;"></div>`).join('')}
+                    </div>
+                </div>
+            `;
+            window.oxBoard = Array(9).fill(null);
+            window.oxActive = false;
+            window.oxWager = 0;
+        }
+
+        function startOxBot() {
+            const wager = parseInt(document.getElementById('oxWager').value);
+            if ((currentUser.points || 0) < wager) return showToast("Not enough Gems!", "error");
+            
+            window.oxWager = wager;
+            window.oxBoard = Array(9).fill(null);
+            window.oxActive = true;
+            
+            // Deduct wager locally for instant UI update
+            currentUser.points -= wager;
+            updateUI();
+            if(document.getElementById('gameHeaderBal')) document.getElementById('gameHeaderBal').innerText = currentUser.points;
+            
+            document.getElementById('oxBoardUI').style.opacity = '1';
+            document.getElementById('oxBoardUI').style.pointerEvents = 'auto';
+            document.getElementById('oxBtnBot').disabled = true;
+            document.getElementById('oxWager').disabled = true;
+            
+            for(let i=0; i<9; i++) document.getElementById(`ox-${i}`).innerHTML = '';
+            showToast(`Wagered ${wager} Gems. Your turn! (O)`, "info");
+        }
+
+        function playOx(idx) {
+            if(!window.oxActive || window.oxBoard[idx]) return;
+            window.oxBoard[idx] = 'O';
+            document.getElementById(`ox-${idx}`).innerHTML = '<i class="fa-regular fa-circle" style="color:var(--color-cyan);"></i>';
+            
+            if(checkOxWinState(window.oxBoard, 'O')) return endOxGame('win');
+            if(!window.oxBoard.includes(null)) return endOxGame('draw');
+
+            // Rigged Bot Move based on oxWinRate
+            let move = null;
+            let winRate = appConfig.oxWinRate ? parseFloat(appConfig.oxWinRate) : 0; // Default 0 chance to win
+            
+            let emptySlots = [];
+            for(let i=0; i<9; i++) if(window.oxBoard[i] === null) emptySlots.push(i);
+
+            if (emptySlots.length > 0) {
+                if (Math.random() < winRate) {
+                    // Bot makes a random mistake
+                    move = emptySlots[Math.floor(Math.random() * emptySlots.length)];
+                } else {
+                    // Pure Minimax Bot Move
+                    let bestScore = -Infinity;
+                    for(let i = 0; i < 9; i++) {
+                        if(window.oxBoard[i] === null) {
+                            window.oxBoard[i] = 'X';
+                            let score = minimax(window.oxBoard, 0, false);
+                            window.oxBoard[i] = null;
+                            if(score > bestScore) {
+                                bestScore = score;
+                                move = i;
+                            }
+                        }
+                    }
+                }
+            }
+
+            
+            window.oxBoard[move] = 'X';
+            setTimeout(() => {
+                document.getElementById(`ox-${move}`).innerHTML = '<i class="fa-solid fa-xmark" style="color:var(--danger-color);"></i>';
+                if(checkOxWinState(window.oxBoard, 'X')) return endOxGame('loss');
+                if(!window.oxBoard.includes(null)) return endOxGame('draw');
+            }, 300);
+        }
+
+        function minimax(board, depth, isMaximizing) {
+            if (checkOxWinState(board, 'X')) return 10 - depth;
+            if (checkOxWinState(board, 'O')) return depth - 10;
+            if (!board.includes(null)) return 0;
+
+            if (isMaximizing) {
+                let bestScore = -Infinity;
+                for (let i = 0; i < 9; i++) {
+                    if (board[i] === null) {
+                        board[i] = 'X';
+                        let score = minimax(board, depth + 1, false);
+                        board[i] = null;
+                        bestScore = Math.max(score, bestScore);
+                    }
+                }
+                return bestScore;
+            } else {
+                let bestScore = Infinity;
+                for (let i = 0; i < 9; i++) {
+                    if (board[i] === null) {
+                        board[i] = 'O';
+                        let score = minimax(board, depth + 1, true);
+                        board[i] = null;
+                        bestScore = Math.min(score, bestScore);
+                    }
+                }
+                return bestScore;
+            }
+        }
+
+        function checkOxWinState(board, player) {
+            const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+            return wins.some(combo => combo.every(i => board[i] === player));
+        }
+
+        async function endOxGame(result) {
+            window.oxActive = false;
+            document.getElementById('oxBoardUI').style.pointerEvents = 'none';
+            document.getElementById('oxBtnBot').disabled = false;
+            document.getElementById('oxWager').disabled = false;
+            
+            if (result === 'win') showToast("You beat Minimax?! (Impossible)", "success");
+            else if (result === 'loss') showToast(`You lost! -${window.oxWager} Gems`, "error");
+            else showToast(`Draw! Wager returned.`, "info");
+            
+            // Sync with backend for RTP tracking
+            const res = await fetch(`${API_BASE_URL}/api/ox/result`, {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ userId, bet: window.oxWager, result })
+            });
+            const data = await res.json();
+            if(data.success) {
+                currentUser.points = data.newBal;
+                updateUI();
+                if(document.getElementById('gameHeaderBal')) document.getElementById('gameHeaderBal').innerText = currentUser.points;
+            }
+        }
+
+        // ==========================================
+        // DAILY COMBO GAME
+        // ==========================================
+        const comboSVGs = {
+            c1: '<svg viewBox="0 0 24 24" fill="var(--color-cyan)"><path d="M14 2c0-1.1-.9-2-2-2S10 .9 10 2c0 1.1.9 2 2 2s2-.9 2-2zm2 18H8v-2h8v2zm-3-15H9v1.2C7.3 7 6 8.8 6 11v1h2v-1c0-1.7 1.3-3 3-3h1.8c.1 0 .2.1.2.2v5.6c0 1.2 1 2.2 2.2 2.2h1.6c1.2 0 2.2-1 2.2-2.2v-2.6c1.1-.3 2-1.3 2-2.4V8c0-1.7-1.3-3-3-3h-1v-.8c0-.7-.5-1.2-1.2-1.2z"/></svg>',
+            c2: '<svg viewBox="0 0 24 24" fill="var(--gold-color)"><path d="M17.5 11.5c-1.5-2-2.5-4.5-2.5-7 0-.6-.5-1-1-1s-1 .4-1 1c0 2-1 4-2 5.5s-2.5 3-2.5 5c0 3.3 2.7 6 6 6s6-2.7 6-6c0-2-1.5-3.5-3-4.5zM12 20c-2.2 0-4-1.8-4-4 0-1.3.8-2.6 1.8-3.5 1.5-1.2 2.2-3 2.2-4.5.5 1.5 2 2.5 3 3.5 1.2 1 1.5 2.2 1.5 3.5 0 2.2-1.8 4-4.5 5z"/></svg>',
+            c3: '<svg viewBox="0 0 24 24" fill="var(--color-purple)"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c2.8 0 5.3-1.3 7-3.3-4.4-.3-7.7-4-7.7-8.7 0-3.3 1.8-6.1 4.5-7.6-.9-.3-1.9-.4-2.8-.4z"/></svg>',
+            c4: '<svg viewBox="0 0 24 24" fill="var(--color-magenta)"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>',
+            c5: '<svg viewBox="0 0 24 24" fill="var(--success-color)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm0 10c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4z"/></svg>',
+            c6: '<svg viewBox="0 0 24 24" fill="white"><path d="M19 10h-5V5h-4v5H5v4h5v8h4v-8h5v-4z"/></svg>',
+            c7: '<svg viewBox="0 0 24 24" fill="var(--color-cyan)"><path d="M20 9c0 1.1-.9 2-2 2h-3v3c0 1.1-.9 2-2 2h-2v3c0 1.1-.9 2-2 2h-1c-.6 0-1-.4-1-1v-4c0-.6.4-1 1-1h1v-3c0-.6.4-1 1-1h2v-3c0-.6.4-1 1-1h3V6c0-1.1.9-2 2-2s2 .9 2 2v3zM8 7H6v2H4v2h2v2h2v-2h2V9H8V7z"/></svg>',
+            c8: '<svg viewBox="0 0 24 24" fill="var(--gold-color)"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm0 18c-4.4 0-8-3.6-8-8s3.6-8 8-8 8 3.6 8 8-3.6 8-8 8zm-1-13h2v10h-2V7z"/></svg>',
+            c9: '<svg viewBox="0 0 24 24" fill="var(--color-magenta)"><path d="M12 2c-5.52 0-10 4.48-10 10s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm2-13h-4v2h4V7zm0 4h-4v2h4v-2zm-6 4h8v2H8v-2z"/></svg>'
+        };
+
+        function renderDailyComboGame(c) {
+            let shuffled = Object.keys(comboSVGs).sort(() => Math.random() - 0.5);
+            
+            c.innerHTML = `
+                <div class="game-sticky-header" style="position:sticky; top:0; z-index:100; display:flex; justify-content:space-between; align-items:center; background:rgba(15,23,42,0.9); backdrop-filter:blur(10px); padding:10px 15px; border-bottom:1px solid rgba(255,255,255,0.1);">
+                    <button class="btn btn-secondary" onclick="closeGame()" style="width:auto; padding:5px 15px; font-size:0.9rem;"><i class="fa-solid fa-arrow-left"></i> Back to Hub</button>
+                    <div style="font-weight:bold; color:var(--accent-color);"><i class="fa-solid fa-gem"></i> <span id="gameHeaderBal2">${currentUser.points}</span></div>
+                </div>
+                <div class="card glass" style="padding:20px; text-align:center;">
+                    <h2 style="color:var(--gold-color);"><i class="fa-solid fa-puzzle-piece"></i> Ethiopian Daily Combo</h2>
+                    <p style="color:#94a3b8; font-size:0.9rem;">Drag the icons into the correct sequence. 3 tries/day!</p>
+                    <p id="comboTriesTxt" style="color:var(--danger-color); font-weight:bold; margin-top:5px;"></p>
+                    
+                    <div id="comboBank" style="margin:20px auto; display:flex; flex-wrap:wrap; gap:10px; justify-content:center; min-height:60px; background:rgba(255,255,255,0.05); padding:10px; border-radius:15px;" ondrop="comboDrop(event, 'bank')" ondragover="comboAllowDrop(event)">
+                        ${shuffled.map(k => `<div id="${k}" class="combo-drag" draggable="true" ondragstart="comboDrag(event)" style="width:50px; height:50px; cursor:grab;">${comboSVGs[k]}</div>`).join('')}
+                    </div>
+
+                    <div id="comboSlots" style="margin:20px auto; display:grid; grid-template-columns:repeat(3, 80px); gap:10px; justify-content:center;">
+                        ${[0,1,2,3,4,5,6,7,8].map(i => `<div class="combo-slot" id="slot-${i}" ondrop="comboDrop(event, 'slot-${i}')" ondragover="comboAllowDrop(event)" style="width:80px; height:80px; background:rgba(255,255,255,0.1); border:1px dashed rgba(255,255,255,0.3); border-radius:15px; display:flex; justify-content:center; align-items:center;"></div>`).join('')}
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="checkComboPattern()">Check Pattern</button>
+                </div>
+            `;
+            
+            if (currentUser.comboTries !== undefined) {
+                document.getElementById('comboTriesTxt').innerText = `Tries left today: ${currentUser.comboTries}`;
+            } else {
+                document.getElementById('comboTriesTxt').innerText = `Tries left today: 3`;
+            }
+        }
+
+        function comboAllowDrop(ev) {
+            ev.preventDefault();
+        }
+
+        function comboDrag(ev) {
+            ev.dataTransfer.setData("text", ev.target.id);
+        }
+
+        function comboDrop(ev, targetId) {
+            ev.preventDefault();
+            var data = ev.dataTransfer.getData("text");
+            var el = document.getElementById(data);
+            if (!el) return;
+            
+            if (targetId === 'bank') {
+                document.getElementById('comboBank').appendChild(el);
+            } else {
+                var slot = document.getElementById(targetId);
+                // Ensure dropping happens strictly on the slot container, not an already placed SVG inside
+                if(ev.target.classList.contains('combo-slot')) {
+                    if (slot.children.length === 0) {
+                        slot.appendChild(el);
+                    } else {
+                        document.getElementById('comboBank').appendChild(slot.children[0]);
+                        slot.appendChild(el);
+                    }
+                } else if (ev.target.closest('.combo-slot')) {
+                    // Swapping logic if dropped onto an existing child
+                    const parentSlot = ev.target.closest('.combo-slot');
+                    document.getElementById('comboBank').appendChild(parentSlot.children[0]);
+                    parentSlot.appendChild(el);
+                }
+            }
+        }
+
+        async function checkComboPattern() {
+            let pattern = [];
+            for(let i=0; i<9; i++) {
+                const slot = document.getElementById(`slot-${i}`);
+                if(slot.children.length > 0) {
+                    pattern.push(slot.children[0].id);
+                }
+            }
+            if(pattern.length < 9) return showToast("Please fill all slots!", "error");
+            
+            const res = await fetch(`${API_BASE_URL}/api/combo`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ userId, combination: pattern })
+            });
+            const data = await res.json();
+            
+            if(!data.success) {
+                showToast(data.msg, "error");
+            } else if (data.isCorrect) {
+                showToast(`COMBO CRACKED! You won ${data.reward} Gems!`, "success");
+                currentUser.points += data.reward;
+                currentUser.comboTries = 0;
+                updateUI();
+                if(document.getElementById('gameHeaderBal2')) document.getElementById('gameHeaderBal2').innerText = currentUser.points;
+                document.getElementById('comboTriesTxt').innerText = `Tries left today: 0`;
+                confetti({ particleCount: 300, spread: 150 });
+            } else {
+                showToast("Incorrect pattern! You lost 1 try.", "error");
+                currentUser.comboTries = data.triesLeft;
+                document.getElementById('comboTriesTxt').innerText = `Tries left today: ${data.triesLeft}`;
+                // Flash red
+                for(let i=0; i<9; i++) {
+                    const slot = document.getElementById(`slot-${i}`);
+                    slot.style.border = "2px solid var(--danger-color)";
+                    setTimeout(() => slot.style.border = "1px dashed rgba(255,255,255,0.3)", 1000);
+                }
+            }
+        }
+
+        // ==========================================
+        // PRO SPIN WHEEL
+        // ==========================================
+        function renderProSpinGame(c) {
+            c.innerHTML = `
+                <div class="game-sticky-header" style="position:sticky; top:0; z-index:100; display:flex; justify-content:space-between; align-items:center; background:rgba(15,23,42,0.9); backdrop-filter:blur(10px); padding:10px 15px; border-bottom:1px solid rgba(255,255,255,0.1);">
+                    <button class="btn btn-secondary" onclick="closeGame()" style="width:auto; padding:5px 15px; font-size:0.9rem;"><i class="fa-solid fa-arrow-left"></i> Back to Hub</button>
+                    <div style="font-weight:bold; color:var(--accent-color);"><i class="fa-solid fa-gem"></i> <span id="gameHeaderBal3">${currentUser.points}</span></div>
+                </div>
+                <div class="card glass" style="padding:20px; text-align:center;">
+                    <h2 style="color:var(--accent-color);"><i class="fa-solid fa-dharmachakra"></i> Pro Spin</h2>
+                    <p style="color:#94a3b8; font-size:0.9rem;">Spin the wheel. 10 Gems per spin.</p>
+                    <div style="position:relative; width:250px; height:250px; margin:30px auto;">
+                        <div style="position:absolute; top:-20px; left:50%; transform:translateX(-50%); z-index:10; font-size:3rem; color:white; filter:drop-shadow(0 2px 5px rgba(0,0,0,0.5));"><i class="fa-solid fa-caret-down"></i></div>
+                        <div id="spinWheel" style="position:relative; width:250px; height:250px; border-radius:50%; background:conic-gradient(#FF007A 0 72deg, #9D00FF 72deg 144deg, #00E1FF 144deg 216deg, #00FF7A 216deg 288deg, #FFAA00 288deg 360deg); transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99); display:flex; justify-content:center; align-items:center; box-shadow: 0 0 20px rgba(0,0,0,0.5), inset 0 0 15px rgba(0,0,0,0.5);">
+                            <!-- Slice Labels -->
+                            <div style="position:absolute; width:100%; height:100%; top:0; left:0; pointer-events:none;">
+                                <div style="position:absolute; top:15%; left:50%; transform:translate(-50%, 0) rotate(36deg); color:white; font-weight:bold; font-size:1.1rem; transform-origin: 50% 87.5px; text-shadow:1px 1px 2px black;">1000</div>
+                                <div style="position:absolute; top:15%; left:50%; transform:translate(-50%, 0) rotate(108deg); color:white; font-weight:bold; font-size:1.1rem; transform-origin: 50% 87.5px; text-shadow:1px 1px 2px black;">500</div>
+                                <div style="position:absolute; top:15%; left:50%; transform:translate(-50%, 0) rotate(180deg); color:white; font-weight:bold; font-size:1.1rem; transform-origin: 50% 87.5px; text-shadow:1px 1px 2px black;">200</div>
+                                <div style="position:absolute; top:15%; left:50%; transform:translate(-50%, 0) rotate(252deg); color:white; font-weight:bold; font-size:1.1rem; transform-origin: 50% 87.5px; text-shadow:1px 1px 2px black;">50</div>
+                                <div style="position:absolute; top:15%; left:50%; transform:translate(-50%, 0) rotate(324deg); color:white; font-weight:bold; font-size:1.1rem; transform-origin: 50% 87.5px; text-shadow:1px 1px 2px black;">10</div>
+                            </div>
+                            <div style="width:60px; height:60px; border-radius:50%; background:#1E293B; z-index:2; display:flex; justify-content:center; align-items:center; border:3px solid rgba(255,255,255,0.2);"><i class="fa-solid fa-gem" style="color:var(--color-cyan); font-size:1.5rem;"></i></div>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="spinWheelAction()">Spin (10 Gems)</button>
+                </div>
+            `;
+            window.spinAngle = 0;
+            window.isSpinning = false;
+        }
+
+        async function spinWheelAction() {
+            if(window.isSpinning) return;
+            if((currentUser.points || 0) < 10) return showToast("Not enough Gems", "error");
+            
+            window.isSpinning = true;
+            
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/spin`, {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({userId})
+                });
+                const data = await res.json();
+                
+                if(!data.success) {
+                    window.isSpinning = false;
+                    return showToast(data.error, "error");
+                }
+                
+                // Deduct cost locally instantly
+                currentUser.points -= 10;
+                updateUI();
+                if(document.getElementById('gameHeaderBal3')) document.getElementById('gameHeaderBal3').innerText = currentUser.points;
+
+                // Determine target degree based on reward
+                let targetDeg = 36; // Default to 10 slice
+                if(data.reward == 1000) targetDeg = 324;
+                else if(data.reward == 500) targetDeg = 252;
+                else if(data.reward == 200) targetDeg = 180;
+                else if(data.reward == 50) targetDeg = 108;
+                else if(data.reward == 10) targetDeg = 36;
+                else targetDeg = 108; // fallback to 50 for custom rigged amounts
+                
+                const currentMod = window.spinAngle % 360;
+                let delta = targetDeg - currentMod;
+                if (delta < 0) delta += 360;
+                
+                const spins = 5; // number of full rotations
+                const totalDeg = (spins * 360) + delta;
+                
+                window.spinAngle += totalDeg;
+                
+                const wheel = document.getElementById('spinWheel');
+                wheel.style.transform = `rotate(${window.spinAngle}deg)`;
+                
+                setTimeout(() => {
+                    window.isSpinning = false;
+                    showToast(`You won ${data.reward} Gems!`, "success");
+                    currentUser.points = data.newBal;
+                    updateUI();
+                    if(document.getElementById('gameHeaderBal3')) document.getElementById('gameHeaderBal3').innerText = currentUser.points;
+                    if(data.reward >= 50) confetti({ particleCount: 100, spread: 70 });
+                }, 4000); // 4s matches transition duration
+            } catch (e) {
+                window.isSpinning = false;
+                showToast("Network error", "error");
+            }
+        }
+
+        // ==========================================
+        // SCRATCH CARD
+        // ==========================================
+        function renderScratchCardGame(c) {
+            c.innerHTML = `
+                <div class="game-sticky-header" style="position:sticky; top:0; z-index:100; display:flex; justify-content:space-between; align-items:center; background:rgba(15,23,42,0.9); backdrop-filter:blur(10px); padding:10px 15px; border-bottom:1px solid rgba(255,255,255,0.1);">
+                    <button class="btn btn-secondary" onclick="closeGame()" style="width:auto; padding:5px 15px; font-size:0.9rem;"><i class="fa-solid fa-arrow-left"></i> Back to Hub</button>
+                    <div style="font-weight:bold; color:var(--accent-color);"><i class="fa-solid fa-gem"></i> <span id="gameHeaderBal4">${currentUser.points}</span></div>
+                </div>
+                <div class="card glass" style="padding:20px; text-align:center;">
+                    <h2 style="color:var(--success-color);"><i class="fa-solid fa-ticket"></i> Scratch Card</h2>
+                    <p style="color:#94a3b8; font-size:0.9rem;">Cost: 50 Gems. Scrub to reveal your prize!</p>
+                    
+                    <div style="position:relative; width:280px; height:150px; margin:30px auto; border-radius:15px; overflow:hidden; background:var(--bg-color); box-shadow:0 10px 30px rgba(0,0,0,0.5); display:flex; justify-content:center; align-items:center;">
+                        <div id="scratchRewardText" style="font-size:3rem; font-weight:bold; color:var(--gold-color); opacity:0; transition:0.3s;"><i class="fa-solid fa-gem"></i> <span id="sVal">0</span></div>
+                        <canvas id="scratchCanvas" width="280" height="150" style="position:absolute; top:0; left:0; z-index:2; touch-action:none; opacity:1; transition:0.5s; cursor:pointer;"></canvas>
+                    </div>
+
+                    <button class="btn btn-secondary" id="buyScratchBtn" onclick="buyScratchCard()">Buy Card (50 Gems)</button>
+                </div>
+            `;
+            
+            initScratchCanvas();
+            window.scratchActive = false;
+        }
+
+        function initScratchCanvas() {
+            const canvas = document.getElementById('scratchCanvas');
+            if(!canvas) return;
+            const ctx = canvas.getContext('2d');
+            
+            // Fill with silver texture
+            ctx.fillStyle = '#C0C0C0';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Add some noise/pattern for realism
+            ctx.fillStyle = '#A9A9A9';
+            for(let i=0; i<500; i++) {
+                ctx.fillRect(Math.random()*canvas.width, Math.random()*canvas.height, 2, 2);
+            }
+            ctx.font = '20px Arial';
+            ctx.fillStyle = '#666';
+            ctx.textAlign = 'center';
+            ctx.fillText('SCRATCH HERE', canvas.width/2, canvas.height/2);
+
+            let isDrawing = false;
+            
+            function getBrushPos(xRef, yRef) {
+                var canvasRect = canvas.getBoundingClientRect();
+                return {
+                  x: Math.floor((xRef - canvasRect.left) / (canvasRect.right - canvasRect.left) * canvas.width),
+                  y: Math.floor((yRef - canvasRect.top) / (canvasRect.bottom - canvasRect.top) * canvas.height)
+                };
+            }
+
+            function scratch(x, y) {
+                if(!window.scratchActive) return;
+                ctx.globalCompositeOperation = 'destination-out';
+                ctx.beginPath();
+                ctx.arc(x, y, 20, 0, Math.PI * 2, false);
+                ctx.fill();
+                checkScratchProgress();
+            }
+
+            canvas.addEventListener('mousedown', (e) => { isDrawing = true; scratch(getBrushPos(e.clientX, e.clientY).x, getBrushPos(e.clientX, e.clientY).y); });
+            canvas.addEventListener('mousemove', (e) => { if(isDrawing) scratch(getBrushPos(e.clientX, e.clientY).x, getBrushPos(e.clientX, e.clientY).y); });
+            canvas.addEventListener('mouseup', () => { isDrawing = false; });
+            canvas.addEventListener('mouseleave', () => { isDrawing = false; });
+
+            canvas.addEventListener('touchstart', (e) => { isDrawing = true; const touch = e.touches[0]; scratch(getBrushPos(touch.clientX, touch.clientY).x, getBrushPos(touch.clientX, touch.clientY).y); });
+            canvas.addEventListener('touchmove', (e) => { if(isDrawing){ e.preventDefault(); const touch = e.touches[0]; scratch(getBrushPos(touch.clientX, touch.clientY).x, getBrushPos(touch.clientX, touch.clientY).y); } }, {passive:false});
+            canvas.addEventListener('touchend', () => { isDrawing = false; });
+        }
+
+        function checkScratchProgress() {
+            if(!window.scratchActive) return;
+            const canvas = document.getElementById('scratchCanvas');
+            const ctx = canvas.getContext('2d');
+            const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+            let clearCount = 0;
+            for (let i = 3; i < pixels.length; i += 4) {
+                if (pixels[i] === 0) clearCount++;
+            }
+            const percent = (clearCount / (canvas.width * canvas.height)) * 100;
+            if (percent > 40) {
+                window.scratchActive = false;
+                canvas.style.opacity = '0'; // fade out the rest
+                setTimeout(() => {
+                    showToast(`You won ${window.scratchRewardAmount} Gems!`, "success");
+                    currentUser.points = window.scratchNewBal;
+                    updateUI();
+                    if(document.getElementById('gameHeaderBal4')) document.getElementById('gameHeaderBal4').innerText = currentUser.points;
+                    confetti();
+                    document.getElementById('buyScratchBtn').disabled = false;
+                }, 500);
+            }
+        }
+
+        async function buyScratchCard() {
+            if((currentUser.points || 0) < 50) return showToast("Not enough Gems", "error");
+            
+            document.getElementById('buyScratchBtn').disabled = true;
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/scratch`, {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({userId})
+                });
+                const data = await res.json();
+                
+                if(!data.success) {
+                    document.getElementById('buyScratchBtn').disabled = false;
+                    return showToast(data.error, "error");
+                }
+                
+                // Deduct cost visually
+                currentUser.points -= 50;
+                updateUI();
+                if(document.getElementById('gameHeaderBal4')) document.getElementById('gameHeaderBal4').innerText = currentUser.points;
+
+                window.scratchRewardAmount = data.reward;
+                window.scratchNewBal = data.newBal;
+                document.getElementById('sVal').innerText = data.reward;
+                document.getElementById('scratchRewardText').style.opacity = '1';
+                
+                // reset canvas
+                const canvas = document.getElementById('scratchCanvas');
+                canvas.style.opacity = '1';
+                const ctx = canvas.getContext('2d');
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.fillStyle = '#C0C0C0';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#A9A9A9';
+                for(let i=0; i<500; i++) {
+                    ctx.fillRect(Math.random()*canvas.width, Math.random()*canvas.height, 2, 2);
+                }
+                ctx.font = '20px Arial';
+                ctx.fillStyle = '#666';
+                ctx.textAlign = 'center';
+                ctx.fillText('SCRATCH HERE', canvas.width/2, canvas.height/2);
+
+                window.scratchActive = true;
+                showToast("Card purchased! Start scratching.", "success");
+            } catch(e) {
+                document.getElementById('buyScratchBtn').disabled = false;
+                showToast("Network error", "error");
+            }
+        }
 
     </script>
 </body>

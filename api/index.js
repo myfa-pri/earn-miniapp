@@ -450,6 +450,7 @@ app.post('/api/request-withdrawal', async (req, res) => {
     await dbUpdate(`users/${userId}`, {
         realBalance: (u.realBalance || 0) - amount,
         totalWithdrawn: (u.totalWithdrawn || 0) + Number(finalAmount),
+        withdrawCount: (u.withdrawCount || 0) + 1,
         logs: logAction(u, `Withdrawal Request: ${amount} (Tax: ${taxAmount}) via ${method} - ${status}`)
     });
 
@@ -502,12 +503,13 @@ app.post('/api/aviator/start', async (req, res) => {
     const roundId = Date.now().toString();
     
     const historyData = await dbGet('aviatorHistory') || [];
+    const oldHistory = [...historyData]; // clone history for client before adding current round
     historyData.push(crashPoint);
     if(historyData.length > 15) historyData.shift();
     await dbSet('aviatorHistory', historyData);
 
     await dbSet(`aviatorRounds/${roundId}`, { crashPoint, active: true, serverHash: hash, seed: serverSeed });
-    res.json({ success: true, crashPoint, roundId, history: historyData, serverHash: hash, seed: serverSeed });
+    res.json({ success: true, crashPoint, roundId, history: oldHistory, serverHash: hash, seed: serverSeed });
 });
 
 app.post('/api/aviator/cashout', async (req, res) => {
@@ -734,6 +736,49 @@ app.post('/api/admin/broadcast', checkAdmin, async (req, res) => {
     // Save to Firebase so active clients can pick it up via listeners
     await dbSet('globalBroadcast', { message: req.body.message, timestamp: Date.now() });
     res.json({success:true});
+});
+
+app.get('/api/channel/posts', async (req, res) => {
+    const posts = await dbGet('channelPosts') || [];
+    res.json(posts);
+});
+
+app.post('/api/admin/channel/post', checkAdmin, async (req, res) => {
+    const { action, post, id } = req.body;
+    let posts = await dbGet('channelPosts') || [];
+    if(action === 'create') {
+        const newPost = {
+            id: Date.now().toString(),
+            text: post.text,
+            reactions: post.reactions || {},
+            date: Date.now()
+        };
+        posts.unshift(newPost);
+    } else if (action === 'delete') {
+        posts = posts.filter(p => p.id !== id);
+    } else if (action === 'update_reactions') {
+        const p = posts.find(p => p.id === id);
+        if (p) {
+            // merge or replace reactions completely
+            p.reactions = { ...(p.reactions || {}), ...post.reactions };
+        }
+    }
+    await dbSet('channelPosts', posts);
+    res.json({success:true, posts});
+});
+
+app.post('/api/channel/react', async (req, res) => {
+    const { postId, emoji } = req.body;
+    let posts = await dbGet('channelPosts') || [];
+    const p = posts.find(p => p.id === postId);
+    if (p) {
+        p.reactions = p.reactions || {};
+        p.reactions[emoji] = (p.reactions[emoji] || 0) + 1;
+        await dbSet('channelPosts', posts);
+        res.json({success:true, reactions: p.reactions});
+    } else {
+        res.status(404).json({error: "Post not found"});
+    }
 });
 
 app.post('/api/admin/wipe', checkAdmin, async (req, res) => {

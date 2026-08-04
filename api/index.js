@@ -70,9 +70,9 @@ async function ensureUserExists(userId, username, refParam) {
     // UPDATE: Even if user exists, we can update their display name to latest Real Account Name if we wanted, 
     // but we will prioritize keeping the initial one or updating if blank.
     if (existingUser) {
-        if (!existingUser.username || existingUser.username === 'Unknown User') {
-            await dbUpdate(`users/${userId}`, { username: username });
-            existingUser.username = username;
+        if (!existingUser.accountName || existingUser.accountName === 'Unknown User') {
+            await dbUpdate(`users/${userId}`, { accountName: username, username: username });
+            existingUser.accountName = username;
         }
         return existingUser;
     }
@@ -81,8 +81,8 @@ async function ensureUserExists(userId, username, refParam) {
     const referrerId = refParam ? refParam.replace(/^ref/, '') : null;
 
     const newUser = {
-        username: username, points: 0, realBalance: 0, adsWatchedToday: 0, totalAdsWatchedLifetime: 0,
-        referredBy: referrerId || null, referredUsers: [], isBanned: false, 
+        username: username, accountName: username, points: 0, realBalance: 0, adsWatchedToday: 0, totalAdsWatchedLifetime: 0,
+        referredBy: referrerId || null, referredUsers: [], isBanned: false, claimedBonuses: [],
         createdAt: Date.now(), streak: 1, lastLoginDate: Date.now(),
         logs: [`[${new Date().toISOString()}] Account created`]
     };
@@ -190,10 +190,44 @@ app.post('/api/webhook', async (req, res) => {
 // ============================================================================
 // 5. USER FACING APIs (Profile, Config, Tasks)
 // ============================================================================
+const ipCache = {};
+app.get('/api/check-ip', async (req, res) => {
+    let clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    if(clientIp && clientIp.includes(',')) clientIp = clientIp.split(',')[0].trim();
+    if(ipCache[clientIp]) return res.json(ipCache[clientIp]);
+    
+    try {
+        const response = await fetch(`https://ipapi.co/${clientIp}/json/`);
+        const data = await response.json();
+        const badOrgs = ['AWS', 'Amazon', 'Google Cloud', 'DigitalOcean', 'Hostinger', 'Azure', 'Linode', 'Hetzner', 'OVH'];
+        const isVpn = data.vpn || data.proxy || data.tor || (data.org && badOrgs.some(o => data.org.toLowerCase().includes(o.toLowerCase())));
+        const result = { allowed: !isVpn };
+        ipCache[clientIp] = result;
+        return res.json(result);
+    } catch(e) {
+        return res.json({ allowed: true });
+    }
+});
 app.get('/api/user/:id', async (req, res) => {
     const userId = req.params.id;
+    const sessionId = req.query.sessionId;
     let u = await dbGet(`users/${userId}`);
     if(!u) return res.status(404).json({error:"Not found"});
+
+    // Max Sessions Logic
+    const config = await dbGet('config') || {};
+    if (sessionId && config.maxSessions > 0) {
+        u.activeSessions = u.activeSessions || [];
+        if (!u.activeSessions.includes(sessionId)) {
+            u.activeSessions.push(sessionId);
+        }
+        if (u.activeSessions.length > config.maxSessions) {
+            u.activeSessions.shift(); // Remove oldest
+        }
+        if (!u.activeSessions.includes(sessionId)) {
+            return res.status(401).json({ error: "Session revoked", logout: true });
+        }
+    }
 
     const now = Date.now();
     const lastLogin = new Date(u.lastLoginDate || 0);
@@ -209,7 +243,9 @@ app.get('/api/user/:id', async (req, res) => {
             u.streak = 1; 
         }
         u.lastLoginDate = now;
-        dbUpdate(`users/${userId}`, { streak: u.streak, lastLoginDate: now }).catch(()=>{});
+        dbUpdate(`users/${userId}`, { streak: u.streak, lastLoginDate: now, activeSessions: u.activeSessions }).catch(()=>{});
+    } else if (sessionId) {
+        dbUpdate(`users/${userId}`, { activeSessions: u.activeSessions }).catch(()=>{});
     }
 
     // Rank Calculation
@@ -221,6 +257,88 @@ app.get('/api/user/:id', async (req, res) => {
     } catch(e) { u.rank = '-'; }
 
     res.json(u);
+});
+
+let leaderboardCache = { byPoints: [] };
+app.get('/api/leaderboard/:id', async (req, res) => {
+    const userId = req.params.id;
+    const config = await dbGet('config') || {};
+    
+    let u = await dbGet(`users/${userId}`);
+    let userRank = '-';
+    
+    if (config.leaderboardFreeze) {
+        return res.json({ frozen: true, byPoints: leaderboardCache.byPoints, userRankPoints: u ? u.rank : '-' });
+    }
+
+    const usersObj = await dbGet('users');
+    if(!usersObj) return res.json({ frozen: false, byPoints: [], userRankPoints: '-' });
+    
+    const usersArr = Object.values(usersObj).filter(x => !x.isBanned);
+    const sorted = usersArr.sort((a, b) => (b.points || 0) - (a.points || 0));
+    
+    if (u) {
+        const rankIndex = sorted.findIndex(x => x.username === u.username);
+        userRank = rankIndex >= 0 ? rankIndex + 1 : '-';
+        if(userRank !== '-') {
+            u.rank = userRank;
+            dbUpdate(`users/${userId}`, { rank: userRank }).catch(()=>{});
+        }
+    }
+
+    const top100 = sorted.slice(0, 100).map(user => ({
+        id: user.id || '',
+        accountName: user.accountName || user.username || 'Anonymous',
+        username: user.username || 'User',
+        points: user.points,
+        isVip: user.isVip || false,
+        avatarUrl: user.avatarUrl || null
+    }));
+    
+    leaderboardCache = { byPoints: top100 };
+    res.json({ frozen: false, byPoints: top100, userRankPoints: userRank });
+});
+
+// Tasks & Referrals
+app.get('/api/tasks', async (req, res) => {
+    const tasksObj = await dbGet('bonusTasks') || {};
+    res.json(tasksObj);
+});
+
+app.post('/api/verify-membership', async (req, res) => {
+    const { userId, taskId } = req.body;
+    const u = await dbGet(`users/${userId}`);
+    const t = await dbGet(`bonusTasks/${taskId}`);
+    const c = await dbGet('config') || {};
+    if(!u || !t) return res.status(404).json({error:"Not found"});
+    if((u.claimedBonuses||[]).includes(taskId)) return res.json({success:true, alreadyClaimed:true});
+    
+    // Auto-verify for simplicity or integrate actual TG bot check
+    const newBonuses = [...(u.claimedBonuses||[]), taskId];
+    const reward = (t.reward || 0) * (c.globalMultiplier || 1);
+    await dbUpdate(`users/${userId}`, {
+        claimedBonuses: newBonuses,
+        points: (u.points||0) + reward,
+        logs: logAction(u, `Completed task ${t.name} (+${reward} Gems)`)
+    });
+    res.json({success:true});
+});
+
+app.get('/api/referrer/:id', async (req, res) => {
+    const userId = req.params.id;
+    const u = await dbGet(`users/${userId}`);
+    if(!u) return res.json([]);
+    
+    const usersObj = await dbGet('users') || {};
+    const refs = (u.referredUsers || []).map(refId => {
+        const refU = usersObj[refId];
+        return {
+            id: refId,
+            accountName: refU ? (refU.accountName || refU.username) : 'Unknown',
+            createdAt: refU ? refU.createdAt : 0
+        };
+    });
+    res.json(refs);
 });
 
 app.post('/api/ensure-user', async (req, res) => {
@@ -279,11 +397,21 @@ app.post('/api/exchange', async (req, res) => {
     
     if(u.points < gemsToExchange) return res.status(400).json({error: "Not enough Gems"});
     
-    const realMoney = gemsToExchange / rate;
+    let realMoney = gemsToExchange / rate;
+    let taxAmount = 0;
+    
+    if (c.taxRate && parseFloat(c.taxRate) > 0) {
+        taxAmount = gemsToExchange * (parseFloat(c.taxRate) / 100);
+        realMoney = (gemsToExchange - taxAmount) / rate;
+        const stats = await dbGet('stats') || {};
+        stats.totalBurned = (stats.totalBurned || 0) + taxAmount;
+        await dbUpdate('stats', stats).catch(()=>{});
+    }
+
     await dbUpdate(`users/${userId}`, { 
         points: u.points - gemsToExchange, 
         realBalance: (u.realBalance||0) + realMoney,
-        logs: logAction(u, `Exchanged ${gemsToExchange} Gems for ${realMoney} Units`)
+        logs: logAction(u, `Exchanged ${gemsToExchange} Gems (Tax: ${taxAmount}) for ${realMoney} Units`)
     });
     res.json({ success: true, realMoney });
 });
@@ -293,44 +421,45 @@ app.post('/api/request-withdrawal', async (req, res) => {
     const u = await dbGet(`users/${userId}`);
     const c = (await dbGet('config')) || {};
 
+    if (c.minWithdraw && amount < c.minWithdraw) return res.status(400).json({ error: `Minimum withdrawal is ${c.minWithdraw}` });
+    if (c.maxWithdraw && amount > c.maxWithdraw) return res.status(400).json({ error: `Maximum withdrawal is ${c.maxWithdraw}` });
+
+    let finalAmount = amount;
+    let taxAmount = 0;
+    
+    if (c.taxRate && parseFloat(c.taxRate) > 0) {
+        taxAmount = amount * (parseFloat(c.taxRate) / 100);
+        finalAmount = amount - taxAmount;
+        const stats = await dbGet('stats') || {};
+        stats.totalBurned = (stats.totalBurned || 0) + taxAmount;
+        await dbUpdate('stats', stats).catch(()=>{});
+    }
+
     let status = 'pending';
-    if(c.autoApproveLimit > 0 && amount <= c.autoApproveLimit) status = 'approved';
+    if(c.autoApproveLimit > 0 && finalAmount <= c.autoApproveLimit) {
+        status = 'approved';
+        if (c.telegramChatId) {
+            bot.sendMessage(userId, `✅ Your withdrawal of ${finalAmount} via ${method} has been automatically approved and processed!`, {parse_mode:'HTML'}).catch(()=>{});
+        }
+    }
 
     const wid = Date.now().toString();
-    const wData = { id: wid, userId, amount, method, account, accountName, status, date: Date.now() };
+    const wData = { id: wid, userId, amount: finalAmount, originalAmount: amount, tax: taxAmount, method, account, accountName, status, date: Date.now() };
 
     await dbSet(`withdrawals/${wid}`, wData);
     await dbUpdate(`users/${userId}`, {
         realBalance: (u.realBalance || 0) - amount,
-        totalWithdrawn: (u.totalWithdrawn || 0) + Number(amount),
-        logs: logAction(u, `Withdrawal Request: ${amount} via ${method} - ${status}`)
+        totalWithdrawn: (u.totalWithdrawn || 0) + Number(finalAmount),
+        logs: logAction(u, `Withdrawal Request: ${amount} (Tax: ${taxAmount}) via ${method} - ${status}`)
     });
 
     if(c.telegramChatId) {
-        bot.sendMessage(c.telegramChatId, `<b>Withdrawal Request</b>\nUser: ${u.username}\nAmount: ${amount}\nMethod: ${method}\nAccount: ${account}`, {parse_mode:'HTML'}).catch(()=>{});
+        bot.sendMessage(c.telegramChatId, `<b>Withdrawal Request</b>\nUser: ${u.username}\nRequested: ${amount}\nAfter Tax: ${finalAmount}\nMethod: ${method}\nAccount: ${account}\nStatus: ${status}`, {parse_mode:'HTML'}).catch(()=>{});
     }
     res.json({success:true, status});
 });
 
-// TASK 5: Top 100 Users Leaderboard
-app.get('/api/leaderboard/:id', async (req, res) => {
-    const userId = req.params.id;
-    const usersObj = await dbGet('users') || {};
-    const users = Object.keys(usersObj).map(key => ({...usersObj[key], id: key})).filter(u => !u.isBanned);
-    
-    const byPoints = [...users].sort((a,b)=>(b.points||0)-(a.points||0));
-    const byReferrals = [...users].sort((a,b)=>(b.referredUsers?.length||0)-(a.referredUsers?.length||0));
-    
-    let userRankPoints = byPoints.findIndex(u => u.id === userId) + 1;
-    let userRankRefs = byReferrals.findIndex(u => u.id === userId) + 1;
-
-    res.json({
-        byPoints: byPoints.slice(0, 100),
-        byReferrals: byReferrals.slice(0, 100),
-        userRankPoints: userRankPoints > 0 ? userRankPoints : null,
-        userRankRefs: userRankRefs > 0 ? userRankRefs : null
-    });
-});
+// Leaderboard route was moved to earlier in the file to fix duplicates.
 
 // ============================================================================
 // 7. WEB3 GAME ENGINES
@@ -350,17 +479,18 @@ app.post('/api/aviator/start', async (req, res) => {
     const hashInt = parseInt(hash.substring(0, 8), 16);
     const rand = hashInt / 0xFFFFFFFF; // 0 to 1
 
-    if (config.forcedCrashPoint && !isNaN(parseFloat(config.forcedCrashPoint))) {
-        crashPoint = parseFloat(config.forcedCrashPoint);
-        await dbUpdate('config', { forcedCrashPoint: "" }); // Reset after use
+    if (config.forcedAviatorCrash && !isNaN(parseFloat(config.forcedAviatorCrash))) {
+        crashPoint = parseFloat(config.forcedAviatorCrash);
+        await dbUpdate('config', { forcedAviatorCrash: "" }); // Reset after use
     } else {
-        // House Edge: 85% chance to crash before 2.0x, but cryptographically randomized
-        if (rand < 0.85) {
-            const innerRand = parseInt(hash.substring(8, 16), 16) / 0xFFFFFFFF;
-            crashPoint = parseFloat((1.01 + (innerRand * 0.98)).toFixed(2)); 
+        const houseEdge = config.aviatorHouseEdge ? parseFloat(config.aviatorHouseEdge) : 0.85;
+        const maxThreshold = config.aviatorMaxThreshold ? parseFloat(config.aviatorMaxThreshold) : 2.00;
+        
+        // Cryptographically randomized but constrained by house edge
+        if (rand < houseEdge) {
+            crashPoint = parseFloat((1.00 + (rand * (maxThreshold - 1.00) / houseEdge)).toFixed(2));
         } else {
-            const innerRand = parseInt(hash.substring(16, 24), 16) / 0xFFFFFFFF;
-            crashPoint = parseFloat((2.00 + (innerRand * 8.00)).toFixed(2)); 
+            crashPoint = parseFloat((maxThreshold + (rand * 10)).toFixed(2));
         }
     }
 
@@ -383,10 +513,11 @@ app.post('/api/aviator/start', async (req, res) => {
 app.post('/api/aviator/cashout', async (req, res) => {
     const { userId, roundId, multiplier, betAmount } = req.body;
     const round = await dbGet(`aviatorRounds/${roundId}`);
+    const c = await dbGet('config') || {};
     if(!round || !round.active || multiplier > round.crashPoint) return res.json({ success: false });
 
     const user = await dbGet(`users/${userId}`);
-    const winnings = Math.floor(betAmount * multiplier);
+    const winnings = Math.floor(betAmount * multiplier) * (c.globalMultiplier || 1);
     await dbUpdate(`users/${userId}`, { 
         points: (user.points||0) + winnings,
         logs: logAction(user, `Aviator Cashout: ${multiplier}x (Won ${winnings})`)
@@ -394,57 +525,125 @@ app.post('/api/aviator/cashout', async (req, res) => {
     res.json({ success: true, winnings });
 });
 
-// TASK 4: Pro Spin - 75% Rigged Reward
-app.post('/api/game/spin', async (req, res) => {
-    const { userId } = req.body;
-    const u = await dbGet(`users/${userId}`);
-    const c = await dbGet('config') || {};
-    const riggedReward = c.spinRiggedReward || 50; 
-    
-    const rand = Math.random();
-    let amount = 0;
-    if (rand < 0.75) amount = parseInt(riggedReward);
-    else if (rand < 0.99) amount = 10;
-    else amount = 1000; 
-
-    await dbUpdate(`users/${userId}`, { 
-        points: (u.points||0) + amount,
-        logs: logAction(u, `Spun Wheel (+${amount} Gems)`)
-    });
-    res.json({ success: true, amount });
-});
-
+// Deprecated duplicate spin route removed.
 app.post('/api/combo', async (req, res) => {
     const { userId, combination } = req.body;
     const c = await dbGet('config') || {};
+    const u = await dbGet(`users/${userId}`);
+    
     // TASK 4: Daily Combo Setter logic check
     const correctCombo = c.dailyCombo || ["c1","c2","c3","c4","c5","c6","c7","c8","c9"]; 
-    const reward = c.comboReward || 1000;
+    const reward = (c.comboReward ? parseInt(c.comboReward) : 1000) * (c.globalMultiplier || 1);
+
+    const today = new Date().toISOString().split('T')[0];
+    if (u.comboDate !== today) {
+        u.comboDate = today;
+        u.comboTries = 3;
+    }
+
+    if (u.comboTries <= 0) return res.json({ success: false, msg: "No tries left today" });
 
     const isCorrect = JSON.stringify(combination) === JSON.stringify(correctCombo);
     if(isCorrect) {
-        const u = await dbGet(`users/${userId}`);
-        await dbUpdate(`users/${userId}`, { points: (u.points||0) + reward, logs: logAction(u, `Solved Daily Combo (+${reward})`) });
+        u.comboTries = 0;
+        await dbUpdate(`users/${userId}`, { points: (u.points||0) + reward, comboDate: today, comboTries: 0, logs: logAction(u, `Solved Daily Combo (+${reward})`) });
         res.json({ success: true, isCorrect, reward });
     } else {
-        res.json({ success: true, isCorrect });
+        u.comboTries--;
+        await dbUpdate(`users/${userId}`, { comboDate: today, comboTries: u.comboTries });
+        res.json({ success: true, isCorrect, triesLeft: u.comboTries });
     }
 });
 
 // TASK 3: Multi-player OX
-app.post('/api/ox', async (req, res) => {
-    const { userId, bet, playBot } = req.body;
+app.post('/api/ox/result', async (req, res) => {
+    const { userId, bet, result } = req.body; // result = 'win', 'loss', 'draw'
     const user = await dbGet(`users/${userId}`);
-    // Minimax Bot Simulation (Forced <10% win chance for user)
-    const winChance = playBot ? 0.08 : 0.75; 
-    const win = Math.random() < winChance;
+    const stats = await dbGet('stats') || { oxWagered: 0, oxBotProfit: 0 };
+    const c = await dbGet('config') || {};
     
-    if(win) {
-        await dbUpdate(`users/${userId}`, { points: (user.points||0) + bet, logs: logAction(user, `Won OX Game (+${bet})`) });
+    stats.oxWagered = (stats.oxWagered || 0) + bet;
+    let newBal = user.points || 0;
+    
+    if (result === 'loss') { // User lost to bot
+        stats.oxBotProfit = (stats.oxBotProfit || 0) + bet;
+        newBal -= bet;
+        await dbUpdate(`users/${userId}`, { points: newBal, logs: logAction(user, `Lost OX Game vs Bot (-${bet})`) });
+    } else if (result === 'win') { // User beat bot (impossible via pure minimax, but just in case)
+        stats.oxBotProfit = (stats.oxBotProfit || 0) - bet;
+        const reward = bet * (c.globalMultiplier || 1);
+        newBal += reward;
+        await dbUpdate(`users/${userId}`, { points: newBal, logs: logAction(user, `Won OX Game vs Bot (+${reward})`) });
+    } // Draw: no changes to balance or bot profit
+    
+    await dbSet('stats', stats);
+    res.json({ success: true, newBal });
+});
+
+// TASK 5: Pro Spin Wheel
+app.post('/api/spin', async (req, res) => {
+    const { userId } = req.body;
+    const user = await dbGet(`users/${userId}`);
+    if (!user || (user.points || 0) < 10) return res.status(400).json({error: "Not enough Gems"});
+
+    const config = await dbGet('config') || {};
+    const riggedReward = parseInt(config.spinRiggedReward) || 50;
+    
+    let newBal = user.points - 10;
+    let finalReward = 10;
+    const rand = Math.random();
+    
+    if (rand < 0.75) {
+        finalReward = riggedReward;
     } else {
-        await dbUpdate(`users/${userId}`, { points: (user.points||0) - bet, logs: logAction(user, `Lost OX Game (-${bet})`) });
+        const r2 = Math.random();
+        if (r2 < 0.01) finalReward = 1000;
+        else if (r2 < 0.05) finalReward = 500;
+        else if (r2 < 0.3) finalReward = 200;
+        else if (r2 < 0.6) finalReward = 50;
+        else finalReward = 10;
     }
-    res.json({ success: true, win });
+
+    finalReward = finalReward * (config.globalMultiplier || 1);
+    newBal += finalReward;
+    await dbUpdate(`users/${userId}`, { points: newBal, logs: logAction(user, `Spun wheel: -10 Gems, won ${finalReward} Gems`) });
+
+    res.json({ success: true, reward: finalReward, newBal });
+});
+
+// TASK 6: Daily Scratch Card
+app.post('/api/scratch', async (req, res) => {
+    const { userId } = req.body;
+    const user = await dbGet(`users/${userId}`);
+    if (!user || (user.points || 0) < 50) return res.status(400).json({error: "Not enough Gems"});
+
+    const config = await dbGet('config') || {};
+    const minReward = parseInt(config.scratchMin) || 10;
+    const maxReward = parseInt(config.scratchMax) || 100;
+    
+    let newBal = user.points - 50;
+    let finalReward = Math.floor(Math.random() * (maxReward - minReward + 1)) + minReward;
+    finalReward = finalReward * (config.globalMultiplier || 1);
+    
+    newBal += finalReward;
+    await dbUpdate(`users/${userId}`, { points: newBal, logs: logAction(user, `Scratched card: -50 Gems, won ${finalReward} Gems`) });
+
+    res.json({ success: true, reward: finalReward, newBal });
+});
+
+// ============================================================================
+// 7.5. PUBLIC GLOBALS (CSS & Broadcast)
+// ============================================================================
+app.get('/api/public/globals', async (req, res) => {
+    const config = await dbGet('config') || {};
+    const css = await dbGet('css') || {};
+    const toast = await dbGet('toastBroadcast') || {};
+    
+    // Calculate real users count
+    const usersObj = await dbGet('users') || {};
+    const totalUsers = Object.keys(usersObj).length;
+    
+    res.json({ config, css, toast, totalUsers });
 });
 
 // ============================================================================
@@ -462,7 +661,9 @@ app.post('/api/admin/data', checkAdmin, async (req, res) => {
         users: db.users || {},
         tasks: db.bonusTasks || {},
         promos: db.promos || {},
-        withdrawals: db.withdrawals || {}
+        withdrawals: db.withdrawals || {},
+        stats: db.stats || { oxWagered: 0, oxBotProfit: 0 },
+        verifications: db.verifications || {}
     });
 });
 
@@ -544,6 +745,66 @@ app.post('/api/admin/wipe', checkAdmin, async (req, res) => {
 app.post('/api/admin/backup', checkAdmin, async (req, res) => {
     const db = await dbGet('');
     res.json(db);
+});
+
+app.post('/api/admin/invoice', checkAdmin, async (req, res) => {
+    const { userId, amount, title, description } = req.body;
+    try {
+        const link = await bot.createInvoiceLink(
+            title || 'Special Gems Package',
+            description || 'Buy Gems using Telegram Stars',
+            'gems_payload_' + Date.now(),
+            '', // Provider token must be empty for Telegram Stars
+            'XTR',
+            [{ label: 'Gems', amount: parseInt(amount) }] // amount is in smallest units, 1 Star = 1
+        );
+        await bot.sendMessage(userId, `Hello! The admin has sent you a direct invoice:\n\n<a href="${link}">Pay with Telegram Stars</a>`, { parse_mode: 'HTML' });
+        res.json({ success: true, link });
+    } catch(e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+app.post('/api/verify/upload', async (req, res) => {
+    const { userId, taskId, imageBase64 } = req.body;
+    const vId = `v_${Date.now()}_${userId}`;
+    await dbSet(`verifications/${vId}`, { userId, taskId, image: imageBase64, status: 'pending', timestamp: Date.now() });
+    res.json({ success: true });
+});
+
+app.post('/api/admin/verifications/action', checkAdmin, async (req, res) => {
+    const { id, action } = req.body;
+    const v = await dbGet(`verifications/${id}`);
+    if (!v) return res.status(404).json({ error: "Verification not found" });
+
+    if (action === 'approve') {
+        const t = await dbGet(`bonusTasks/${v.taskId}`);
+        const u = await dbGet(`users/${v.userId}`);
+        if (t && u) {
+            const reward = parseInt(t.reward) || 0;
+            const claimed = u.claimedBonuses || [];
+            if (!claimed.includes(v.taskId)) {
+                claimed.push(v.taskId);
+                await dbUpdate(`users/${v.userId}`, { 
+                    points: (u.points||0) + reward, 
+                    claimedBonuses: claimed,
+                    logs: logAction(u, `Task ${v.taskId} approved (+${reward} Gems)`)
+                });
+            }
+        }
+        await dbUpdate(`verifications/${id}`, { status: 'approved' });
+        bot.sendMessage(v.userId, `✅ Your task verification was approved!`).catch(()=>{});
+    } else if (action === 'reject') {
+        await dbUpdate(`verifications/${id}`, { status: 'rejected' });
+        bot.sendMessage(v.userId, `❌ Your task verification was rejected.`).catch(()=>{});
+    }
+    res.json({ success: true });
+});
+
+app.post('/api/admin/css-inject', checkAdmin, async (req, res) => {
+    const { css } = req.body;
+    await dbSet('globalCSS', { css, timestamp: Date.now() });
+    res.json({ success: true });
 });
 
 export default app;

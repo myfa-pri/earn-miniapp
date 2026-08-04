@@ -448,28 +448,22 @@ app.post('/api/ox', async (req, res) => {
 });
 
 // ============================================================================
-// 8. ADMIN CONTROL PANEL API
+// 8. ADMIN CONTROL PANEL API (60+ Features)
 // ============================================================================
 const checkAdmin = (req, res, next) => { 
     if(req.body.secret !== ADMIN_SECRET) return res.status(403).json({error:"Auth failed"}); 
     next(); 
 };
 
-app.post('/api/admin/stats', checkAdmin, async (req, res) => {
-    const u = await dbGet('users')||{};
-    const w = await dbGet('withdrawals')||{};
-    const c = await dbGet('config')||{};
-
-    let p = 0;
-    const usersArr = Object.values(u);
-    usersArr.forEach(x => p += (x.points||0));
-
-    const fiveMinsAgo = Date.now() - (5 * 60 * 1000);
-    const online = usersArr.filter(x => x.lastLoginDate > fiveMinsAgo).length;
-
-    const topRefs = usersArr.sort((a,b)=>(b.referredUsers?.length||0)-(a.referredUsers?.length||0)).slice(0,5).map(x => ({id: x.username, username: x.username, refs: x.referredUsers?.length||0}));
-
-    res.json({ users: Object.keys(u).length, withdrawals: Object.values(w).filter(x=>x.status==='pending').length, points: p, online, config: c, topRefs });
+app.post('/api/admin/data', checkAdmin, async (req, res) => {
+    const db = (await dbGet('')) || {};
+    res.json({
+        config: db.config || {},
+        users: db.users || {},
+        tasks: db.bonusTasks || {},
+        promos: db.promos || {},
+        withdrawals: db.withdrawals || {}
+    });
 });
 
 app.post('/api/admin/config-update', checkAdmin, async (req, res) => {
@@ -477,20 +471,76 @@ app.post('/api/admin/config-update', checkAdmin, async (req, res) => {
     res.json({success:true});
 });
 
-app.post('/api/admin/action', checkAdmin, async (req, res) => {
-    const { query: userId, action, newBalance } = req.body;
-    if(action==='update-balance') {
-        const u = await dbGet(`users/${userId}`);
-        await dbUpdate(`users/${userId}`, {points: parseInt(newBalance), logs: logAction(u, `Admin set balance to ${newBalance}`)});
-    }
-    if(action==='toggle-ban') {
-        const u = await dbGet(`users/${userId}`);
-        await dbUpdate(`users/${userId}`, {isBanned: !u.isBanned, logs: logAction(u, `Admin ${u.isBanned?'unbanned':'banned'}`)});
+app.post('/api/admin/user-action', checkAdmin, async (req, res) => {
+    const { userId, action, value } = req.body;
+    const u = await dbGet(`users/${userId}`);
+    if(!u) return res.status(404).json({error:"User not found"});
+
+    if(action === 'add-balance') {
+        await dbUpdate(`users/${userId}`, { points: (u.points||0) + parseInt(value), logs: logAction(u, `Admin added ${value} Gems`) });
+    } else if(action === 'deduct-balance') {
+        await dbUpdate(`users/${userId}`, { points: Math.max(0, (u.points||0) - parseInt(value)), logs: logAction(u, `Admin deducted ${value} Gems`) });
+    } else if(action === 'reset-ads') {
+        await dbUpdate(`users/${userId}`, { dailyAdsWatched: 0, logs: logAction(u, `Admin reset daily ads`) });
+    } else if(action === 'toggle-ban') {
+        await dbUpdate(`users/${userId}`, { isBanned: !u.isBanned, logs: logAction(u, `Admin ${u.isBanned?'unbanned':'banned'}`) });
+    } else if(action === 'toggle-vip') {
+        await dbUpdate(`users/${userId}`, { isVip: !u.isVip, logs: logAction(u, `Admin ${u.isVip?'removed':'granted'} VIP`) });
     }
     res.json({success:true});
 });
 
-// Data export
+app.post('/api/admin/tasks', checkAdmin, async (req, res) => {
+    const { action, task } = req.body;
+    if(action === 'create') {
+        const taskId = 'task_' + Date.now();
+        await dbSet(`bonusTasks/${taskId}`, task);
+    } else if(action === 'delete') {
+        await dbRemove(`bonusTasks/${task.id}`);
+    }
+    res.json({success:true});
+});
+
+app.post('/api/admin/promos', checkAdmin, async (req, res) => {
+    const { action, promo } = req.body;
+    if(action === 'create') {
+        await dbSet(`promos/${promo.code}`, { reward: promo.reward, maxUses: promo.maxUses, uses: 0 });
+    }
+    res.json({success:true});
+});
+
+app.post('/api/admin/withdrawals', checkAdmin, async (req, res) => {
+    const { action, ids, reason } = req.body;
+    for(const id of ids) {
+        const w = await dbGet(`withdrawals/${id}`);
+        if(!w) continue;
+        if(action === 'approve') {
+            await dbUpdate(`withdrawals/${id}`, { status: 'approved' });
+            // Alert user via bot
+            bot.sendMessage(w.userId, `✅ Your withdrawal of $${w.amount} to ${w.method} has been approved!`).catch(()=>{});
+        } else if(action === 'reject') {
+            await dbUpdate(`withdrawals/${id}`, { status: 'rejected', reason: reason || 'Violation of terms' });
+            // Refund realBalance
+            const u = await dbGet(`users/${w.userId}`);
+            if(u) await dbUpdate(`users/${w.userId}`, { realBalance: (u.realBalance||0) + w.amount });
+            bot.sendMessage(w.userId, `❌ Your withdrawal was rejected. Reason: ${reason || 'Violation of terms'}. Funds refunded.`).catch(()=>{});
+        }
+    }
+    res.json({success:true});
+});
+
+app.post('/api/admin/broadcast', checkAdmin, async (req, res) => {
+    // Save to Firebase so active clients can pick it up via listeners
+    await dbSet('globalBroadcast', { message: req.body.message, timestamp: Date.now() });
+    res.json({success:true});
+});
+
+app.post('/api/admin/wipe', checkAdmin, async (req, res) => {
+    await dbSet('users', {});
+    await dbSet('withdrawals', {});
+    res.json({success:true});
+});
+
 app.post('/api/admin/backup', checkAdmin, async (req, res) => {
     const db = await dbGet('');
     res.json(db);

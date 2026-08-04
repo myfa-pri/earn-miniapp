@@ -143,6 +143,9 @@
                     <!-- Game Rewards -->
                     <div class="input-group"><label>30. Daily Combo Reward</label><input type="number" id="cfg_combo_reward"></div>
                     <div class="input-group"><label>31. Bot Win-Rate Override (OX)</label><input type="number" id="cfg_ox_win"></div>
+                    <div class="input-group"><label>61. Targeted Reward Text (Spin)</label><input type="text" id="cfg_spin_reward" placeholder="e.g. 50"></div>
+                    <div class="input-group"><label>62. Scratch Card Min Reward</label><input type="number" id="cfg_scratch_min"></div>
+                    <div class="input-group"><label>63. Scratch Card Max Reward</label><input type="number" id="cfg_scratch_max"></div>
                 </div>
 
                 <div class="grid-3" style="margin-top:20px;">
@@ -193,9 +196,9 @@
                         <!-- 37 -->
                         <button class="action-btn danger" style="width:100%; margin-bottom:10px;" onclick="userAction('toggle-ban')"><i class="fa-solid fa-ban"></i> 37. Toggle Hardware / IP Ban</button>
                         <!-- 38 -->
-                        <button class="action-btn" style="width:100%; margin-bottom:10px; background:#2AABEE;" onclick="alert('Sent invoice via Bot API')"><i class="fa-brands fa-telegram"></i> 38. Direct Invoice (TG Stars)</button>
+                        <button class="action-btn" style="width:100%; margin-bottom:10px; background:#2AABEE;" onclick="sendInvoice()"><i class="fa-brands fa-telegram"></i> 38. Direct Invoice (TG Stars)</button>
                         <!-- 39 -->
-                        <button class="action-btn" style="width:100%; margin-bottom:10px;" onclick="alert('Feature requires iframe setup.')"><i class="fa-solid fa-masks-theater"></i> 39. Impersonate User</button>
+                        <button class="action-btn" style="width:100%; margin-bottom:10px;" onclick="impersonateUser()"><i class="fa-solid fa-masks-theater"></i> 39. Impersonate User</button>
                         <!-- 40 -->
                         <button class="action-btn gold" style="width:100%; margin-bottom:10px;" onclick="userAction('toggle-vip')"><i class="fa-solid fa-medal"></i> 40. Toggle VIP Badge</button>
                     </div>
@@ -244,8 +247,8 @@
                 <div class="panel glass">
                     <h2><i class="fa-solid fa-clipboard-check"></i> 45. Verifications</h2>
                     <p style="font-size:0.8rem; margin-bottom:10px;">Manual screenshot review queue.</p>
-                    <div style="background:#111; padding:10px; border-radius:8px; text-align:center;">
-                        <p>No pending verifications at this time.</p>
+                    <div id="verifications_list" style="background:#111; padding:10px; border-radius:8px; height: 200px; overflow-y: auto;">
+                        <p style="text-align:center;">No pending verifications.</p>
                     </div>
                 </div>
             </div>
@@ -301,15 +304,33 @@
         <div id="devtools" class="section">
             <div class="grid-2">
                 <div class="panel glass" style="border:1px solid var(--danger);">
-                    <h2 style="color:var(--danger);"><i class="fa-solid fa-gamepad"></i> Game Rigging</h2>
+                    <h2 style="color:var(--danger);"><i class="fa-solid fa-plane-up"></i> Aviator Control Center</h2>
                     
                     <div class="input-group">
-                        <label>54. Aviator Crash Manipulator (Next Round Only)</label>
+                        <label>54. Force Next Crash Point (Kill Switch)</label>
                         <div style="display:flex; gap:10px;">
                             <input type="number" step="0.01" id="rig_aviator" placeholder="1.00">
-                            <button class="action-btn danger" onclick="pushRig('forcedCrashPoint', 'rig_aviator')">Force</button>
+                            <button class="action-btn danger" onclick="pushRig('forcedAviatorCrash', 'rig_aviator')">Force Next Flight</button>
                         </div>
                     </div>
+
+                    <div class="input-group" style="margin-top:15px;">
+                        <label>Max Crash Threshold (House Edge Limit e.g. 2.0)</label>
+                        <div style="display:flex; gap:10px;">
+                            <input type="number" step="0.01" id="aviatorMaxThreshold" placeholder="2.00">
+                            <button class="action-btn gold" onclick="pushRig('aviatorMaxThreshold', 'aviatorMaxThreshold')">Update</button>
+                        </div>
+                    </div>
+
+                    <div class="input-group" style="margin-top:15px;">
+                        <label>House Edge % (Probability to crash before Max Threshold e.g. 0.85)</label>
+                        <div style="display:flex; gap:10px;">
+                            <input type="number" step="0.01" id="aviatorHouseEdge" placeholder="0.85">
+                            <button class="action-btn gold" onclick="pushRig('aviatorHouseEdge', 'aviatorHouseEdge')">Update</button>
+                        </div>
+                    </div>
+                    
+                    <h2 style="color:var(--danger); margin-top:25px; border-top:1px solid var(--glass-border); padding-top:20px;"><i class="fa-solid fa-gamepad"></i> Other Game Rigging</h2>
 
                     <div class="input-group">
                         <label>55. Spin Wheel Rigging (Prize for 75% hits)</label>
@@ -327,6 +348,13 @@
                 </div>
 
                 <div>
+                    <!-- OX RTP Tracker -->
+                    <div class="panel glass" style="margin-bottom:20px; text-align:center;">
+                        <h2><i class="fa-solid fa-chart-line"></i> Multi OX RTP Tracker</h2>
+                        <p style="color:#94a3b8; font-size:0.9rem; margin-top:5px;">Live Minimax Bot Profit Margin</p>
+                        <div style="font-size: 2.5rem; font-weight: bold; margin-top:15px; color:var(--success);" id="rtp_bot_profit">+0 Gems</div>
+                    </div>
+
                     <div class="panel glass">
                         <h2><i class="fa-solid fa-satellite-dish"></i> 57. Global Broadcast</h2>
                         <textarea id="toast_msg" rows="3" placeholder="Push notification to all active screens..."></textarea>
@@ -335,8 +363,8 @@
 
                     <div class="panel glass">
                         <h2><i class="fa-solid fa-code"></i> 58. Live CSS Injector</h2>
-                        <textarea rows="4" placeholder=".theme { background: red; }"></textarea>
-                        <button class="action-btn" style="width:100%; margin-top:10px;" onclick="alert('CSS injected into active sessions!')"><i class="fa-solid fa-syringe"></i> Inject Live Styles</button>
+                        <textarea id="live_css_input" rows="4" placeholder=".theme { background: red; }"></textarea>
+                        <button class="action-btn" style="width:100%; margin-top:10px;" onclick="injectCss()"><i class="fa-solid fa-syringe"></i> Inject Live Styles</button>
                     </div>
                 </div>
             </div>
@@ -380,6 +408,15 @@
                 populateConfig(globalData.config);
                 populateTasks(globalData.tasks);
                 populateWithdrawals(globalData.withdrawals);
+                populateVerifications(globalData.verifications);
+                
+                // Populate RTP Tracker
+                if (document.getElementById('rtp_bot_profit')) {
+                    const stats = globalData.stats || { oxBotProfit: 0 };
+                    const profit = stats.oxBotProfit || 0;
+                    document.getElementById('rtp_bot_profit').innerText = (profit > 0 ? "+" : "") + profit + " Gems";
+                    document.getElementById('rtp_bot_profit').style.color = profit >= 0 ? "var(--success)" : "var(--danger)";
+                }
             }
         }
 
@@ -410,6 +447,9 @@
             document.getElementById('cfg_login_mult').value = c.loginMult || 1.5;
             document.getElementById('cfg_combo_reward').value = c.comboReward || 1000;
             document.getElementById('cfg_ox_win').value = c.oxWinRate || 75;
+            document.getElementById('cfg_spin_reward').value = c.spinRiggedReward || '50';
+            document.getElementById('cfg_scratch_min').value = c.scratchMin || 10;
+            document.getElementById('cfg_scratch_max').value = c.scratchMax || 100;
             document.getElementById('cfg_req_ref').value = c.reqReferrals || 3;
             document.getElementById('cfg_req_ads').value = c.reqAds || 20;
             document.getElementById('cfg_auto_app').value = c.autoApproveLimit || 5;
@@ -454,6 +494,9 @@
                 fakeOnline: document.getElementById('cfg_fake_online').value,
                 comboReward: document.getElementById('cfg_combo_reward').value,
                 oxWinRate: document.getElementById('cfg_ox_win').value,
+                spinRiggedReward: document.getElementById('cfg_spin_reward').value,
+                scratchMin: document.getElementById('cfg_scratch_min').value,
+                scratchMax: document.getElementById('cfg_scratch_max').value,
                 airdropDate: document.getElementById('cfg_airdrop').value
             };
 
@@ -660,6 +703,78 @@
                 a.href = url;
                 a.download = "firebase_backup.json";
                 a.click();
+            });
+        }
+
+        // ==========================
+        // FINAL FEATURES INTEGRATION
+        // ==========================
+        function sendInvoice() {
+            if(!activeUserId) return alert("Search and select a user first!");
+            const amount = prompt("Enter amount in Telegram Stars to invoice:");
+            if(!amount || isNaN(amount)) return;
+            fetch('/api/admin/invoice', {
+                method: 'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ secret: SECRET, userId: activeUserId, amount })
+            }).then(r=>r.json()).then(d => {
+                if(d.success) alert("Invoice sent to user via bot!");
+                else alert("Error: " + d.error);
+            });
+        }
+
+        function impersonateUser() {
+            if(!activeUserId) return alert("Search and select a user first!");
+            if(confirm("Open mini app as " + activeUserId + "?")) {
+                window.open('/?impersonate=' + activeUserId, '_blank');
+            }
+        }
+
+        function populateVerifications(vData) {
+            const list = document.getElementById('verifications_list');
+            if(!vData || Object.keys(vData).length === 0) {
+                list.innerHTML = '<p style="text-align:center;">No pending verifications.</p>';
+                return;
+            }
+            list.innerHTML = '';
+            Object.keys(vData).forEach(k => {
+                const v = vData[k];
+                if(v.status === 'pending') {
+                    list.innerHTML += `
+                        <div style="border:1px solid #333; padding:10px; margin-bottom:10px; border-radius:5px; background:rgba(255,255,255,0.05);">
+                            <div><strong>User:</strong> ${v.userId}</div>
+                            <div><strong>Task:</strong> ${v.taskId}</div>
+                            <div style="margin:10px 0;">
+                                <img src="${v.image}" style="max-width:100%; max-height:200px; border-radius:5px;" onerror="this.style.display='none'">
+                            </div>
+                            <div>
+                                <button class="action-btn success" style="padding:5px 10px;" onclick="actionVerification('${k}', 'approve')">Approve</button>
+                                <button class="action-btn danger" style="padding:5px 10px;" onclick="actionVerification('${k}', 'reject')">Reject</button>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+        }
+
+        function actionVerification(id, action) {
+            fetch('/api/admin/verifications/action', {
+                method: 'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ secret: SECRET, id, action })
+            }).then(r=>r.json()).then(d => {
+                if(d.success) fetchAdminData();
+            });
+        }
+
+        function injectCss() {
+            const css = document.getElementById('live_css_input').value;
+            fetch('/api/admin/css-inject', {
+                method: 'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ secret: SECRET, css })
+            }).then(r=>r.json()).then(d => {
+                if(d.success) alert("CSS Injected Globally!");
             });
         }
     </script>

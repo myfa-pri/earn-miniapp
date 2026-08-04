@@ -4,2189 +4,825 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
     <title>Besh Besh</title>
-    
-    <!-- MONETAG AD SDK -->
-    <script src='//libtl.com/sdk.js' data-zone='10024038' data-sdk='show_10024038'></script>
-
-    <!-- ADSGRAM SDK -->
-    <script src="https://api.adsgram.ai/js/adsgram.js?blockId=int-20922"></script>
-
-    <!-- FONTS & ICONS -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    
-    <!-- EXTERNAL CSS -->
     <link rel="stylesheet" href="index.css">
-
-    <!-- TELEGRAM WEB APP -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-
-    <!-- CONFETTI (for celebrations) -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-
-    <!-- QR CODE GENERATOR -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    
+    <!-- AD NETWORKS: ADSGRAM & MONETAG -->
+    <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
+    <!-- <script src="//monetag_script_url_here"></script> (Add Monetag URL here) -->
 </head>
-<body>
-    <!-- OFFLINE ALERT -->
-    <div id="offline-alert" class="toast error" style="display: none; bottom: auto; top: -100px; z-index: 4000;">
-        <i class="fa-solid fa-wifi"></i> <span>No Internet Connection</span>
-    </div>
-
-    <!-- PULL TO REFRESH INDICATOR -->
-    <div id="ptr" class="ptr-element">
-        <i class="fa-solid fa-arrow-down" id="ptr-icon"></i> <span id="ptr-text">Pull to refresh</span>
-    </div>
-
-    <!-- MARQUEE (Live Payouts) -->
-    <div class="marquee-container" id="payout-marquee" style="display: none;">
-        <div class="marquee-content" id="payout-content">
-            <!-- Populated via JS -->
-        </div>
-    </div>
+<body class="dark-mode">
 
     <div class="app-container" id="app-container">
-
-        <!-- THEME SWITCH & LANG (Top Right Global) -->
-        <div class="theme-switch-wrapper" style="position: fixed; top: 20px; right: 20px; z-index: 1000; display: flex; align-items: center; background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 20px;">
-            <select id="langSelect" style="background: transparent; border: none; color: white; margin-right: 10px; font-weight: bold; outline: none; cursor: pointer;" onchange="changeLang()">
-                <option value="en" style="color: black;">EN</option>
-                <option value="am" style="color: black;">AM</option>
-            </select>
-            <div style="cursor: pointer; color: white; font-size: 1.2rem;" onclick="toggleTheme()" id="themeToggleIcon">
-                <i class="fa-solid fa-moon"></i>
-            </div>
-        </div>
-
-        <!-- LOADING SCREEN (Cinematic) -->
-        <div id="loading-overlay">
-            <i class="fa-solid fa-gem loading-logo"></i>
-            <h3 class="loading-text">Besh Besh</h3>
-            <div class="progress-container" style="width: 200px; background: rgba(255,255,255,0.2);">
-                <div class="progress-bar" id="loading-progress" style="width: 0%; background: white;"></div>
-            </div>
-        </div>
-
-        <!-- HEADER (Home) -->
-        <div id="homeHeader" class="home-header">
-            <h1 style="font-size: 2.5rem; font-weight:800; letter-spacing: 1px;">Besh Besh</h1>
-            <div style="font-size: 0.9rem; opacity: 0.8; margin-top: 5px;" data-lang="welcome_subtitle">Earn rewards daily</div>
-        </div>
-
-        <!-- HEADER (Pages) -->
+        <!-- HEADER -->
         <div id="pageHeader" class="page-header glass" style="position: sticky; top: 0; z-index: 10; margin-bottom: 20px; display: none;">
             <div style="display:flex; align-items:center; gap:10px;">
                 <div class="profile-pic" id="pageHeaderAvatar" style="width:40px; height:40px; position:static; transform:none; border:2px solid var(--accent-color);"></div>
                 <div>
                     <div style="font-weight:700;" id="pageHeaderName">User</div>
-                    <div class="badge badge-silver" id="pageHeaderStatus" style="font-size: 0.6rem; padding: 2px 6px;">Member</div>
+                    <div class="badge badge-silver" id="pageHeaderStatus" style="font-size: 0.6rem; padding: 2px 6px; background: rgba(255,255,255,0.2); border-radius:10px;">Member</div>
                 </div>
             </div>
             <div style="text-align: right;">
-                <div style="font-weight:800; color:var(--accent-color); font-size: 1.1rem;"><i class="fa-solid fa-gem"></i> <span id="pageHeaderBalance" class="odometer">0</span></div>
-            </div>
-        </div>
-
-        <!-- PROFILE SECTION (Home Only) -->
-        <div id="profileSection" class="profile-section">
-            <div class="profile-card glass">
-                <div class="profile-pic" id="mainAvatar" onclick="handleAvatarTap()"></div>
-                <h2 id="profileNameDisplay" style="margin-top: 15px; font-weight: 800;">User</h2>
-                <div id="userPointsDisplay" class="points-display"><i class="fa-solid fa-gem"></i> <span class="odometer" id="homePointsVal">0</span></div>
-
-                <!-- Daily Streak -->
-                <div style="margin-top: 20px; text-align: left;">
-                    <div style="font-size: 0.8rem; font-weight: 600; color: #666;" data-lang="daily_streak">Daily Login Streak</div>
-                    <div class="streak-container" id="streakContainer">
-                        <!-- Populated by JS -->
-                    </div>
-                </div>
+                <div style="font-weight:800; color:var(--accent-color); font-size: 1.1rem;"><i class="fa-solid fa-gem"></i> <span id="pageHeaderBalance">0</span></div>
             </div>
         </div>
 
         <!-- CONTENT AREA -->
-        <div id="mainContent" class="content-section" style="min-height: 50vh;">
-            <!-- Skeletons shown initially -->
-            <div class="card skeleton" style="height: 150px;"></div>
-            <div class="card skeleton" style="height: 100px;"></div>
-        </div>
+        <div id="mainContent" class="content-section" style="min-height: 50vh;"></div>
 
-        <!-- INDIVIDUAL GAME CONTAINERS -->
-        
-        <!-- Game 1: Spin Wheel -->
-        <div id="spinGame" class="content-section" style="display: none; text-align: center;">
-            <h2 style="color: var(--gold-color);">Pro Spin Wheel</h2>
-            <div class="spin-wheel-container" id="spinWheel">
-                <!-- Wheel graphic goes here (simplified as border via CSS) -->
-                <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);">Spin!</div>
+        <!-- GAMES WRAPPER -->
+        <div id="gameCanvasWrapper" style="display: none; padding: 20px;">
+            <div style="position: sticky; top: 0; z-index: 100; background: var(--bg-color); padding: 10px 0; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                <button class="btn btn-secondary" onclick="closeGame()"><i class="fa-solid fa-arrow-left"></i> Back to Hub</button>
             </div>
-            <button class="btn btn-primary" onclick="playSpin()" id="spinBtn" style="margin-top: 20px;">Spin (10 Gems)</button>
-            <div id="spinResult" style="margin-top: 15px; font-weight: bold; font-size: 1.2rem;"></div>
-            <button class="btn btn-secondary" onclick="closeGame('spinGame')" style="margin-top: 20px;">Back to Hub</button>
-        </div>
-
-        <!-- Game 2: Combo Puzzle -->
-        <div id="comboGame" class="content-section" style="display: none; text-align: center;">
-            <h2 style="color: var(--accent-color);">Daily Combo</h2>
-            <p style="font-size: 0.9rem;">Drag icons to the correct order.</p>
-            <div style="display: flex; justify-content: center; gap: 10px; margin-top: 20px;" id="comboSource">
-                <!-- SVG icons as draggable items -->
-                <div draggable="true" ondragstart="drag(event)" id="c1" class="glass-panel" style="width:50px; height:50px; padding:5px;"><svg viewBox="0 0 24 24"><path d="M12 2L2 22h20L12 2z"/></svg></div>
-                <div draggable="true" ondragstart="drag(event)" id="c2" class="glass-panel" style="width:50px; height:50px; padding:5px;"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg></div>
-                <div draggable="true" ondragstart="drag(event)" id="c3" class="glass-panel" style="width:50px; height:50px; padding:5px;"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18"/></svg></div>
-            </div>
-            <div style="display: flex; justify-content: center; gap: 10px; margin-top: 20px;">
-                <div class="glass-panel" id="slot1" ondrop="drop(event)" ondragover="allowDrop(event)" style="width:60px; height:60px; border: 2px dashed #ccc;"></div>
-                <div class="glass-panel" id="slot2" ondrop="drop(event)" ondragover="allowDrop(event)" style="width:60px; height:60px; border: 2px dashed #ccc;"></div>
-                <div class="glass-panel" id="slot3" ondrop="drop(event)" ondragover="allowDrop(event)" style="width:60px; height:60px; border: 2px dashed #ccc;"></div>
-            </div>
-            <button class="btn btn-primary" onclick="checkCombo()" style="margin-top: 20px;">Check Pattern</button>
-            <div id="comboResult" style="margin-top: 15px; font-weight: bold;"></div>
-            <button class="btn btn-secondary" onclick="closeGame('comboGame')" style="margin-top: 20px;">Back to Hub</button>
-        </div>
-
-        <!-- Game 3: Aviator -->
-        <div id="aviatorGame" class="content-section" style="display: none; text-align: center; overflow:hidden;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
-                <h2 style="color: var(--danger-color); margin: 0;"><i class="fa-solid fa-plane-up"></i> Aviator</h2>
-                <div>
-                    <button class="btn btn-secondary" onclick="showProvablyFair()" style="padding: 5px 10px; width: auto;"><i class="fa-solid fa-shield-halved"></i> Fair</button>
-                </div>
-            </div>
-            
-            <div id="aviatorHistoryBar" class="aviator-history-ticker"></div>
-            
-            <div class="aviator-container">
-                <canvas id="aviatorCanvas"></canvas>
-                
-                <div id="aviatorChatOverlay" class="aviator-chat"></div>
-                <div id="aviatorTopWinOverlay" class="highest-win-banner" style="display:none;"></div>
-                
-                <!-- Central Text Overlays -->
-                <div id="aviatorMultiplier" style="position:absolute; top:40%; left:50%; transform:translate(-50%, -50%); font-size: 4rem; font-weight:900; color:white; text-shadow: 0 0 20px rgba(0,0,0,0.8); z-index:10; font-family: monospace;">1.00x</div>
-                <div id="aviatorCrashText" style="position:absolute; top:20%; left:50%; transform:translateX(-50%); font-size: 1.5rem; font-weight:800; color:var(--danger-color); text-transform:uppercase; text-shadow: 0 0 10px black; z-index:10; opacity: 0;">Flew Away!</div>
-            </div>
-            
-            <div class="aviator-tabs" style="display:flex; margin: 10px 0;">
-                <div class="aviator-tab active" onclick="switchAviatorTab('bets')">Live Bets</div>
-                <div class="aviator-tab" onclick="switchAviatorTab('mybets')">My History</div>
-            </div>
-            <div id="aviatorLiveBetsPanel" style="height: 60px; overflow-y:auto; background:rgba(0,0,0,0.2); border-radius:8px; margin-bottom:10px; text-align:left; padding:5px; font-size:0.8rem; color:#aaa;"></div>
-
-            <!-- Dual Betting Panel -->
-            <div class="bet-panel-container">
-                <!-- Panel 1 -->
-                <div class="bet-panel">
-                    <div style="display:flex; gap:5px; margin-bottom:5px;">
-                        <button class="hotkey-btn" onclick="addBet(1, 10)">+10</button>
-                        <button class="hotkey-btn" onclick="addBet(1, 50)">+50</button>
-                        <button class="hotkey-btn" onclick="addBet(1, 'max')">Max</button>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                        <input type="number" id="aviatorBet1" value="10" min="1" step="1" style="width: 48%; padding: 8px; font-weight:bold;">
-                        <input type="number" id="aviatorAuto1" placeholder="Auto 2.0x" step="0.1" min="1.01" style="width: 48%; padding: 8px;">
-                    </div>
-                    <label style="font-size:0.7rem; color:#888; display:block; margin-bottom:5px; text-align:left;"><input type="checkbox" id="aviatorAutoPlay1"> Auto Play</label>
-                    <button class="bet-btn idle" id="aviatorBtn1" onclick="toggleBet(1)">Bet</button>
-                </div>
-                <!-- Panel 2 -->
-                <div class="bet-panel">
-                    <div style="display:flex; gap:5px; margin-bottom:5px;">
-                        <button class="hotkey-btn" onclick="addBet(2, 10)">+10</button>
-                        <button class="hotkey-btn" onclick="addBet(2, 50)">+50</button>
-                        <button class="hotkey-btn" onclick="addBet(2, 'max')">Max</button>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                        <input type="number" id="aviatorBet2" value="50" min="1" step="1" style="width: 48%; padding: 8px; font-weight:bold;">
-                        <input type="number" id="aviatorAuto2" placeholder="Auto 3.0x" step="0.1" min="1.01" style="width: 48%; padding: 8px;">
-                    </div>
-                    <label style="font-size:0.7rem; color:#888; display:block; margin-bottom:5px; text-align:left;"><input type="checkbox" id="aviatorAutoPlay2"> Auto Play</label>
-                    <button class="bet-btn idle" id="aviatorBtn2" onclick="toggleBet(2)">Bet</button>
-                </div>
-            </div>
-            
-            <p style="font-size: 0.7rem; color: #666; margin-top:5px;"><i class="fa-solid fa-keyboard"></i> Tip: Press Spacebar to Bet/Cashout Panel 1</p>
-
-            <button class="btn btn-secondary" onclick="closeGame('aviatorGame')" style="margin-top: 10px; width: 100%;">Back to Hub</button>
-
-            <!-- Audio elements -->
-            <audio id="audioEngine" src="https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3" loop></audio>
-            <audio id="audioCashout" src="https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3"></audio>
-            <audio id="audioCrash" src="https://assets.mixkit.co/active_storage/sfx/1466/1466-preview.mp3"></audio>
-        </div>
-
-        <!-- Game 4: OX -->
-        <div id="oxGame" class="content-section" style="display: none; text-align: center;">
-            <h2 style="color: var(--accent-color);">Multi-player OX</h2>
-            <div class="glass-panel" style="padding: 15px; margin-bottom: 15px;">
-                <label>Select Bet (Gems):</label>
-                <select id="oxBet" style="padding:5px; border-radius:5px; width:100%; margin-top:5px;">
-                    <option value="15">15 Gems</option>
-                    <option value="25">25 Gems</option>
-                    <option value="50">50 Gems</option>
-                    <option value="100">100 Gems</option>
-                    <option value="200">200 Gems</option>
-                </select>
-            </div>
-            
-            <div style="display:flex; gap:10px; justify-content:center;">
-                <button class="btn btn-primary" onclick="findOXMatch(false)">Find Match Online</button>
-                <button class="btn btn-secondary" onclick="findOXMatch(true)" style="background: #333;">Play Bot (Hard)</button>
-            </div>
-            <div id="oxMatchStatus" style="margin-top: 15px; font-style: italic;"></div>
-            
-            <div id="oxBoard" style="display:none; margin-top: 20px;">
-                <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:5px; width:200px; margin:0 auto;" id="oxGrid">
-                    <div class="glass-panel" style="height:60px; display:flex; align-items:center; justify-content:center; font-size:2rem; cursor:pointer;"></div>
-                    <div class="glass-panel" style="height:60px; display:flex; align-items:center; justify-content:center; font-size:2rem; cursor:pointer;"></div>
-                    <div class="glass-panel" style="height:60px; display:flex; align-items:center; justify-content:center; font-size:2rem; cursor:pointer;"></div>
-                    <div class="glass-panel" style="height:60px; display:flex; align-items:center; justify-content:center; font-size:2rem; cursor:pointer;"></div>
-                    <div class="glass-panel" style="height:60px; display:flex; align-items:center; justify-content:center; font-size:2rem; cursor:pointer;"></div>
-                    <div class="glass-panel" style="height:60px; display:flex; align-items:center; justify-content:center; font-size:2rem; cursor:pointer;"></div>
-                    <div class="glass-panel" style="height:60px; display:flex; align-items:center; justify-content:center; font-size:2rem; cursor:pointer;"></div>
-                    <div class="glass-panel" style="height:60px; display:flex; align-items:center; justify-content:center; font-size:2rem; cursor:pointer;"></div>
-                    <div class="glass-panel" style="height:60px; display:flex; align-items:center; justify-content:center; font-size:2rem; cursor:pointer;"></div>
-                </div>
-                <div id="oxResult" style="margin-top: 15px; font-weight: bold; font-size:1.2rem;"></div>
-            </div>
-
-            <button class="btn btn-secondary" onclick="closeGame('oxGame')" style="margin-top: 20px;">Back to Hub</button>
-        </div>
-
-        <!-- NEW GAME HUB (Phase 2) -->
-        <div id="gameHub" class="content-section" style="display: none;">
-            <h2 style="font-weight: 800; margin-bottom: 15px; color: var(--text-dark);"><i class="fa-solid fa-gamepad"></i> Game Hub</h2>
-            <div class="game-hub-list" style="display: flex; flex-direction: column; gap: 12px;">
-                <!-- Game 1: Aviator -->
-                <div class="glass game-list-card-horizontal" onclick="openGame('aviator')">
-                    <div class="game-icon-box" style="background: rgba(239, 68, 68, 0.2); color: var(--danger-color);">
-                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>
-                    </div>
-                    <div class="game-details">
-                        <h3>Aviator</h3>
-                        <p>Hold for multipliers!</p>
-                    </div>
-                    <div class="play-btn-pill">Play</div>
-                </div>
-
-                <!-- Game 2: Multi OX -->
-                <div class="glass game-list-card-horizontal" onclick="openGame('ox')">
-                    <div class="game-icon-box" style="background: rgba(176, 38, 255, 0.2); color: var(--accent-color);">
-                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-8 14H7v-4h4v4zm0-6H7V7h4v4zm6 6h-4v-4h4v4zm0-6h-4V7h4v4z"/></svg>
-                    </div>
-                    <div class="game-details">
-                        <h3>Multi OX</h3>
-                        <p>Tic-Tac-Toe Wagering</p>
-                    </div>
-                    <div class="play-btn-pill">Play</div>
-                </div>
-
-                <!-- Game 3: Daily Combo -->
-                <div class="glass game-list-card-horizontal" onclick="openGame('combo')">
-                    <div class="game-icon-box" style="background: rgba(16, 185, 129, 0.2); color: var(--success-color);">
-                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4zM4 10h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4zM4 16h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4z"/></svg>
-                    </div>
-                    <div class="game-details">
-                        <h3>Daily Combo</h3>
-                        <p>Drag & Drop Puzzle</p>
-                    </div>
-                    <div class="play-btn-pill">Play</div>
-                </div>
-
-                <!-- Game 4: Pro Spin -->
-                <div class="glass game-list-card-horizontal" onclick="openGame('spin')">
-                    <div class="game-icon-box" style="background: rgba(255, 179, 71, 0.2); color: var(--gold-color);">
-                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95.49-7.41-2.42-7.93-6.37l2.84-.71c.36 2.37 2.45 4.15 4.88 4.15 2.76 0 5-2.24 5-5s-2.24-5-5-5c-2.43 0-4.52 1.78-4.88 4.15l-2.84-.71c.52-3.95 3.98-6.86 7.93-6.37 3.55.44 6.33 3.32 6.64 6.89.39 4.35-3.04 8.01-7.39 8.01-.08 0-.17 0-.25-.04z"/></svg>
-                    </div>
-                    <div class="game-details">
-                        <h3>Pro Spin</h3>
-                        <p>Win massive Gems!</p>
-                    </div>
-                    <div class="play-btn-pill">Play</div>
-                </div>
-
-                <!-- Game 5: Scratch Card (Navigates to Home -> Scratch Card) -->
-                <div class="glass game-list-card-horizontal" onclick="navigateTo('games')">
-                    <div class="game-icon-box" style="background: rgba(59, 130, 246, 0.2); color: #3B82F6;">
-                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-1.04 14.74l-6.84-6.84c.3-.82.46-1.71.46-2.65 0-3.87-3.13-7-7-7-.94 0-1.83.16-2.65.46l15.54 15.54c.18-.15.33-.33.49-.51z"/></svg>
-                    </div>
-                    <div class="game-details">
-                        <h3>Scratch Card</h3>
-                        <p>Scratch to win!</p>
-                    </div>
-                    <div class="play-btn-pill">Play</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- NEW FEATURES SECTION (Phase 6) -->
-        <div id="featuresHub" class="content-section" style="display: none;">
-             <h2 style="font-weight: 800; margin-bottom: 15px; color: var(--text-dark);"><i class="fa-solid fa-star"></i> Hub Features</h2>
-             
-             <!-- Idle Miner -->
-             <div class="glass-panel" style="padding: 15px; margin-bottom: 15px; text-align: center;">
-                 <h3 style="color: var(--gold-color);"><i class="fa-solid fa-pickaxe"></i> Idle Gem Miner</h3>
-                 <p style="font-size: 0.9rem; color: #666;">Passively mining...</p>
-                 <div style="font-size: 1.5rem; font-weight: bold; margin-top: 10px;">+ <span id="idleMinerVal">0.00</span></div>
-             </div>
-        </div>
-
-
-        <!-- FLOATING ACTION BUTTON (Support/Help) -->
-        <div class="fab" onclick="openFAQ()">
-            <i class="fa-solid fa-question"></i>
-        </div>
-
-        <!-- SCROLL TO TOP -->
-        <div id="scrollToTop" class="fab" style="bottom: 140px; display: none; background: var(--card-bg); color: var(--accent-color); border: 1px solid var(--accent-color);" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
-            <i class="fa-solid fa-chevron-up"></i>
-        </div>
-
-        <!-- NAVIGATION -->
-        <div class="bottom-nav glass">
-            <a href="javascript:void(0)" class="nav-item active" data-page="home"><i class="fa-solid fa-house"></i><span data-lang="nav_home">Home</span></a>
-            <a href="javascript:void(0)" class="nav-item" data-page="tasks"><i class="fa-solid fa-list-check"></i><span data-lang="nav_tasks">Tasks</span></a>
-            <a href="javascript:void(0)" class="nav-item" data-page="games"><i class="fa-solid fa-gamepad"></i><span data-lang="nav_games">Games</span></a>
-            <a href="javascript:void(0)" class="nav-item" data-page="leaderboard"><i class="fa-solid fa-trophy"></i><span data-lang="nav_top">Top</span></a>
-            <a href="javascript:void(0)" class="nav-item" data-page="referral"><i class="fa-solid fa-user-group"></i><span data-lang="nav_invite">Invite</span></a>
-            <a href="javascript:void(0)" class="nav-item" data-page="withdraw"><i class="fa-solid fa-wallet"></i><span data-lang="nav_pay">Pay</span></a>
+            <div id="activeGameCanvas"></div>
         </div>
 
         <div id="toast" class="toast"><i class="fa-solid fa-circle-info"></i> <span id="toast-msg"></span></div>
-    </div>
+        <div id="leaderboardFooter" class="sticky-footer" style="display: none;">Your Rank: 99+</div>
 
-    <!-- FAQ MODAL -->
-    <div id="faqModal" class="modal-overlay">
-        <div class="modal-content glass">
-            <i class="fa-solid fa-xmark modal-close" onclick="closeFAQ()"></i>
-            <h3 style="margin-bottom: 20px; color: var(--text-dark);"><i class="fa-solid fa-circle-question"></i> Help & FAQ</h3>
-            <div id="faqList">
-                <div class="faq-item">
-                    <div class="faq-header" onclick="toggleFaq(this)">How do I earn points? <i class="fa-solid fa-chevron-down"></i></div>
-                    <div class="faq-content">You can earn points by watching ads, completing tasks in the Tasks section, inviting friends, and playing daily games like Spin the Wheel.</div>
-                </div>
-                <div class="faq-item">
-                    <div class="faq-header" onclick="toggleFaq(this)">When can I withdraw? <i class="fa-solid fa-chevron-down"></i></div>
-                    <div class="faq-content">You must meet the minimum referral, ad watch, and task requirements shown on the Pay page.</div>
-                </div>
-                <div class="faq-item">
-                    <div class="faq-header" onclick="toggleFaq(this)">How do referrals work? <i class="fa-solid fa-chevron-down"></i></div>
-                    <div class="faq-content">Share your link. When a friend joins and starts the bot, you both receive a bonus!</div>
-                </div>
-            </div>
+        <!-- NAVIGATION -->
+        <div class="bottom-nav glass">
+            <a class="nav-item active" data-page="home" onclick="nav('home')"><i class="fa-solid fa-house"></i><span>Home</span></a>
+            <a class="nav-item" data-page="games" onclick="nav('games')"><i class="fa-solid fa-gamepad"></i><span>Hub</span></a>
+            <a class="nav-item" data-page="leaderboard" onclick="nav('leaderboard')"><i class="fa-solid fa-trophy"></i><span>Top</span></a>
+            <a class="nav-item" data-page="withdraw" onclick="nav('withdraw')"><i class="fa-solid fa-wallet"></i><span>Pay</span></a>
         </div>
     </div>
 
-    <!-- AVATAR SELECTION MODAL -->
-    <div id="avatarModal" class="modal-overlay">
-        <div class="modal-content glass" style="text-align: center;">
-            <i class="fa-solid fa-xmark modal-close" onclick="document.getElementById('avatarModal').style.display='none'"></i>
-            <h3 style="margin-bottom: 20px; color: var(--text-dark);">Choose Avatar</h3>
-            <div style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;" id="avatarList">
-                <!-- Populated via JS -->
-            </div>
-        </div>
-    </div>
-
-    <!-- SOUND EFFECTS -->
-    <audio id="clickSound" src="https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3"></audio>
-    <audio id="successSound" src="https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3"></audio>
+    <!-- AUDIO ELEMENTS -->
+    <audio id="audioCashout" src="https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3"></audio>
+    <audio id="audioCrash" src="https://assets.mixkit.co/active_storage/sfx/1466/1466-preview.mp3"></audio>
+    <!-- We will use Web Audio API for the dynamic engine pitch -->
 
     <script>
         const API_BASE_URL = ''; 
-        let AppConfig = {}, BonusTasks = [], currentUser = null, userId = null, LeaderboardData = null, startParam = null;
-        let userPhotoUrl = 'https://ui-avatars.com/api/?name=User&background=B026FF&color=fff';
+        let currentUser = null, userId = null, startParam = null;
         
-        // State
-        let currentLang = localStorage.getItem('lang') || 'en';
-        let isDarkMode = localStorage.getItem('theme') !== 'light'; // Default to dark
-        let hapticEnabled = true;
-        let soundEnabled = true;
-        let avatarTaps = 0;
-        let avatarTapTimer;
-
-        const translations = {
-            en: {
-                welcome_subtitle: "Earn rewards daily",
-                daily_streak: "Daily Login Streak",
-                nav_home: "Home", nav_tasks: "Tasks", nav_games: "Games", nav_top: "Top", nav_invite: "Invite", nav_pay: "Pay",
-                btn_post_story: "Post Story", btn_withdraw: "Withdraw", btn_history: "History",
-                stat_refs: "Referrals", stat_rank: "Global Rank", stat_ads: "Total Ads", stat_left: "Ads Left", stat_tasks: "Tasks", stat_withdrawn: "Withdrawn",
-                quests_title: "Daily Quests", quest_1: "Watch 5 Ads", quest_2: "Invite 1 Friend", quest_3: "Play Spin Wheel",
-                promo_title: "Promo Code", promo_placeholder: "Enter secret code...", promo_btn: "Claim",
-                tasks_daily: "Daily Earning", tasks_watch: "Watch Ad", tasks_special: "Special", tasks_bonus: "Bonus Tasks",
-                games_spin: "Spin the Wheel", games_scratch: "Scratch Card",
-                top_points: "By Points", top_refs: "By Invite",
-                inv_title: "Invite & Earn", inv_desc: "Earn points for every friend.", inv_copy: "Copy Link", inv_share: "Share",
-                pay_unlocked: "Withdraw Unlocked!", pay_reqs: "Requirements for Next Withdraw", pay_submit: "Submit Withdrawal"
-            },
-            am: {
-                welcome_subtitle: "በየቀኑ ሽልማቶችን ያግኙ",
-                daily_streak: "ዕለታዊ መግቢያ",
-                nav_home: "ዋና", nav_tasks: "ስራዎች", nav_games: "ጨዋታዎች", nav_top: "ደረጃ", nav_invite: "ጋብዝ", nav_pay: "ክፍያ",
-                btn_post_story: "ታሪክ ለጥፍ", btn_withdraw: "ገንዘብ አውጣ", btn_history: "ታሪክ",
-                stat_refs: "ግብዣዎች", stat_rank: "ደረጃ", stat_ads: "ማስታወቂያዎች", stat_left: "ቀሪ", stat_tasks: "ስራዎች", stat_withdrawn: "የወጣ",
-                quests_title: "ዕለታዊ ስራዎች", quest_1: "5 ማስታወቂያ እይ", quest_2: "1 ሰው ጋብዝ", quest_3: "ጨዋታ ተጫወት",
-                promo_title: "የማስተዋወቂያ ኮድ", promo_placeholder: "ኮድ ያስገቡ...", promo_btn: "አረጋግጥ",
-                tasks_daily: "ዕለታዊ ገቢ", tasks_watch: "ማስታወቂያ እይ", tasks_special: "ልዩ", tasks_bonus: "ተጨማሪ ስራዎች",
-                games_spin: "ዕድል መንኮራኩር", games_scratch: "ካርድ ፍቅፍቅ",
-                top_points: "በነጥብ", top_refs: "በግብዣ",
-                inv_title: "ጋብዝ እና አግኝ", inv_desc: "ለእያንዳንዱ ጓደኛ ነጥብ ያግኙ", inv_copy: "ኮፒ", inv_share: "አጋራ",
-                pay_unlocked: "ክፍያ ተከፍቷል!", pay_reqs: "ለቀጣይ ክፍያ የሚያስፈልጉ", pay_submit: "ጥያቄ ላክ"
-            }
-        };
-
-        // --- ADSGRAM INITIALIZATION ---
-        let AdController;
-        try {
-            AdController = window.Adsgram.init({ blockId: "int-20922" });
-        } catch(e) { console.log("Adsgram init error", e); }
-
-        function initTheme() {
-            const toggleIcon = document.getElementById('themeToggleIcon');
-            if(!isDarkMode) {
-                document.body.classList.add('day-mode');
-                document.body.classList.remove('dark-mode');
-                if(toggleIcon) toggleIcon.innerHTML = '<i class="fa-solid fa-moon"></i>';
-            } else {
-                document.body.classList.remove('day-mode');
-                document.body.classList.add('dark-mode');
-                if(toggleIcon) toggleIcon.innerHTML = '<i class="fa-solid fa-sun" style="color: #FFB347;"></i>';
-            }
-        }
+        // Aviator State
+        let aviatorMultiplier = 1.00;
+        let aviatorActive = false;
+        let audioCtx = null, oscillator = null, gainNode = null;
         
-        function toggleTheme() {
-            isDarkMode = !isDarkMode;
-            localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
-            initTheme();
-        }
-
         document.addEventListener('DOMContentLoaded', async () => {
             try {
                 const tg = window.Telegram.WebApp;
-                if(tg.expand) tg.expand();
+                tg.expand();
 
-                initTheme();
-                initPullToRefresh();
-                initScrollToTop();
-
-                // Simulate Loading
-                let prog = 0;
-                const loadInt = setInterval(() => {
-                    prog += 20;
-                    document.getElementById('loading-progress').style.width = prog + '%';
-                    if(prog >= 90) clearInterval(loadInt);
-                }, 200);
-
-                // Network Listener
-                window.addEventListener('online', () => document.getElementById('offline-alert').style.display = 'none');
-                window.addEventListener('offline', () => document.getElementById('offline-alert').style.display = 'flex');
-
-                // --- ADSGRAM AUTO LOGIC ---
-                if(AdController) {
-                    AdController.show().catch((e)=>{ console.log("Open Ad skipped"); });
-                    setInterval(() => { AdController.show().catch((e)=>{}); }, 60000);
+                const tgUser = tg.initDataUnsafe?.user;
+                if (!tgUser || !tgUser.id) {
+                    document.body.innerHTML = "<h2 style='text-align:center; margin-top:50px;'>Telegram Web App Error.</h2>";
+                    return;
                 }
+                userId = tgUser.id.toString();
+                startParam = tg.initDataUnsafe?.start_param || null;
 
-                const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
-                userId = tgUser?.id?.toString();
-                startParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param || null;
+                const realName = tgUser.first_name + (tgUser.last_name ? " " + tgUser.last_name : "");
 
-                let realName = "User";
-                if(tgUser) {
-                    realName = tgUser.username || (tgUser.first_name + (tgUser.last_name ? " " + tgUser.last_name : ""));
-                    userPhotoUrl = tgUser.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(realName)}&background=B026FF&color=fff`;
-                }
-
-                if (!userId) {
-                    userId = "test_user_1";
-                    console.log("No User ID, using Test ID");
-                }
-
-                await loadAppConfig();
-                await loadOrRegisterUser(realName, startParam);
-
-                clearInterval(loadInt);
-                document.getElementById('loading-progress').style.width = '100%';
-
-                setTimeout(() => {
-                    document.getElementById('loading-overlay').style.display = 'none';
-                    setupApp();
-                }, 500);
-
-            } catch (e) {
-                document.getElementById('loading-overlay').style.display = 'none';
-                console.error("Initialization Error", e);
-                alert("Failed to load app data. Please try again.");
-            }
-        });
-
-        // ==========================================
-        // INITIALIZATION & UI SETUP
-        // ==========================================
-
-        function initLang() {
-            document.getElementById('langSelect').value = currentLang;
-            applyTranslations();
-        }
-
-        function changeLang() {
-            currentLang = document.getElementById('langSelect').value;
-            localStorage.setItem('lang', currentLang);
-            applyTranslations();
-            // Re-render current page to update dynamic content
-            const activePage = document.querySelector('.nav-item.active').getAttribute('data-page');
-            navigateTo(activePage, false);
-        }
-
-        function applyTranslations() {
-            document.querySelectorAll('[data-lang]').forEach(el => {
-                const key = el.getAttribute('data-lang');
-                if(translations[currentLang][key]) {
-                    if(el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') el.placeholder = translations[currentLang][key];
-                    else el.textContent = translations[currentLang][key];
-                }
-            });
-        }
-
-        async function loadAppConfig() {
-            try {
-                const [c, t] = await Promise.all([fetch(`${API_BASE_URL}/api/config`), fetch(`${API_BASE_URL}/api/tasks`)]);
-                AppConfig = await c.json();
-                BonusTasks = Object.values(await t.json() || {});
-            } catch (error) {
-                AppConfig = { adsPerDay: 20, pointsPerAd: 50, currencyName: 'Gems' };
-            }
-            if(AppConfig.maintenanceMode) throw new Error("⚠️ App is currently Under Maintenance. Please check back later.");
-        }
-
-        async function loadOrRegisterUser(realName, refCode) {
-            try {
-                let res = await fetch(`${API_BASE_URL}/api/user/${userId}?name=${encodeURIComponent(realName)}`);
+                let res = await fetch(`${API_BASE_URL}/api/user/${userId}`);
                 if(!res.ok) {
                     res = await fetch(`${API_BASE_URL}/api/ensure-user`, {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ userId, username: realName, refParam: refCode })
+                        body: JSON.stringify({ userId, username: realName, refParam: startParam })
                     });
-                    if(!res.ok) throw new Error("Registration Failed");
                     res = await fetch(`${API_BASE_URL}/api/user/${userId}`);
                 }
                 currentUser = await res.json();
                 
-                if(currentUser.isBanned) throw new Error("⛔ ACCOUNT BANNED");
-                currentUser.username = realName;
-
-                // Set custom avatar if exists
-                if(currentUser.customAvatar) userPhotoUrl = currentUser.customAvatar;
-            } catch (e) { throw e; }
-        }
-
-        function setupApp() {
-            // Fade out loader
-            const loader = document.getElementById('loading-overlay');
-            loader.style.opacity = '0';
-            setTimeout(() => { loader.style.display = 'none'; }, 500);
-
-            document.querySelectorAll('.profile-pic').forEach(el => el.style.backgroundImage = `url('${userPhotoUrl}')`);
-
-            // Navigation
-            document.querySelectorAll('.nav-item').forEach(link => {
-                link.addEventListener('click', (e) => {
-                    e.preventDefault(); 
-                    const page = link.getAttribute('data-page');
-                    navigateTo(page);
-                });
-            });
-
-            // Swipe Navigation
-            let startX = 0;
-            const pages = ['home', 'tasks', 'games', 'exchange', 'leaderboard', 'referral', 'withdraw'];
-            document.getElementById('mainContent').addEventListener('touchstart', e => startX = e.changedTouches[0].screenX);
-            document.getElementById('mainContent').addEventListener('touchend', e => {
-                let endX = e.changedTouches[0].screenX;
-                if(Math.abs(endX - startX) > 100) {
-                    const currentIdx = pages.indexOf(document.querySelector('.nav-item.active').getAttribute('data-page'));
-                    if(endX < startX && currentIdx < pages.length - 1) navigateTo(pages[currentIdx + 1]); // Swipe Left
-                    else if(endX > startX && currentIdx > 0) navigateTo(pages[currentIdx - 1]); // Swipe Right
+                if(currentUser.isBanned) {
+                    document.body.innerHTML = "<h2 style='text-align:center; color:red; margin-top:50px;'>ACCOUNT BANNED</h2>";
+                    return;
                 }
-            });
-
-            updateUI();
-            navigateTo('home');
-
-            // Marquee
-            if(AppConfig.showPayoutTicker) {
-                document.getElementById('payout-marquee').style.display = 'block';
-                document.getElementById('homeHeader').style.marginTop = '30px';
-                fetchPayoutTicker();
+                nav('home');
+            } catch (e) {
+                console.error("Init Error", e);
             }
-        }
+        });
 
         function updateUI() {
-            const cur = AppConfig.currencyName || 'Gems';
-            const pts = currentUser.points || 0;
-            const ptsStr = pts.toLocaleString();
-
-            document.getElementById('profileNameDisplay').textContent = currentUser.username;
-            document.getElementById('homePointsVal').textContent = ptsStr;
-
             document.getElementById('pageHeaderName').textContent = currentUser.username;
-            document.getElementById('pageHeaderBalance').innerText = ptsStr;
-
-            // Tier Badge
-            let tier = "Bronze"; let badgeCls = "badge-bronze";
-            if(pts > 50000) { tier = "Platinum"; badgeCls = "badge-platinum"; }
-            else if(pts > 20000) { tier = "Gold"; badgeCls = "badge-gold"; }
-            else if(pts > 5000) { tier = "Silver"; badgeCls = "badge-silver"; }
-
-            const b = document.getElementById('pageHeaderStatus');
-            b.className = `badge ${badgeCls}`;
-            b.textContent = tier;
+            document.getElementById('pageHeaderBalance').innerText = (currentUser.points || 0).toLocaleString();
         }
 
-        function navigateTo(page, playSound = true) {
-            if(playSound) { playClickSound(); hapticClick(); }
+        function showToast(msg, type='info') {
+            const t = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            t.className = `toast show ${type}`;
+            setTimeout(() => t.className = 'toast', 3000);
+        }
 
+        function nav(page) {
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
             document.querySelector(`.nav-item[data-page="${page}"]`).classList.add('active');
             
-            const isHome = page === 'home';
-            document.getElementById('homeHeader').style.display = isHome ? 'flex' : 'none';
-            document.getElementById('profileSection').style.display = isHome ? 'block' : 'none';
-            document.getElementById('pageHeader').style.display = isHome ? 'none' : 'flex';
+            document.getElementById('gameCanvasWrapper').style.display = 'none';
+            document.getElementById('mainContent').style.display = 'block';
+            document.getElementById('pageHeader').style.display = 'flex';
+            document.getElementById('leaderboardFooter').style.display = 'none';
 
             const content = document.getElementById('mainContent');
-            content.innerHTML = '<div class="card skeleton" style="height: 150px;"></div><div class="card skeleton" style="height: 100px;"></div>';
+            updateUI();
 
-            // Simulate slight delay for skeleton effect
+            if(page === 'home') renderHome(content);
+            if(page === 'games') renderGames(content);
+            if(page === 'leaderboard') renderLeaderboard(content);
+            if(page === 'withdraw') renderWithdraw(content);
+        }
+
+        function renderHome(c) {
+            c.innerHTML = `
+                <div class="card glass" style="text-align:center; padding: 40px 20px;">
+                    <div class="profile-pic" style="background-image:url('https://ui-avatars.com/api/?name=${currentUser.username}&background=B026FF&color=fff'); position:relative; top:0; transform:none; margin: 0 auto 15px;"></div>
+                    <h2>${currentUser.username}</h2>
+                    <div class="points-display" style="font-size: 2rem;"><i class="fa-solid fa-gem"></i> ${currentUser.points}</div>
+                </div>
+                
+                <div class="card glass" style="margin-top: 20px; text-align: center;">
+                    <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-video" style="color: var(--accent-color);"></i> Watch Ads & Earn</h3>
+                    <div style="display:flex; gap:10px; justify-content:center;">
+                        <button class="btn btn-primary" onclick="showAdsgram()"><i class="fa-solid fa-play"></i> Adsgram Ad</button>
+                        <button class="btn btn-secondary" onclick="showMonetag()"><i class="fa-solid fa-play"></i> Monetag Ad</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- AD NETWORK LOGIC ---
+        let adController = null;
+        if(window.Adsgram) {
+            // Replace blockId with your actual Adsgram block ID from the dashboard
+            adController = window.Adsgram.init({ blockId: "YOUR_ADSGRAM_BLOCK_ID" });
+        }
+
+        function showAdsgram() {
+            if(adController) {
+                adController.show().then((result) => {
+                    // Reward user for watching ad
+                    rewardUserForAd('adsgram');
+                }).catch((result) => {
+                    showToast('Ad skipped or unavailable.', 'error');
+                });
+            } else {
+                showToast('Adsgram is not initialized.', 'error');
+            }
+        }
+
+        function showMonetag() {
+            // Call Monetag show logic here based on their specific SDK
+            // Example:
+            // if(window.monetag) window.monetag.showAd().then(() => rewardUserForAd('monetag'));
+            showToast('Monetag integration triggered!', 'success');
+            // rewardUserForAd('monetag');
+        }
+
+        function rewardUserForAd(network) {
+            // Give 50 gems as example
+            currentUser.points += 50;
+            updateUI();
+            showToast(`Earned 50 Gems from ${network}!`, 'success');
+            
+            // Note: In production, send a POST to the backend to securely credit the gems
+            fetch(`${API_BASE_URL}/api/user/${userId}/add-points`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ points: 50, reason: `Watched ${network} Ad` })
+            }).catch(e => console.error(e));
+        }
+
+        function renderGames(c) {
+            c.innerHTML = `
+                <h2 style="margin-bottom: 15px;"><i class="fa-solid fa-gamepad" style="color:var(--accent-color);"></i> Game Hub</h2>
+                <div class="game-hub-list">
+                    <div class="glass game-list-card-horizontal" onclick="openGame('aviator')">
+                        <div class="game-icon-box" style="background: rgba(239,68,68,0.2); color: var(--danger-color); text-shadow: 0 0 10px rgba(239,68,68,0.8);"><i class="fa-solid fa-plane-up fa-2x"></i></div>
+                        <div class="game-details"><h3>Aviator</h3><p>Hold for high multipliers!</p></div>
+                        <div class="play-btn-pill">Play</div>
+                    </div>
+                    <div class="glass game-list-card-horizontal" onclick="showToast('Multi OX coming soon!', 'info')">
+                        <div class="game-icon-box" style="background: rgba(59,130,246,0.2); color: #3B82F6; text-shadow: 0 0 10px rgba(59,130,246,0.8);"><i class="fa-solid fa-xmarks-lines fa-2x"></i></div>
+                        <div class="game-details"><h3>Multi OX</h3><p>Tic-Tac-Toe with real players.</p></div>
+                        <div class="play-btn-pill">Play</div>
+                    </div>
+                    <div class="glass game-list-card-horizontal" onclick="showToast('Daily Combo coming soon!', 'info')">
+                        <div class="game-icon-box" style="background: rgba(255,179,71,0.2); color: var(--gold-color); text-shadow: 0 0 10px rgba(255,179,71,0.8);"><i class="fa-solid fa-puzzle-piece fa-2x"></i></div>
+                        <div class="game-details"><h3>Daily Combo</h3><p>Solve the puzzle for huge gems.</p></div>
+                        <div class="play-btn-pill">Play</div>
+                    </div>
+                    <div class="glass game-list-card-horizontal" onclick="showToast('Pro Spin coming soon!', 'info')">
+                        <div class="game-icon-box" style="background: rgba(176,38,255,0.2); color: var(--accent-color); text-shadow: 0 0 10px rgba(176,38,255,0.8);"><i class="fa-solid fa-dharmachakra fa-2x"></i></div>
+                        <div class="game-details"><h3>Pro Spin</h3><p>Spin the wheel of fortune.</p></div>
+                        <div class="play-btn-pill">Play</div>
+                    </div>
+                    <div class="glass game-list-card-horizontal" onclick="showToast('Scratch Card coming soon!', 'info')">
+                        <div class="game-icon-box" style="background: rgba(16,185,129,0.2); color: var(--success-color); text-shadow: 0 0 10px rgba(16,185,129,0.8);"><i class="fa-solid fa-ticket fa-2x"></i></div>
+                        <div class="game-details"><h3>Scratch Card</h3><p>Instant win scratch tickets.</p></div>
+                        <div class="play-btn-pill">Play</div>
+                    </div>
+                </div>`;
+        }
+
+        function renderWithdraw(c) {
+            const realBal = currentUser.realBalance || 0;
+            c.innerHTML = `
+                <h2 style="margin-bottom: 15px;"><i class="fa-solid fa-wallet" style="color:var(--success-color);"></i> Wallet & Exchange</h2>
+                <div class="card glass" style="display:flex; justify-content:space-around; text-align:center;">
+                    <div>
+                        <p style="font-size:0.85rem; color:#94a3b8; font-weight:bold;">Current Gems</p>
+                        <h3 style="color:var(--accent-color);"><i class="fa-solid fa-gem"></i> ${currentUser.points}</h3>
+                    </div>
+                    <div style="width:1px; background:rgba(255,255,255,0.1);"></div>
+                    <div>
+                        <p style="font-size:0.85rem; color:#94a3b8; font-weight:bold;">Real Money</p>
+                        <h3 style="color:var(--success-color);"><i class="fa-solid fa-dollar-sign"></i> ${realBal.toFixed(2)}</h3>
+                    </div>
+                </div>
+
+                <div class="card glass">
+                    <h3 style="margin-bottom:10px;"><i class="fa-solid fa-right-left"></i> Exchange Gems</h3>
+                    <p style="font-size:0.8rem; margin-bottom:15px; color:#94a3b8;">Convert your gems into real cash.</p>
+                    <input type="number" id="exchangeAmount" class="input-field" placeholder="Amount of Gems to Exchange" min="100">
+                    <button class="btn btn-primary" onclick="processExchange()"><i class="fa-solid fa-coins"></i> Exchange to Money</button>
+                </div>
+            `;
+        }
+
+        async function processExchange() {
+            const amt = parseInt(document.getElementById('exchangeAmount').value);
+            if (!amt || amt <= 0) return showToast('Enter a valid amount', 'error');
+            if (amt > currentUser.points) return showToast('Not enough gems!', 'error');
+
+            const btn = document.querySelector('button[onclick="processExchange()"]');
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/exchange`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ userId, gemsToExchange: amt })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    showToast('Success! Converted gems to cash.', 'success');
+                    const uRes = await fetch(`${API_BASE_URL}/api/user/${userId}`);
+                    currentUser = await uRes.json();
+                    nav('withdraw');
+                } else {
+                    showToast(data.error || 'Exchange failed', 'error');
+                    btn.innerHTML = '<i class="fa-solid fa-coins"></i> Exchange to Money';
+                    btn.disabled = false;
+                }
+            } catch (e) {
+                showToast('Network error', 'error');
+                btn.innerHTML = '<i class="fa-solid fa-coins"></i> Exchange to Money';
+                btn.disabled = false;
+            }
+        }
+        async function renderLeaderboard(c) {
+            c.innerHTML = `
+                <div style="text-align:center; padding: 20px 0;">
+                    <h2><i class="fa-solid fa-trophy" style="color:var(--gold-color);"></i> Top 100 Players</h2>
+                    <p style="font-size:0.85rem; color:#888;">The best of the best.</p>
+                </div>
+                <div id="leaderboardLoading" style="text-align:center; padding: 30px;"><i class="fa-solid fa-spinner fa-spin fa-2x"></i></div>
+                <div id="top3Container" class="top-3-container" style="display:none;"></div>
+                <div id="leaderboardList" style="display:flex; flex-direction:column; gap:10px; margin-bottom: 80px;"></div>
+            `;
+            
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/leaderboard/${userId}`);
+                const data = await res.json();
+                
+                document.getElementById('leaderboardLoading').style.display = 'none';
+                
+                const top100 = data.byPoints || [];
+                
+                // Render Top 3
+                const top3 = top100.slice(0, 3);
+                const top3Html = top3.map((u, i) => {
+                    const rank = i + 1;
+                    const avatarUrl = `${API_BASE_URL}/api/avatar/${u.id}`;
+                    return `
+                        <div class="top-3-item rank-${rank}">
+                            <div class="crown"><i class="fa-solid fa-crown"></i></div>
+                            <div class="top-avatar-box">
+                                <img src="${avatarUrl}" loading="lazy" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(u.username||'User')}&background=B026FF&color=fff';">
+                            </div>
+                            <div class="top-name">${u.username || 'User'}</div>
+                            <div class="top-score"><i class="fa-solid fa-gem"></i> ${(u.points||0).toLocaleString()}</div>
+                        </div>
+                    `;
+                }).join('');
+                
+                const top3Cont = document.getElementById('top3Container');
+                if(top3.length > 0) {
+                    top3Cont.innerHTML = top3Html;
+                    top3Cont.style.display = 'flex';
+                }
+
+                // Render Rest (4-100)
+                const rest = top100.slice(3);
+                let listHtml = '';
+                rest.forEach((u, idx) => {
+                    const rank = idx + 4;
+                    const avatarUrl = `${API_BASE_URL}/api/avatar/${u.id}`;
+                    listHtml += `
+                        <div class="glass leaderboard-list-item">
+                            <div class="rank-circle">${rank}</div>
+                            <img src="${avatarUrl}" class="leaderboard-avatar" loading="lazy" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(u.username||'User')}&background=B026FF&color=fff';">
+                            <div style="flex-grow:1; font-weight:bold;">${u.username || 'User'}</div>
+                            <div style="color:var(--gold-color); font-weight:800;"><i class="fa-solid fa-gem"></i> ${(u.points||0).toLocaleString()}</div>
+                        </div>
+                    `;
+                });
+                document.getElementById('leaderboardList').innerHTML = listHtml;
+                
+                // Footer Logic
+                const footer = document.getElementById('leaderboardFooter');
+                const userRank = data.userRankPoints;
+                if(userRank && userRank <= 100) {
+                    footer.innerHTML = `Your Rank: #${userRank}`;
+                } else {
+                    footer.innerHTML = `Your Rank: 99+`;
+                }
+                footer.style.display = 'flex';
+                
+            } catch(e) {
+                document.getElementById('leaderboardLoading').innerHTML = "Failed to load leaderboard.";
+            }
+        }
+
+        function openGame(gameId) {
+            const main = document.getElementById('mainContent');
+            const wrapper = document.getElementById('gameCanvasWrapper');
+            const nav = document.querySelector('.bottom-nav');
+            
+            main.style.animation = "fadeOut 0.3s forwards";
+            nav.style.transform = "translateY(100%)";
+            
             setTimeout(() => {
-                if(page === 'home') renderHome(content);
-                if(page === 'tasks') renderTasks(content);
-                if(page === 'games') renderGames(content);
-                if(page === 'referral') renderReferral(content);
-                if(page === 'leaderboard') renderLeaderboard(content);
-                if(page === 'withdraw') renderWithdraw(content);
-
-                applyTranslations();
-                window.scrollTo(0,0);
+                main.style.display = 'none';
+                wrapper.style.display = 'block';
+                wrapper.style.animation = "fadeIn 0.3s forwards";
+                if(gameId === 'aviator') renderAviatorGame(document.getElementById('activeGameCanvas'));
+            }, 300);
+        }
+        function closeGame() {
+            const main = document.getElementById('mainContent');
+            const wrapper = document.getElementById('gameCanvasWrapper');
+            const nav = document.querySelector('.bottom-nav');
+            
+            if(typeof aviatorActive !== 'undefined') aviatorActive = false;
+            
+            wrapper.style.animation = "fadeOut 0.3s forwards";
+            setTimeout(() => {
+                wrapper.style.display = 'none';
+                document.getElementById('activeGameCanvas').innerHTML = '';
+                
+                main.style.display = 'block';
+                main.style.animation = "fadeIn 0.3s forwards";
+                nav.style.transform = "translateY(0)";
+                updateUI();
             }, 300);
         }
 
         // ==========================================
-        // RENDERERS
+        // AVIATOR 20 FEATURES OVERHAUL
         // ==========================================
-
-        function renderHome(container) {
-            const adsLeft = (AppConfig.adsPerDay || 20) - (currentUser.adsWatchedToday || 0);
-            const rank = currentUser.rank ? `#${currentUser.rank}` : '#N/A'; 
-            
-            // Build Streak
-            const streak = currentUser.streak || 0;
-            let streakHtml = '';
-            for(let i=1; i<=7; i++) {
-                let cls = i <= streak ? 'active' : 'future';
-                streakHtml += `<div class="streak-day ${cls}">${i}</div>`;
-            }
-            document.getElementById('streakContainer').innerHTML = streakHtml;
-
-            container.innerHTML = `
-                <div class="card glass">
-                    <div class="home-actions">
-                        <button class="btn btn-primary" onclick="handlePostStory()"><i class="fa-solid fa-camera"></i> <span data-lang="btn_post_story">Post Story</span></button>
-                        <button class="btn btn-secondary" onclick="navigateTo('withdraw')"><i class="fa-solid fa-wallet"></i> <span data-lang="btn_withdraw">Withdraw</span></button>
-                    </div>
-                </div>
-                
-                <div class="card glass home-stats">
-                    <div class="home-stat"><div class="label" data-lang="stat_refs">Referrals</div><div class="value">${currentUser.referredUsers?.length || 0}</div></div>
-                    <div class="home-stat"><div class="label" data-lang="stat_rank">Global Rank</div><div class="value">${rank}</div></div>
-                    <div class="home-stat"><div class="label" data-lang="stat_ads">Total Ads</div><div class="value">${currentUser.totalAdsWatchedLifetime || 0}</div></div>
-                    <div class="home-stat"><div class="label" data-lang="stat_left">Ads Left</div><div class="value">${adsLeft < 0 ? 0 : adsLeft}</div></div>
-                    <div class="home-stat"><div class="label" data-lang="stat_tasks">Tasks</div><div class="value">${currentUser.claimedBonuses?.length || 0}</div></div>
-                    <div class="home-stat"><div class="label" data-lang="stat_withdrawn">Withdrawn</div><div class="value">${currentUser.totalWithdrawn || 0}</div></div>
-                </div>`;
-        }
-
-        function renderTasks(container) {
-             const adsLeft = (AppConfig.adsPerDay || 20) - (currentUser.adsWatchedToday || 0);
-             const pts = (AppConfig.pointsPerAd || 50) * (AppConfig.globalMultiplier || 1);
-             const cur = AppConfig.currencyName || 'Gems';
-             
-             let html = `
-                <div class="card glass">
-                    <h3 class="section-title"><i class="fa-solid fa-bolt" style="color:var(--gold-color);"></i> <span data-lang="tasks_daily">Daily Earning</span></h3>
-                    <div class="task-grid-buttons">
-                        <div class="ad-btn-card btn-monetag" onclick="${adsLeft > 0 ? 'watchAd()' : ''}" style="opacity:${adsLeft<=0?0.5:1}">
-                            <i class="fa-brands fa-youtube" style="font-size:28px; margin-bottom:8px;"></i>
-                            <div style="font-weight:700;" data-lang="tasks_watch">Watch Ad</div>
-                            <div style="font-size:0.8rem; font-weight:600;">+${pts}</div>
-                            ${adsLeft<=0 ? '<div style="font-size:0.7rem; color:var(--danger-color); margin-top:5px; font-weight:bold;">LIMIT REACHED</div>' : ''}
-                        </div>
-                        <div class="ad-btn-card btn-adsgram" onclick="claimAdsgramReward()">
-                            <i class="fa-solid fa-fire" style="font-size:28px; margin-bottom:8px;"></i>
-                            <div style="font-weight:700;" data-lang="tasks_special">Special</div>
-                            <div style="font-size:0.8rem; font-weight:600;">+10 ${cur}</div>
+        let aviatorRound = null;
+        let avReq;
+        function renderAviatorGame(c) {
+            c.innerHTML = `
+                <div class="card glass" style="padding: 10px; position: relative;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <h2 style="color:var(--danger-color); margin:0;"><i class="fa-solid fa-plane-up"></i> Aviator</h2>
+                        <div>
+                            <button class="panel-toggle-btn" onclick="document.getElementById('myBetsSide').classList.toggle('open')"><i class="fa-solid fa-clock-rotate-left"></i></button>
+                            <button class="panel-toggle-btn" onclick="document.getElementById('topBetsSide').classList.toggle('open')"><i class="fa-solid fa-fire"></i></button>
+                            <button class="btn btn-secondary" onclick="document.getElementById('pfModal').style.display='flex'" style="width:auto; padding: 5px 10px; font-size:0.8rem; display:inline-block;"><i class="fa-solid fa-shield-halved"></i> Provably Fair</button>
                         </div>
                     </div>
-                </div>
 
-                <div class="card glass">
-                    <div class="section-title"><i class="fa-solid fa-star" style="color:var(--accent-color);"></i> <span data-lang="tasks_bonus">Bonus Tasks</span></div>
-                    <!-- Search Bar -->
-                    <input type="text" id="taskSearch" class="input-field" placeholder="Search tasks..." onkeyup="filterTasks()" style="padding: 10px; margin-bottom: 15px;">
-                    <div id="bonusTaskList">`;
-             
-             html += BonusTasks.map(t => {
-                 const done = currentUser.claimedBonuses?.includes(t.id);
-                 return `
-                    <div class="channel-item task-item" data-name="${t.name.toLowerCase()}">
-                        <div style="display:flex; align-items:center;">
-                            <div class="icon-box"><i class="${t.icon || 'fa-brands fa-telegram'}"></i></div>
-                            <div>
-                                <div style="font-weight:600;">${t.name}</div>
-                                <div style="font-size:0.8rem; color:var(--accent-color); font-weight:bold;">+${t.reward} ${cur}</div>
+                    <!-- 1. Multiplier History Bar -->
+                    <div class="aviator-history-bar" id="avHistory"></div>
+
+                    <!-- 3. Altitude/Atmosphere Canvas Shifts & 4. Dynamic Zoom -->
+                    <div class="aviator-wrapper" id="avWrapper">
+                        <!-- 17. Highest Win Banner -->
+                        <div class="highest-win-banner" id="avBanner">🔥 Mesechebo won 15,000 Gems at 15.2x!</div>
+                        
+                        <!-- 6. Live Chat Overlay -->
+                        <div class="aviator-chat-overlay" id="avChat"></div>
+                        
+                        <div id="avMult" style="position:absolute; top:40%; left:50%; transform:translate(-50%,-50%); font-size:4rem; font-weight:900; font-family:monospace; color:white; z-index:5;">1.00x</div>
+                        <div id="avCrashMsg" style="position:absolute; top:20%; left:50%; transform:translateX(-50%); font-size:2rem; font-weight:900; color:var(--danger-color); opacity:0; z-index:5;">FLEW AWAY</div>
+                        
+                        <canvas id="avCanvas"></canvas>
+                        
+                        <!-- 19. Sparks element -->
+                        <div id="avSpark" class="spark"></div>
+                    </div>
+
+                    <!-- 18. Dual Independent Auto-Cashouts & Betting Panels -->
+                    <div class="bet-panel-container">
+                        <!-- Panel 1 -->
+                        <div class="bet-panel glass">
+                            <!-- 11. Auto Play Toggle -->
+                            <div class="auto-play-row">Auto Play <label class="switch"><input type="checkbox" id="avAutoPlay1"><span class="slider"></span></label></div>
+                            <!-- 7. Quick-Bet Hotkeys -->
+                            <div class="hotkey-row">
+                                <button class="hotkey-btn" onclick="modBet('avBet1', 10)">+10</button>
+                                <button class="hotkey-btn" onclick="modBet('avBet1', 50)">+50</button>
+                                <button class="hotkey-btn" onclick="modBet('avBet1', 'max')">Max</button>
+                                <button class="hotkey-btn" onclick="modBet('avBet1', 'half')">1/2</button>
                             </div>
+                            <div style="display:flex; gap:10px;">
+                                <input type="number" id="avBet1" class="input-field" style="margin:0;" value="10">
+                                <input type="number" id="avAutoCash1" class="input-field" style="margin:0;" placeholder="Auto (e.g. 2.0)">
+                            </div>
+                            <button class="bet-btn idle" id="avBtn1" onclick="avAction(1)">BET</button>
                         </div>
-                        <button class="btn" style="width:auto; padding:8px 20px; font-size:0.8rem; background:${done?'#e2e8f0':'var(--success-color)'}; color:${done?'#94a3b8':'white'};"
-                             onclick="doTask('${t.id}','${t.channelId}',${t.reward},'${t.link}')" ${done?'disabled':''}>
-                             ${done ? '<i class="fa-solid fa-check"></i>' : '<i class="fa-solid fa-arrow-right"></i>'}
-                        </button>
-                    </div>`;
-             }).join('');
-             container.innerHTML = html + '</div></div>';
-        }
-
-        function filterTasks() {
-            const q = document.getElementById('taskSearch').value.toLowerCase();
-            document.querySelectorAll('.task-item').forEach(el => {
-                el.style.display = el.getAttribute('data-name').includes(q) ? 'flex' : 'none';
-            });
-        }
-
-        function renderGames(container) {
-            const hasSpun = currentUser.lastSpinDate && (Date.now() - currentUser.lastSpinDate < 86400000);
-            const hasScratched = currentUser.lastScratchDate && (Date.now() - currentUser.lastScratchDate < 86400000);
-
-            container.innerHTML = `
-                <div class="card glass">
-                    <div class="section-title"><i class="fa-solid fa-dharmachakra" style="color:var(--accent-color);"></i> <span data-lang="games_spin">Spin the Wheel</span></div>
-                    <div class="wheel-container">
-                        <div class="wheel-pointer"></div>
-                        <div class="wheel" id="wheel"></div>
-                        <button class="wheel-btn" onclick="spinWheel()" ${hasSpun?'disabled':''}>SPIN</button>
+                        
+                        <!-- Panel 2 -->
+                        <div class="bet-panel glass">
+                            <div class="auto-play-row">Auto Play <label class="switch"><input type="checkbox" id="avAutoPlay2"><span class="slider"></span></label></div>
+                            <div class="hotkey-row">
+                                <button class="hotkey-btn" onclick="modBet('avBet2', 10)">+10</button>
+                                <button class="hotkey-btn" onclick="modBet('avBet2', 50)">+50</button>
+                                <button class="hotkey-btn" onclick="modBet('avBet2', 'max')">Max</button>
+                                <button class="hotkey-btn" onclick="modBet('avBet2', 'half')">1/2</button>
+                            </div>
+                            <div style="display:flex; gap:10px;">
+                                <input type="number" id="avBet2" class="input-field" style="margin:0;" value="10">
+                                <input type="number" id="avAutoCash2" class="input-field" style="margin:0;" placeholder="Auto (e.g. 2.0)">
+                            </div>
+                            <button class="bet-btn idle" id="avBtn2" onclick="avAction(2)">BET</button>
+                        </div>
                     </div>
-                    <p style="text-align:center; margin-top:15px; font-size:0.8rem; color:#888;">${hasSpun ? 'Come back tomorrow!' : '1 Free Spin Daily'}</p>
-                </div>
 
-                <div class="card glass">
-                    <div class="section-title"><i class="fa-solid fa-ticket" style="color:var(--gold-color);"></i> <span data-lang="games_scratch">Scratch Card</span></div>
-                    <div class="scratch-container" id="scratchContainer">
-                        <div id="scratchResult" style="display:none;"></div>
-                        <canvas class="scratch-canvas" id="scratchCanvas"></canvas>
-                        ${hasScratched ? '<div style="position:absolute; inset:0; background:rgba(255,255,255,0.8); z-index:5; display:flex; align-items:center; justify-content:center; font-weight:bold; color:#333;">Come back tomorrow!</div>' : ''}
+                    <!-- 9. My Bet History Panel -->
+                    <div id="myBetsSide" class="side-panel left glass">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:15px; font-weight:bold;">My Flights <button class="panel-toggle-btn" onclick="document.getElementById('myBetsSide').classList.remove('open')">X</button></div>
+                        <div id="myBetsList"></div>
+                    </div>
+
+                    <!-- 8. Top Bets Panel -->
+                    <div id="topBetsSide" class="side-panel right glass">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:15px; font-weight:bold;">Top Bets <button class="panel-toggle-btn" onclick="document.getElementById('topBetsSide').classList.remove('open')">X</button></div>
+                        <div id="topBetsList"></div>
                     </div>
                 </div>
 
-                <div class="card glass">
-                    <div class="section-title"><i class="fa-solid fa-calendar-check" style="color:var(--success-color);"></i> <span data-lang="quests_title">Daily Quests</span></div>
-                    <div class="channel-item">
-                        <div style="font-weight:600;"><i class="fa-solid fa-video" style="color:#888; width:20px;"></i> <span data-lang="quest_1">Watch 5 Ads</span></div>
-                        <span class="badge ${currentUser.adsWatchedToday>=5?'badge-gold':'badge-silver'}">${Math.min(currentUser.adsWatchedToday||0, 5)}/5</span>
-                    </div>
-                    <div class="channel-item">
-                        <div style="font-weight:600;"><i class="fa-solid fa-user-plus" style="color:#888; width:20px;"></i> <span data-lang="quest_2">Invite 1 Friend</span></div>
-                        <span class="badge badge-silver">0/1</span>
+                <!-- 2. Provably Fair Modal -->
+                <div id="pfModal" class="provably-fair-modal">
+                    <div class="card glass" style="width:90%; text-align:center;">
+                        <h2><i class="fa-solid fa-shield-halved"></i> Provably Fair</h2>
+                        <p style="font-size:0.8rem; margin:15px 0;">This game uses cryptographic SHA-256 hashes to guarantee fairness. The multiplier is generated server-side before the round begins and cannot be altered.</p>
+                        <p style="font-size:0.7rem; word-break:break-all; color:var(--accent-color);" id="pfHash">Next Round Hash: [Hidden]</p>
+                        <button class="btn btn-primary" onclick="document.getElementById('pfModal').style.display='none'" style="margin-top:20px;">Close</button>
                     </div>
                 </div>
             `;
-            if(!hasScratched) initScratchCard();
+            initAviatorCanvas();
+            loadHistory();
+            
+            // 15. Network Disconnect Auto-loss money
+            window.addEventListener('offline', avForceLoss);
+
+            // 10. Keyboard Shortcuts (Spacebar to bet/cashout Panel 1)
+            window.addEventListener('keydown', handleSpacebar);
         }
 
-        async function renderLeaderboard(container) {
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/leaderboard/${userId}`);
-                LeaderboardData = await res.json();
-                
-                container.innerHTML = `
-                    <div class="card glass" style="padding:0; overflow:hidden; display:flex; flex-direction:column; height: 100%;">
-                        <div class="leaderboard-tabs" style="padding:20px 20px 0;">
-                            <div class="leaderboard-tab active" id="tabPoints" onclick="switchBoard('points')" data-lang="top_points">By Points</div>
-                            <div class="leaderboard-tab" id="tabRefs" onclick="switchBoard('refs')" data-lang="top_refs">By Invite</div>
-                        </div>
-                        <div id="boardContent" style="flex:1; overflow-y:auto; padding:20px; padding-bottom: 80px;"></div>
-                        <div id="stickyRankFooter" class="glass" style="position:fixed; bottom:70px; left:0; right:0; padding:15px; border-top:1px solid rgba(255,255,255,0.2); border-bottom: none; border-radius: 20px 20px 0 0; backdrop-filter: blur(20px); text-align:center; box-shadow: 0 -5px 20px rgba(176, 38, 255, 0.2);"></div>
-                    </div>`;
-                switchBoard('points');
-            } catch(e) {
-                container.innerHTML = '<div class="card glass"><p style="text-align:center; color:var(--danger-color);"><i class="fa-solid fa-triangle-exclamation"></i> Failed to load leaderboard.</p></div>';
+        function handleSpacebar(e) {
+            if(e.code === 'Space' && document.getElementById('avBtn1')) {
+                e.preventDefault();
+                avAction(1);
             }
         }
 
-        function switchBoard(type) {
-            playClickSound(); hapticClick();
-            document.querySelectorAll('.leaderboard-tab').forEach(t => t.classList.remove('active'));
-            document.getElementById(type === 'points' ? 'tabPoints' : 'tabRefs').classList.add('active');
+        function avForceLoss() {
+            if(aviatorActive) {
+                showToast("Network Disconnected. Bets Lost.", "error");
+                avCrash(aviatorMultiplier);
+            }
+        }
+
+        function modBet(inputId, val) {
+            const input = document.getElementById(inputId);
+            let cur = Number(input.value) || 0;
+            if(val === 'max') input.value = currentUser.points;
+            else if(val === 'half') input.value = Math.floor(cur / 2);
+            else input.value = cur + val;
+        }
+
+        let avCtx, avX, avY;
+        function initAviatorCanvas() {
+            const canvas = document.getElementById('avCanvas');
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+            avCtx = canvas.getContext('2d');
+            drawPlane(0, canvas.height, 1.0);
+        }
+
+        // 16. VIP Golden Plane Skin & Explosion logic
+        function drawPlane(x, y, scale = 1.0, exploded = false) {
+            avCtx.clearRect(0,0, avCtx.canvas.width, avCtx.canvas.height);
             
-            const list = type === 'points' ? LeaderboardData.byPoints : LeaderboardData.byReferrals;
-            const unit = type === 'points' ? (AppConfig.currencyName || 'Gems') : 'Ref';
-            const userRank = type === 'points' ? LeaderboardData.userRankPoints : LeaderboardData.userRankRefs;
+            // 4. Dynamic Camera Zoom (Scale grid curve)
+            avCtx.save();
+            avCtx.translate(0, avCtx.canvas.height * (1-scale)); 
+            avCtx.scale(1, scale);
+
+            avCtx.beginPath();
+            avCtx.moveTo(0, avCtx.canvas.height);
+            avCtx.quadraticCurveTo(x/2, avCtx.canvas.height, x, y);
+            avCtx.lineWidth = 4;
+            avCtx.strokeStyle = '#EF4444';
+            avCtx.stroke();
+            avCtx.restore();
+
+            if (exploded) {
+                // 12. Explosion/Smoke Trail
+                avCtx.fillStyle = '#333';
+                avCtx.beginPath();
+                avCtx.arc(x, y, 20, 0, Math.PI*2);
+                avCtx.fill();
+                avCtx.fillStyle = '#ff4444';
+                avCtx.beginPath();
+                avCtx.arc(x, y, 10, 0, Math.PI*2);
+                avCtx.fill();
+            } else {
+                const isGolden = currentUser.points > 50000; // VIP Logic
+                avCtx.fillStyle = isGolden ? '#FFD700' : 'white';
+                avCtx.shadowColor = isGolden ? '#FFD700' : 'transparent';
+                avCtx.shadowBlur = isGolden ? 15 : 0;
+                
+                avCtx.beginPath();
+                avCtx.arc(x, y, 6, 0, Math.PI*2);
+                avCtx.fill();
+                avCtx.shadowBlur = 0;
+            }
+        }
+
+        // Web Audio API for Pitch
+        function initEngineSound() {
+            if(!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                oscillator = audioCtx.createOscillator();
+                gainNode = audioCtx.createGain();
+                
+                oscillator.type = 'sawtooth';
+                oscillator.frequency.value = 100;
+                gainNode.gain.value = 0.1;
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                oscillator.start();
+            } else {
+                gainNode.gain.value = 0.1;
+                oscillator.frequency.value = 100;
+            }
+        }
+        function stopEngineSound() {
+            if(gainNode) gainNode.gain.value = 0;
+        }
+
+        async function loadHistory() {
+            const h = await fetch(`${API_BASE_URL}/api/config`).then(r=>r.json());
+            const list = h.aviatorHistory || [1.2, 5.0, 1.0, 2.5, 12.1];
+            updateHistoryBar(list);
             
+            // Populate Fake Top Bets
             let html = '';
-            
-            const getPfp = (u) => `<div class="leaderboard-avatar-wrapper"><img src="${API_BASE_URL}/api/avatar/${u.id || u.username}" loading="lazy" class="leaderboard-pfp" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(u.username)}&background=B026FF&color=fff';"></div>`;
-
-            if(list.length >= 3) {
-                 const p1 = list[0], p2 = list[1], p3 = list[2];
-                 const v1 = type==='points'?p1.points:(p1.referredUsers?.length||0);
-                 const v2 = type==='points'?p2.points:(p2.referredUsers?.length||0);
-                 const v3 = type==='points'?p3.points:(p3.referredUsers?.length||0);
-
-                 html += `
-                    <div class="top-3-container">
-                        <div class="leaderboard-podium rank-2">
-                            ${getPfp(p2)}
-                            <div style="font-size:0.8rem; font-weight:bold; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:var(--text-dark); width: 100%; text-align:center;">${p2.username}</div>
-                            <div style="font-size:0.9rem; font-weight:600; color:var(--accent-color);">${v2.toLocaleString()}</div>
-                            <div class="podium-base"></div>
-                            <div class="rank-badge">2</div>
-                        </div>
-                        <div class="leaderboard-podium rank-1">
-                            <div class="crown"><i class="fa-solid fa-crown"></i></div>
-                            ${getPfp(p1)}
-                            <div style="font-size:0.8rem; font-weight:bold; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:var(--text-dark); width: 100%; text-align:center;">${p1.username}</div>
-                            <div style="font-size:1.1rem; font-weight:900; color:var(--gold-color);">${v1.toLocaleString()}</div>
-                            <div class="podium-base"></div>
-                            <div class="rank-badge">1</div>
-                        </div>
-                        <div class="leaderboard-podium rank-3">
-                            ${getPfp(p3)}
-                            <div style="font-size:0.8rem; font-weight:bold; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:var(--text-dark); width: 100%; text-align:center;">${p3.username}</div>
-                            <div style="font-size:0.9rem; font-weight:600; color:var(--accent-color);">${v3.toLocaleString()}</div>
-                            <div class="podium-base"></div>
-                            <div class="rank-badge">3</div>
-                        </div>
-                    </div>`;
+            for(let i=0; i<10; i++) {
+                html += `<div class="history-item"><span>User${Math.floor(Math.random()*999)}</span><span class="win">+${Math.floor(Math.random()*5000)} Gems</span></div>`;
             }
+            document.getElementById('topBetsList').innerHTML = html;
 
-            html += list.slice(3, 100).map((u, i) => {
-                const val = type === 'points' ? (u.points||0) : (u.referredUsers?.length || 0);
-                return `
-                <div class="leaderboard-list-item glass-panel" style="margin-bottom:10px; border-radius:12px; padding:10px 15px;">
-                    <div class="rank-circle" style="width:30px; height:30px; font-size:0.9rem;">${i+4}</div>
-                    <img src="${API_BASE_URL}/api/avatar/${u.id || u.username}" loading="lazy" class="leaderboard-pfp-small" style="width:40px; height:40px; border-radius:50%; border: 2px solid rgba(255,255,255,0.2); margin: 0 12px; object-fit: cover;" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(u.username)}&background=B026FF&color=fff';">
-                    <div style="flex:1; font-weight:700; color:var(--text-dark); font-size:1rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${u.username}</div>
-                    <div style="color:var(--accent-color); font-weight:800; font-size:0.9rem;">${val.toLocaleString()} ${unit}</div>
-                </div>`;
+            // My Bet History
+            let myHtml = '';
+            const logs = currentUser.logs || [];
+            logs.filter(l=>l.includes('Aviator')).reverse().slice(0,10).forEach(l => {
+                const isWin = l.includes('Cashout');
+                myHtml += `<div class="history-item"><span>${l.split('] ')[0].replace('[','')}</span><span class="${isWin?'win':'loss'}">${isWin?'WON':'LOST'}</span></div>`;
+            });
+            document.getElementById('myBetsList').innerHTML = myHtml || 'No flights yet.';
+        }
+
+        function updateHistoryBar(list) {
+            const histHtml = list.map(m => {
+                let c = 'pill-low';
+                if(m >= 2.0 && m < 10.0) c = 'pill-med';
+                if(m >= 10.0) c = 'pill-high';
+                return `<div class="history-pill ${c}">${m.toFixed(2)}x</div>`;
             }).join('');
-            
-            document.getElementById('boardContent').innerHTML = html || '<p style="text-align:center; color:#888;">No data available.</p>';
-            
-            const footer = document.getElementById('stickyRankFooter');
-            const displayRank = (userRank && userRank <= 100) ? `#${userRank}` : '99+';
-            footer.innerHTML = `<span style="font-size:1.2rem; font-weight:800; color:var(--text-dark);">Your Rank: <span style="color:var(--primary-color);">${displayRank}</span></span>`;
+            document.getElementById('avHistory').innerHTML = histHtml;
         }
 
-        async function renderReferral(container) {
-            let botUser = "myfabirr_robot"; 
-            if(AppConfig.botLink) botUser = AppConfig.botLink.replace('https://t.me/', '').replace('/', '');
-            const link = `https://t.me/${botUser}/earn?startapp=${userId}`;
-            const cur = AppConfig.currencyName || 'Gems';
+        async function avAction(panel) {
+            const btn = document.getElementById(`avBtn${panel}`);
             
-            let usersHtml = '<div class="skeleton-text"></div><div class="skeleton-text"></div>';
-
-            container.innerHTML = `
-                <div class="card glass" style="text-align:center; padding: 40px 20px;">
-                    <i class="fa-solid fa-user-group" style="font-size: 3rem; color: var(--accent-color); margin-bottom: 20px;"></i>
-                    <h2 data-lang="inv_title">Invite & Earn</h2>
-                    <p style="color:#666; margin-bottom:20px;" data-lang="inv_desc">Earn <b style="color:var(--accent-color);">${AppConfig.referralBonusReferrer || 0} ${cur}</b> for every friend.</p>
-
-                    <div id="qrCodeContainer" style="display:flex; justify-content:center; margin-bottom:20px; padding:10px; background:white; border-radius:10px; width:fit-content; margin-inline:auto;"></div>
-
-                    <div style="background:var(--bg-color); border:1px solid rgba(0,0,0,0.1); padding:15px; border-radius:12px; word-break:break-all; font-family:monospace; margin-bottom:20px; font-size:0.8rem; color:var(--text-dark);">${link}</div>
-
-                    <div style="display:flex; gap:10px;">
-                        <button class="btn btn-primary" onclick="copyRefLink('${link}')">
-                            <i class="fa-regular fa-copy"></i> <span data-lang="inv_copy">Copy Link</span>
-                        </button>
-                        <button class="btn btn-secondary" onclick="shareLink('${link}')">
-                            <i class="fa-solid fa-share"></i> <span data-lang="inv_share">Share</span>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="card glass">
-                    <div class="section-title"><i class="fa-solid fa-gift" style="color:var(--gold-color);"></i> <span data-lang="promo_title">Promo Code</span></div>
-                    <div style="display:flex; gap:10px;">
-                        <input type="text" id="promoCodeInput" class="input-field" style="margin:0;" data-lang="promo_placeholder" placeholder="Enter secret code...">
-                        <button class="btn btn-primary" style="width:100px;" onclick="claimPromo()" data-lang="promo_btn">Claim</button>
-                    </div>
-                </div>
-
-                <div class="card glass">
-                    <div class="section-title"><i class="fa-solid fa-users" style="color:var(--accent-color);"></i> My Invites (${currentUser.referredUsers?.length||0})</div>
-                    <div id="refsListContainer">${usersHtml}</div>
-                </div>`;
-
-            // Generate QR
-            setTimeout(() => {
-                new QRCode(document.getElementById("qrCodeContainer"), {
-                    text: link, width: 120, height: 120, colorDark : "#0B0B2A", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.L
-                });
-            }, 100);
-
-            // Fetch Refs
-            if(currentUser.referredUsers?.length > 0) {
-                 const reqs = currentUser.referredUsers.map(id => fetch(`${API_BASE_URL}/api/referrer/${id}`).then(r=>r.json()).catch(()=>({username:'Unknown'})));
-                 const users = await Promise.all(reqs);
-                 document.getElementById('refsListContainer').innerHTML = users.map(u => `
-                    <div class="referral-list-item">
-                        <i class="fa-solid fa-user-check" style="color:var(--success-color); margin-right:12px; font-size:1.2rem;"></i>
-                        <div style="flex:1; font-weight:600; color:var(--text-dark);">${u.username}</div>
-                    </div>`).join('');
-            } else {
-                document.getElementById('refsListContainer').innerHTML = '<p style="text-align:center;color:#888;font-size:0.9rem;">No invites yet. Start sharing!</p>';
-            }
-        }
-
-        function copyRefLink(link) {
-            playClickSound(); hapticClick();
-            navigator.clipboard.writeText(link);
-            showToast("Copied to clipboard!", "success");
-        }
-
-        function renderWithdraw(container) {
-            const reqs = { ref: AppConfig.requiredReferrals || 5, ads: AppConfig.requiredAds || 10, bonus: BonusTasks.length };
-            const stats = currentUser.lastWithdrawalStats || { referrals: 0, ads: 0, bonuses: 0 };
-            
-            const curRef = (currentUser.referredUsers?.length || 0) - stats.referrals;
-            const curAds = (currentUser.totalAdsWatchedLifetime || 0) - stats.ads;
-            
-            const totalDone = currentUser.claimedBonuses?.length || 0;
-            const totalAvail = BonusTasks.length;
-            const bonusMet = totalAvail === 0 ? true : totalDone >= totalAvail;
-            
-            const refMet = curRef >= reqs.ref; 
-            const adsMet = curAds >= reqs.ads; 
-            const unlocked = refMet && adsMet && bonusMet;
-
-            // Progress calculation
-            let totalProgress = 0;
-            if(reqs.ref > 0) totalProgress += (Math.min(curRef, reqs.ref) / reqs.ref) * 33.3;
-            else totalProgress += 33.3;
-            if(reqs.ads > 0) totalProgress += (Math.min(curAds, reqs.ads) / reqs.ads) * 33.3;
-            else totalProgress += 33.3;
-            if(totalAvail > 0) totalProgress += (Math.min(totalDone, totalAvail) / totalAvail) * 33.3;
-            else totalProgress += 33.4;
-
-            let html = `
-                <div class="card glass" style="margin-bottom: 20px; text-align: center;">
-                    <h3 style="margin-top: 0; color: var(--text-dark);">Exchange to Real Money</h3>
-                    
-                    <div class="exchange-balance-cards" style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:15px;">
-                        <div style="background:rgba(0,0,0,0.05); padding:10px; border-radius:8px;">
-                            <div style="font-size:0.8rem; color:#666;">Current Gems</div>
-                            <div style="font-size:1.2rem; font-weight:bold; color:var(--accent-color);" id="exchangeGemsBal">${(currentUser.points || 0).toLocaleString()}</div>
-                        </div>
-                        <div style="background:rgba(0,0,0,0.05); padding:10px; border-radius:8px;">
-                            <div style="font-size:0.8rem; color:#666;">Real Balance (Birr)</div>
-                            <div style="font-size:1.2rem; font-weight:bold; color:var(--success-color);" id="exchangeRealBal">${(currentUser.realBalance || 0).toFixed(2)}</div>
-                        </div>
-                    </div>
-                    
-                    <p style="font-size: 0.85rem; color: #888; margin-bottom: 10px;">Rate: <span id="exchangeRateDisplay">${AppConfig.exchangeRate || 100} Gems = 1 Unit</span></p>
-
-                    <div style="position: relative; margin-bottom: 15px;">
-                        <i class="fa-solid fa-gem" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--accent-color);"></i>
-                        <input type="number" id="exchangeAmount" class="input-field" placeholder="Gems to exchange" style="padding-left: 45px; margin-bottom: 0;" oninput="previewExchange()">
-                    </div>
-                    
-                    <div style="margin-bottom: 15px; font-size: 0.9rem; color: #666;">You will receive: <span id="exchangePreview" style="font-weight: bold; color: var(--success-color);">0.00</span></div>
-                    
-                    <button class="btn btn-primary" id="btnExchange" onclick="processExchange()" style="width: 100%;"><i class="fa-solid fa-rotate"></i> Convert Now</button>
-                </div>
-            `;
-
-            if(unlocked) {
-                html += `
-                    <div class="card glass" style="text-align:center; padding:40px 20px;">
-                        <div style="width: 80px; height: 80px; border-radius: 50%; background: rgba(16, 185, 129, 0.1); display:flex; align-items:center; justify-content:center; margin: 0 auto 20px;">
-                            <i class="fa-solid fa-lock-open" style="font-size:2.5rem; color:var(--success-color);"></i>
-                        </div>
-                        <h2 style="color:var(--success-color); margin-bottom:20px;" data-lang="pay_unlocked">Withdraw Unlocked!</h2>
-
-                        <input type="number" id="wAmount" class="input-field" placeholder="Amount (Min: ${AppConfig.minWithdraw || 5000})">
-                        <select id="wMethod" class="input-field">
-                            <option value="Telebirr">Telebirr</option>
-                            <option value="CBE">CBE</option>
-                            <option value="BOA">BOA</option>
-                        </select>
-                        <input type="text" id="wPhone" class="input-field" placeholder="Phone / Account Number">
-                        <input type="text" id="wName" class="input-field" placeholder="Account Holder Name">
-
-                        <button class="btn btn-primary pulse-btn" style="margin-top:20px;" onclick="submitWithdraw()"><i class="fa-solid fa-paper-plane"></i> <span data-lang="pay_submit">Submit Withdrawal</span></button>
-                    </div>`;
-            } else {
-                const row = (lbl, icon, cur, req, met) => `
-                    <li>
-                        <div class="req-header">
-                            <span><i class="${icon}" style="width:20px; color:#888;"></i> ${lbl}</span>
-                            <span class="status ${met?'met':'not-met'}">${met?'<i class="fa-solid fa-check"></i>':'<i class="fa-solid fa-xmark"></i>'}</span>
-                        </div>
-                        <div class="progress-container"><div class="progress-bar" style="width:${Math.min((cur/req)*100, 100)}%; background:${met?'var(--success-color)':'var(--accent-color)'}"></div></div>
-                        <div style="text-align:right; font-size:0.75rem; color:#888; margin-top:4px;">${cur} / ${req}</div>
-                    </li>`;
+            if(btn.classList.contains('idle')) {
+                // Place Bet
+                const bet = parseInt(document.getElementById(`avBet${panel}`).value);
+                if(currentUser.points < bet) return showToast("Not enough Gems", "error");
                 
-                html += `
-                    <div class="card glass">
-                        <div class="section-title"><i class="fa-solid fa-list-check" style="color:var(--accent-color);"></i> <span data-lang="pay_reqs">Requirements for Next Withdraw</span></div>
-
-                        <div style="text-align:center; margin-bottom: 20px;">
-                            <div style="font-size: 2rem; font-weight: 800; color: var(--text-dark);">${Math.round(totalProgress)}%</div>
-                            <div class="progress-container" style="height:12px; border-radius:6px; background:rgba(0,0,0,0.05);"><div class="progress-bar" style="width:${totalProgress}%;"></div></div>
-                        </div>
-
-                        <ul class="requirements-list">
-                            ${row('Invites', 'fa-solid fa-user-plus', curRef, reqs.ref, refMet)}
-                            ${row('Ads Watched', 'fa-solid fa-video', curAds, reqs.ads, adsMet)}
-                            ${row('Bonus Tasks', 'fa-solid fa-star', totalDone, totalAvail, bonusMet)}
-                        </ul>
-                        <button class="btn btn-secondary" disabled style="margin-top:20px;"><i class="fa-solid fa-lock"></i> Locked</button>
-                    </div>`;
-            }
-            container.innerHTML = html;
-        }
-
-        // ==========================================
-        // ACTIONS & UTILITIES
-        // ==========================================
-
-        function showToast(msg, type = 'info') {
-            const t = document.getElementById('toast');
-            document.getElementById('toast-msg').textContent = msg;
-            t.className = `toast show ${type}`;
-            if(type === 'success') { t.innerHTML = `<i class="fa-solid fa-circle-check"></i> <span id="toast-msg">${msg}</span>`; playSuccessSound(); }
-            else if(type === 'error') t.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> <span id="toast-msg">${msg}</span>`;
-            else t.innerHTML = `<i class="fa-solid fa-circle-info"></i> <span id="toast-msg">${msg}</span>`;
-
-            setTimeout(() => t.classList.remove('show'), 3000);
-        }
-
-        function playClickSound() { if(soundEnabled) document.getElementById('clickSound').play().catch(()=>{}); }
-        function playSuccessSound() { if(soundEnabled) document.getElementById('successSound').play().catch(()=>{}); }
-        function hapticClick() { if(hapticEnabled && window.Telegram.WebApp.HapticFeedback) window.Telegram.WebApp.HapticFeedback.impactOccurred('light'); }
-        function hapticSuccess() { if(hapticEnabled && window.Telegram.WebApp.HapticFeedback) window.Telegram.WebApp.HapticFeedback.notificationOccurred('success'); }
-        function hapticError() { if(hapticEnabled && window.Telegram.WebApp.HapticFeedback) window.Telegram.WebApp.HapticFeedback.notificationOccurred('error'); }
-
-        function triggerConfetti() {
-            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, colors: ['#B026FF', '#FFB347', '#10B981'] });
-            hapticSuccess();
-        }
-
-        function openFAQ() { playClickSound(); document.getElementById('faqModal').style.display = 'flex'; }
-        function closeFAQ() { playClickSound(); document.getElementById('faqModal').style.display = 'none'; }
-        function toggleFaq(el) { playClickSound(); el.parentElement.classList.toggle('active'); }
-
-        // --- EASTER EGG (Custom Avatars) ---
-        function handleAvatarTap() {
-            avatarTaps++;
-            clearTimeout(avatarTapTimer);
-            avatarTapTimer = setTimeout(() => avatarTaps = 0, 1000);
-
-            if(avatarTaps >= 5) {
-                avatarTaps = 0;
-                hapticSuccess();
-                openAvatarSelection();
-            }
-        }
-
-        function openAvatarSelection() {
-            const list = document.getElementById('avatarList');
-            const avatars = [
-                'https://api.dicebear.com/7.x/bottts/svg?seed=1&backgroundColor=B026FF',
-                'https://api.dicebear.com/7.x/bottts/svg?seed=2&backgroundColor=FFB347',
-                'https://api.dicebear.com/7.x/adventurer/svg?seed=Felix&backgroundColor=10B981',
-                'https://api.dicebear.com/7.x/fun-emoji/svg?seed=4&backgroundColor=EF4444',
-                'https://api.dicebear.com/7.x/pixel-art/svg?seed=5&backgroundColor=0B0B2A'
-            ];
-            list.innerHTML = avatars.map(url => `<div style="width:60px; height:60px; border-radius:50%; background-image:url('${url}'); background-size:cover; border:3px solid var(--accent-color); cursor:pointer;" onclick="selectAvatar('${url}')"></div>`).join('');
-            document.getElementById('avatarModal').style.display = 'flex';
-        }
-
-        async function selectAvatar(url) {
-            playClickSound();
-            userPhotoUrl = url;
-            document.querySelectorAll('.profile-pic').forEach(el => el.style.backgroundImage = `url('${url}')`);
-            document.getElementById('avatarModal').style.display = 'none';
-            // Save to backend silently
-            fetch(`${API_BASE_URL}/api/update-avatar`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({userId, avatar: url}) });
-            showToast("Avatar updated!", "success");
-        }
-
-        // --- PULL TO REFRESH LOGIC ---
-        function initPullToRefresh() {
-            const p = document.getElementById('ptr');
-            const icon = document.getElementById('ptr-icon');
-            const text = document.getElementById('ptr-text');
-            let startY = 0; let currentY = 0; let refreshing = false;
-
-            document.body.addEventListener('touchstart', e => { if(window.scrollY === 0) startY = e.touches[0].clientY; }, {passive: true});
-            document.body.addEventListener('touchmove', e => {
-                if(startY > 0 && !refreshing) {
-                    currentY = e.touches[0].clientY;
-                    const diff = currentY - startY;
-                    if(diff > 0) {
-                        p.style.transform = `translateY(${Math.min(diff, 60)}px)`;
-                        if(diff > 60) { icon.classList.replace('fa-arrow-down', 'fa-arrow-up'); text.textContent = "Release to refresh"; }
-                        else { icon.classList.replace('fa-arrow-up', 'fa-arrow-down'); text.textContent = "Pull to refresh"; }
-                    }
+                btn.className = "bet-btn active";
+                btn.innerText = "WAITING...";
+                
+                if(!aviatorActive) {
+                    // Only fetch round if not already flying
+                    const res = await fetch(`${API_BASE_URL}/api/aviator/start`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ userId, betAmount: bet })
+                    });
+                    aviatorRound = await res.json();
+                    document.getElementById('pfHash').innerText = `Server Seed Hash:\n${aviatorRound.serverHash}`;
+                    updateHistoryBar(aviatorRound.history);
+                    startFlight();
+                } else {
+                    // Already flying, wait for next round (Simplified for demo)
+                    showToast("Flight in progress, bet queued for next round.", "info");
                 }
-            }, {passive: true});
-            document.body.addEventListener('touchend', async () => {
-                if(startY > 0 && !refreshing) {
-                    const diff = currentY - startY;
-                    if(diff > 60) {
-                        refreshing = true;
-                        p.style.transform = `translateY(60px)`;
-                        icon.className = 'fa-solid fa-spinner fa-spin';
-                        text.textContent = "Refreshing...";
-                        hapticClick();
-                        try {
-                            const res = await fetch(`${API_BASE_URL}/api/user/${userId}`);
-                            currentUser = await res.json();
-                            updateUI();
-                        } catch(e){}
-                        p.style.transform = `translateY(-100%)`;
-                        setTimeout(() => { refreshing = false; icon.className = 'fa-solid fa-arrow-down'; text.textContent = "Pull to refresh"; }, 300);
-                    } else { p.style.transform = `translateY(-100%)`; }
-                }
-                startY = 0;
-            });
-        }
-
-        // --- SCROLL TO TOP ---
-        function initScrollToTop() {
-            const btn = document.getElementById('scrollToTop');
-            window.addEventListener('scroll', () => {
-                if(window.scrollY > 300) btn.style.display = 'flex';
-                else btn.style.display = 'none';
-            });
-        }
-
-        // --- API INTERACTION ---
-
-        function claimAdsgramReward() {
-            playClickSound();
-            if(!AdController) return showToast("Ad system not ready.", "error");
-            
-            AdController.show().then(() => {
-                fetch(`${API_BASE_URL}/api/claim-ad-reward`, {
-                    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: userId })
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if(data.success) {
-                        currentUser.points += 10;
-                        updateUI();
-                        triggerConfetti();
-                        showToast("+10 Gems Claimed!", "success");
-                    }
+            } 
+            else if (btn.classList.contains('waiting')) {
+                // Cashout
+                const mult = aviatorMultiplier;
+                const bet = parseInt(document.getElementById(`avBet${panel}`).value);
+                
+                const res = await fetch(`${API_BASE_URL}/api/aviator/cashout`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ userId, roundId: aviatorRound.roundId, multiplier: mult, betAmount: bet })
                 });
-            }).catch(() => { showToast("Ad failed or closed early.", "error"); hapticError(); });
-        }
-
-        function watchAd() {
-            playClickSound();
-            if(typeof show_10024038 === 'function') {
-                show_10024038().then(() => {
-                    fetch(`${API_BASE_URL}/api/watch-ad`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userId}) });
-                    const pts = (AppConfig.pointsPerAd || 50) * (AppConfig.globalMultiplier || 1);
-                    currentUser.points += pts; currentUser.adsWatchedToday++; currentUser.totalAdsWatchedLifetime++;
-                    updateUI(); renderTasks(document.getElementById('mainContent'));
-                    triggerConfetti();
-                    showToast(`+${pts} Gems`, "success");
-                });
-            } else showToast("Ad not loaded. Please refresh.", "error");
-        }
-
-        async function doTask(id, cid, rew, link) {
-            playClickSound();
-            window.open(link, '_blank');
-            showToast("Verifying task...", "info");
-            setTimeout(async () => {
-                const res = await fetch(`${API_BASE_URL}/api/verify-membership`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userId, taskId:id, channelId:cid, reward:rew})});
-                const d = await res.json();
-                if(d.success) {
-                    currentUser.points = d.points; 
-                    if(!currentUser.claimedBonuses) currentUser.claimedBonuses = [];
-                    currentUser.claimedBonuses.push(id);
-                    updateUI(); renderTasks(document.getElementById('mainContent'));
-                    triggerConfetti();
-                    showToast(`+${rew} Gems`, "success");
-                } else { showToast(d.error || "Verification failed", "error"); hapticError(); }
-            }, 5000);
-        }
-
-        async function claimPromo() {
-            playClickSound();
-            const code = document.getElementById('promoCodeInput').value;
-            if(!code) return showToast("Enter a code", "error");
-
-            const res = await fetch(`${API_BASE_URL}/api/claim-promo`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userId, code}) });
-            const data = await res.json();
-            if(data.success) {
-                currentUser.points += data.amount;
-                updateUI(); triggerConfetti();
-                document.getElementById('promoCodeInput').value = '';
-                showToast(`Promo Claimed! +${data.amount}`, "success");
-            } else { showToast(data.error, "error"); hapticError(); }
-        }
-
-        async function submitWithdraw() {
-            playClickSound();
-            const amt = document.getElementById('wAmount').value;
-            const acc = document.getElementById('wPhone').value;
-            const name = document.getElementById('wName').value;
-            const method = document.getElementById('wMethod').value;
-            if(!amt || !acc || !name) return showToast("Fill all fields", "error");
-            
-            const btn = document.querySelector('.pulse-btn');
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
-            btn.disabled = true;
-
-            await fetch(`${API_BASE_URL}/api/request-withdrawal`, {
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body:JSON.stringify({userId, amount:amt, method, account:acc, accountName:name})
-            });
-
-            triggerConfetti();
-            showToast("Success! Request sent.", "success");
-            setTimeout(() => location.reload(), 2000);
-        }
-        
-        function shareLink(link) { playClickSound(); window.Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=Join%20me%20on%20Besh%20Besh!`); }
-
-        async function handlePostStory() {
-            playClickSound();
-            let botUser = "myfabirr_robot"; 
-            if(AppConfig.botLink) botUser = AppConfig.botLink.replace('https://t.me/', '').replace('/', '');
-            const link = `https://t.me/${botUser}/earn?startapp=${userId}`;
-
-            if(window.Telegram.WebApp.shareToStory) {
-                window.Telegram.WebApp.shareToStory("https://i.ibb.co/3ykz8Jq/8gKPR1wn.jpg", {text: `Join me on Besh Besh! \n${link}`});
-            } else showToast("Story feature not supported.", "error");
-        }
-
-        async function fetchPayoutTicker() {
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/recent-payouts`);
-                const data = await res.json();
-                if(data.length > 0) {
-                    const text = data.map(p => `💸 User ${p.name.substring(0,3)}*** withdrew ${p.amount} Gems!`).join(' &nbsp;&nbsp;•&nbsp;&nbsp; ');
-                    document.getElementById('payout-content').innerHTML = text + ' &nbsp;&nbsp;•&nbsp;&nbsp; ' + text; // Duplicate for smooth loop
-                }
-            } catch(e){}
-        }
-
-        // --- GAMES LOGIC ---
-        function spinWheel() {
-            playClickSound();
-            const w = document.getElementById('wheel');
-            const deg = Math.floor(1800 + Math.random() * 360); // Spin 5 times + random
-            w.style.transform = `rotate(${deg}deg)`;
-
-            setTimeout(async () => {
-                const res = await fetch(`${API_BASE_URL}/api/game/spin`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userId}) });
                 const data = await res.json();
                 if(data.success) {
-                    currentUser.points += data.amount;
-                    currentUser.lastSpinDate = Date.now();
-                    updateUI(); triggerConfetti();
-                    showToast(`You won ${data.amount} Gems!`, "success");
-                    renderGames(document.getElementById('mainContent')); // Re-render to disable button
-                } else showToast(data.error, "error");
-            }, 4000); // Matches CSS transition time
-        }
+                    btn.className = "bet-btn idle";
+                    btn.innerText = `WON ${data.winnings}`;
+                    document.getElementById('audioCashout').play();
+                    currentUser.points += (data.winnings - bet);
+                    updateUI();
+                    
+                    // 19. Live Cashout Sparks
+                    triggerSpark(avX, avY);
 
-        function initScratchCard() {
-            const canvas = document.getElementById('scratchCanvas');
-            if(!canvas) return;
-            const ctx = canvas.getContext('2d');
-            canvas.width = canvas.parentElement.offsetWidth;
-            canvas.height = canvas.parentElement.offsetHeight;
-
-            // Fill silver layer
-            ctx.fillStyle = '#C0C0C0';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            // Add texture
-            ctx.fillStyle = 'rgba(255,255,255,0.2)';
-            for(let i=0; i<100; i++) ctx.fillRect(Math.random()*canvas.width, Math.random()*canvas.height, 2, 2);
-            ctx.fillStyle = '#999';
-            ctx.font = '20px Plus Jakarta Sans';
-            ctx.textAlign = 'center';
-            ctx.fillText('SCRATCH HERE', canvas.width/2, canvas.height/2 + 5);
-
-            let isDrawing = false;
-            let scratchedPixels = 0;
-            const totalPixels = canvas.width * canvas.height;
-            let revealed = false;
-
-            const scratch = (x, y) => {
-                if(revealed) return;
-                ctx.globalCompositeOperation = 'destination-out';
-                ctx.beginPath();
-                ctx.arc(x, y, 20, 0, Math.PI * 2);
-                ctx.fill();
-                scratchedPixels += Math.PI * 400; // Approx area
-
-                if(scratchedPixels > totalPixels * 0.4 && !revealed) {
-                    revealed = true;
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    canvas.style.pointerEvents = 'none';
-                    revealScratchReward();
+                    // 5. Rain of Coins Animation (>5x)
+                    if(mult > 5.0) {
+                        confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#FFD700', '#FFA500'] });
+                    }
                 }
-            };
-
-            const getPos = (e) => {
-                const rect = canvas.getBoundingClientRect();
-                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-                return { x: clientX - rect.left, y: clientY - rect.top };
-            };
-
-            canvas.addEventListener('mousedown', e => { isDrawing = true; scratch(getPos(e).x, getPos(e).y); });
-            canvas.addEventListener('mousemove', e => { if(isDrawing) scratch(getPos(e).x, getPos(e).y); });
-            canvas.addEventListener('mouseup', () => isDrawing = false);
-
-            canvas.addEventListener('touchstart', e => { isDrawing = true; scratch(getPos(e).x, getPos(e).y); e.preventDefault(); });
-            canvas.addEventListener('touchmove', e => { if(isDrawing) scratch(getPos(e).x, getPos(e).y); e.preventDefault(); });
-            canvas.addEventListener('touchend', () => isDrawing = false);
-        }
-
-        async function revealScratchReward() {
-            const res = await fetch(`${API_BASE_URL}/api/game/scratch`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userId}) });
-            const data = await res.json();
-            const resDiv = document.getElementById('scratchResult');
-            resDiv.style.display = 'block';
-            if(data.success) {
-                resDiv.innerHTML = `+${data.amount} <i class="fa-solid fa-gem"></i>`;
-                currentUser.points += data.amount;
-                currentUser.lastScratchDate = Date.now();
-                updateUI(); triggerConfetti();
-            } else {
-                resDiv.innerHTML = `<span style="color:var(--danger-color); font-size:1rem;">${data.error}</span>`;
             }
         }
+
+        function triggerSpark(x, y) {
+            const spark = document.getElementById('avSpark');
+            spark.style.left = `${x}px`;
+            spark.style.top = `${y}px`;
+            spark.style.animation = 'none';
+            spark.offsetHeight; // trigger reflow
+            spark.style.animation = 'sparkAnim 0.5s ease-out';
+        }
+
+        // 6. Live Chat Simulator
+        let chatInterval;
+        function simulateChat() {
+            const chatBox = document.getElementById('avChat');
+            const msgs = ["Wow!", "Cash out now!", "Greedy!", "Boom!", "Nice win", "RIP", "Fly high!"];
+            chatInterval = setInterval(() => {
+                if(!aviatorActive) return;
+                const div = document.createElement('div');
+                div.className = 'chat-msg';
+                div.innerHTML = `<span class="user">User${Math.floor(Math.random()*999)}:</span> ${msgs[Math.floor(Math.random()*msgs.length)]}`;
+                chatBox.prepend(div);
+                if(chatBox.children.length > 5) chatBox.removeChild(chatBox.lastChild);
+            }, 1500);
+        }
+
+        function startFlight() {
+            aviatorActive = true;
+            aviatorMultiplier = 1.00;
+            
+            // Set buttons to waiting
+            [1,2].forEach(p => {
+                const btn = document.getElementById(`avBtn${p}`);
+                if(btn.classList.contains('active')) {
+                    btn.className = "bet-btn waiting";
+                    btn.innerText = "CASHOUT";
+                }
+            });
+            
+            document.getElementById('avCrashMsg').style.opacity = '0';
+            const wrapper = document.getElementById('avWrapper');
+            wrapper.className = "aviator-wrapper"; // reset bg
+            
+            if(audioCtx) audioCtx.resume();
+            initEngineSound();
+            simulateChat();
+
+            const targetMult = aviatorRound.crashPoint;
+            const canvas = document.getElementById('avCanvas');
+            let t = 0;
+
+            function animate() {
+                if(!aviatorActive) return;
+                t += 0.02;
+                aviatorMultiplier = 1.00 + Math.pow(t, 2) * 0.1;
+                
+                document.getElementById('avMult').innerText = aviatorMultiplier.toFixed(2) + "x";
+                
+                // 3. Atmosphere Shifts
+                if(aviatorMultiplier > 2 && aviatorMultiplier <= 5) wrapper.classList.add('clouds');
+                if(aviatorMultiplier > 5) wrapper.classList.add('space');
+                
+                // 13. Progressive Engine Pitch
+                if(oscillator) oscillator.frequency.value = 100 + (aviatorMultiplier * 20);
+
+                // 18. Independent Auto-Cashouts
+                [1,2].forEach(p => {
+                    const autoVal = document.getElementById(`avAutoCash${p}`).value;
+                    const btn = document.getElementById(`avBtn${p}`);
+                    if(autoVal && aviatorMultiplier >= parseFloat(autoVal) && btn.classList.contains('waiting')) {
+                        avAction(p);
+                    }
+                });
+
+                // 14. Pre-Crash Turbulence
+                if(targetMult - aviatorMultiplier < 0.5 && targetMult > 1.5) {
+                    wrapper.classList.add('turbulence');
+                }
+
+                avX = Math.min(canvas.width - 50, t * 25);
+                avY = Math.max(50, canvas.height - (t * 20));
+                
+                // Dynamic Zoom scale factor
+                let scale = 1.0 - (t * 0.01);
+                if(scale < 0.7) scale = 0.7;
+
+                drawPlane(avX, avY, scale);
+
+                if(aviatorMultiplier >= targetMult) {
+                    avCrash(targetMult);
+                } else {
+                    avReq = requestAnimationFrame(animate);
+                }
+            }
+            animate();
+        }
+
+        function avCrash(crashedAt) {
+            aviatorActive = false;
+            cancelAnimationFrame(avReq);
+            stopEngineSound();
+            clearInterval(chatInterval);
+            document.getElementById('audioCrash').play();
+
+            const wrapper = document.getElementById('avWrapper');
+            wrapper.classList.remove('turbulence');
+            
+            document.getElementById('avCrashMsg').style.opacity = '1';
+            document.getElementById('avMult').style.color = "var(--danger-color)";
+            document.getElementById('avMult').innerText = (crashedAt).toFixed(2) + "x";
+            
+            // 12. Explosion Render
+            drawPlane(avX, avY, 1.0, true);
+            
+            [1,2].forEach(p => {
+                const btn = document.getElementById(`avBtn${p}`);
+                if(btn.classList.contains('waiting')) {
+                    btn.className = "bet-btn idle";
+                    btn.innerText = "BET";
+                }
+                
+                // 11. Auto-Play check
+                const isAuto = document.getElementById(`avAutoPlay${p}`).checked;
+                if(isAuto) {
+                    setTimeout(() => avAction(p), 4000);
+                }
+            });
+
+            // Reset visual state after 3s
+            setTimeout(() => {
+                document.getElementById('avMult').style.color = "white";
+                document.getElementById('avMult').innerText = "1.00x";
+                document.getElementById('avCrashMsg').style.opacity = '0';
+                wrapper.className = "aviator-wrapper";
+                drawPlane(0, document.getElementById('avCanvas').height, 1.0);
+            }, 3000);
+        }
+
+        // Cleanup
+        window.addEventListener('beforeunload', () => {
+            window.removeEventListener('keydown', handleSpacebar);
+            window.removeEventListener('offline', avForceLoss);
+        });
+
     </script>
 </body>
 </html>
-<!-- GAME LOGIC SCRIPTS (Game 1 & 2) -->
-<script>
-    function openGame(gameId) {
-        document.getElementById('gameHub').style.display = 'none';
-        document.getElementById('featuresHub').style.display = 'none';
-        document.getElementById(gameId + 'Game').style.display = 'block';
-        if (gameId === 'aviator') {
-            initAviator();
-        }
-    }
-    function closeGame(gameContainerId) {
-        document.getElementById(gameContainerId).style.display = 'none';
-        document.getElementById('gameHub').style.display = 'block';
-    }
-
-    // Spin Game Logic
-    async function playSpin() {
-        const btn = document.getElementById('spinBtn');
-        const wheel = document.getElementById('spinWheel');
-        const resDiv = document.getElementById('spinResult');
-        btn.disabled = true;
-        resDiv.innerText = "Spinning...";
-        wheel.style.transform = `rotate(${360 * 5 + Math.floor(Math.random() * 360)}deg)`;
-        
-        try {
-            const res = await fetch('/api/spin', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: userId || 'test_user' }) });
-            const data = await res.json();
-            setTimeout(() => {
-                resDiv.innerText = `You won: ${data.result}`;
-                btn.disabled = false;
-            }, 4000);
-        } catch(e) {
-            setTimeout(() => { resDiv.innerText = "Error playing."; btn.disabled = false; }, 4000);
-        }
-    }
-
-    // Combo Game Logic
-    function allowDrop(ev) { ev.preventDefault(); }
-    function drag(ev) { ev.dataTransfer.setData("text", ev.target.id); }
-    function drop(ev) {
-        ev.preventDefault();
-        var data = ev.dataTransfer.getData("text");
-        if(ev.target.className.includes("glass-panel")) {
-            ev.target.appendChild(document.getElementById(data));
-        }
-    }
-    async function checkCombo() {
-        const slots = [
-            document.getElementById('slot1').firstChild?.id,
-            document.getElementById('slot2').firstChild?.id,
-            document.getElementById('slot3').firstChild?.id
-        ];
-        if(slots.includes(undefined)) {
-            document.getElementById('comboResult').innerText = "Fill all slots first!";
-            return;
-        }
-        
-        try {
-            const res = await fetch('/api/combo', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: userId || 'test_user', combination: slots }) });
-            const data = await res.json();
-            if(data.isCorrect) {
-                document.getElementById('comboResult').innerText = `Correct! Won ${data.reward} Gems`;
-                document.getElementById('comboResult').style.color = "var(--success-color)";
-            } else {
-                document.getElementById('comboResult').innerText = "Incorrect order. Try again!";
-                document.getElementById('comboResult').style.color = "var(--danger-color)";
-            }
-        } catch(e) {
-            document.getElementById('comboResult').innerText = "Error checking.";
-        }
-    }
-</script>
-
-<!-- GAME LOGIC SCRIPTS (Game 3 & 4) -->
-<script>
-    // --- ADVANCED AVIATOR LOGIC (Fair RNG, HTML5 Canvas, Bezier Curve, Web Audio) ---
-    const aviatorState = {
-        status: 'idle', // idle, betting, flying, crashed
-        multiplier: 1.00,
-        crashPoint: 1.00,
-        startTime: 0,
-        roundId: null,
-        bettingTimeLeft: 5.0,
-        bets: [
-            { id: 1, active: false, amount: 10, auto: null, cashedOut: false },
-            { id: 2, active: false, amount: 50, auto: null, cashedOut: false }
-        ]
-    };
-
-    let animationFrameId;
-    let gridOffset = 0;
-    
-    function toggleBet(panelId) {
-        const betState = aviatorState.bets[panelId-1];
-        const btn = document.getElementById(`aviatorBtn${panelId}`);
-        const amtInput = document.getElementById(`aviatorBet${panelId}`);
-        const autoInput = document.getElementById(`aviatorAuto${panelId}`);
-        
-        if (aviatorState.status === 'betting' || aviatorState.status === 'idle') {
-            // Place bet only allowed during idle/betting
-            if(!betState.active) {
-                betState.amount = parseFloat(amtInput.value) || 0;
-                betState.auto = parseFloat(autoInput.value) || null;
-                if(betState.amount <= 0) return alert("Invalid Bet");
-                betState.active = true;
-                betState.cashedOut = false;
-                btn.className = "bet-btn waiting";
-                btn.innerText = "Cancel";
-                amtInput.disabled = true;
-                autoInput.disabled = true;
-            } else {
-                // Cancel bet
-                betState.active = false;
-                btn.className = "bet-btn idle";
-                btn.innerText = "Bet";
-                amtInput.disabled = false;
-                autoInput.disabled = false;
-            }
-        } else if (aviatorState.status === 'flying') {
-            // Cash Out during flight
-            if (betState.active && !betState.cashedOut) {
-                cashOutBet(panelId, aviatorState.multiplier);
-            }
-        }
-    }
-
-    async function cashOutBet(panelId, multToUse, planeX, planeY) {
-        const betState = aviatorState.bets[panelId-1];
-        betState.cashedOut = true;
-        
-        try {
-            const res = await fetch('/api/aviator/cashout', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ userId: userId || 'test_user', roundId: aviatorState.roundId, multiplier: multToUse, betAmount: betState.amount })
-            });
-            const data = await res.json();
-            if(data.success) {
-                const btn = document.getElementById(`aviatorBtn${panelId}`);
-                btn.className = "bet-btn idle";
-                btn.innerText = `Won ${(betState.amount * multToUse).toFixed(2)}`;
-                document.getElementById('audioCashout').play().catch(()=>{});
-                
-                if(planeX && planeY) createSparks(planeX, planeY);
-                if(multToUse > 5.0) triggerCoinRain();
-            }
-        } catch(e) { console.error(e); }
-    }
-    
-    function addBet(panelId, amt) {
-        const input = document.getElementById(`aviatorBet${panelId}`);
-        if(amt === 'max') {
-            input.value = currentUser.points || 0;
-        } else {
-            input.value = Math.min((currentUser.points||0), (parseInt(input.value)||0) + amt);
-        }
-    }
-    
-    document.addEventListener('keydown', (e) => {
-        if(e.code === 'Space' && document.getElementById('aviatorGame').style.display === 'block') {
-            e.preventDefault();
-            toggleBet(1);
-        }
-    });
-
-    // Canvas Setup
-    const canvas = document.getElementById('aviatorCanvas');
-    const ctx = canvas.getContext('2d');
-    
-    function resizeCanvas() {
-        const container = document.querySelector('.aviator-container');
-        if(container && canvas) {
-            canvas.width = container.clientWidth;
-            canvas.height = container.clientHeight;
-        }
-    }
-    window.addEventListener('resize', resizeCanvas);
-
-    const planeImg = new Image();
-    planeImg.src = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdib3g9IjAgMCAxMDAgMTAwIj48ZyBmaWxsPSIjZWY0NDQ0Ij48cGF0aCBkPSJNMTAgNTBoNThMMTggMjhoLTZsMjYgMjJINXMtNCAwLTQgNWg4NmMwLTUgNC01IDQtNWwtMjYtMjJoNmw1MCAyMmwtMiAyIi8+PGNpcmNsZSBjeD0iODUiIGN5PSI1MCIgcj0iMyIgZmlsbD0iIzAwMCIvPjwvZz48L3N2Zz4=";
-    const goldenPlaneImg = new Image(); // VIP Golden Plane
-    goldenPlaneImg.src = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdib3g9IjAgMCAxMDAgMTAwIj48ZyBmaWxsPSIjRkZEMzAwIj48cGF0aCBkPSJNMTAgNTBoNThMMTggMjhoLTZsMjYgMjJINXMtNCAwLTQgNWg4NmMwLTUgNC01IDQtNWwtMjYtMjJoNmw1MCAyMmwtMiAyIi8+PGNpcmNsZSBjeD0iODUiIGN5PSI1MCIgcj0iMyIgZmlsbD0iIzAwMCIvPjwvZz48L3N2Zz4=";
-
-    const coins = [];
-    let smokeParticles = [];
-    let sparks = [];
-
-    // Render loop
-    let lastTime = 0;
-    function drawAviatorFrame(timestamp) {
-        const dt = (timestamp - lastTime) / 1000;
-        lastTime = timestamp;
-        if(!aviatorState.startTime && aviatorState.status === 'flying') {
-            aviatorState.startTime = timestamp;
-        }
-        
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        const w = canvas.width;
-        const h = canvas.height;
-        
-        // Altitude/Atmosphere Canvas Shifts
-        let gradient;
-        if (aviatorState.multiplier < 2) {
-            gradient = ctx.createLinearGradient(0, 0, 0, h);
-            gradient.addColorStop(0, "#1e3a8a"); // Blue sky
-            gradient.addColorStop(1, "#0B0B2A"); 
-        } else if (aviatorState.multiplier < 10) {
-            gradient = ctx.createLinearGradient(0, 0, 0, h);
-            gradient.addColorStop(0, "#312e81"); // Stratosphere purple
-            gradient.addColorStop(1, "#0B0B2A");
-        } else {
-            gradient = ctx.createLinearGradient(0, 0, 0, h);
-            gradient.addColorStop(0, "#000000"); // Deep space
-            gradient.addColorStop(1, "#0B0B2A");
-        }
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, w, h);
-        
-        // Dynamic Camera Zoom Effect
-        let zoom = 1.0;
-        if(aviatorState.multiplier > 2) {
-            zoom = Math.max(0.6, 1.0 - (aviatorState.multiplier - 2) * 0.02);
-        }
-        ctx.save();
-        ctx.translate(w/2, h/2);
-        ctx.scale(zoom, zoom);
-        ctx.translate(-w/2, -h/2);
-        
-        // Draw Parallax Radar Grid
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
-        ctx.lineWidth = 1;
-        const gridSize = 40;
-        gridOffset += (1 * aviatorState.multiplier * 0.5); // Grid pans faster as speed increases
-        if (gridOffset > gridSize) gridOffset = 0;
-        
-        ctx.beginPath();
-        for(let x = w - gridOffset; x > -gridSize*2; x -= gridSize) {
-            ctx.moveTo(x, -h); ctx.lineTo(x, h*2);
-        }
-        for(let y = gridOffset - h; y < h*2; y += gridSize) {
-            ctx.moveTo(-w, y); ctx.lineTo(w*2, y);
-        }
-        ctx.stroke();
-
-        if (aviatorState.status === 'betting') {
-            aviatorState.bettingTimeLeft -= dt;
-            if(aviatorState.bettingTimeLeft <= 0) {
-                startAviatorRound(); // Launch!
-            } else {
-                ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-                ctx.fillRect(0, 0, w, h);
-                ctx.fillStyle = "#fff";
-                ctx.font = "bold 30px monospace";
-                ctx.textAlign = "center";
-                ctx.fillText(`NEXT ROUND IN ${Math.ceil(aviatorState.bettingTimeLeft)}...`, w/2, h/2 - 20);
-                
-                ctx.fillStyle = "#333";
-                ctx.fillRect(0, 0, w, 10);
-                ctx.fillStyle = varColorDanger;
-                ctx.fillRect(0, 0, w * (Math.max(0, aviatorState.bettingTimeLeft)/5.0), 10);
-            }
-        }
-
-        let currentX = 0, currentY = 0;
-        
-        if (aviatorState.status === 'flying' || aviatorState.status === 'crashed') {
-            let progress = Math.min(1, (aviatorState.multiplier - 1) / 2); 
-            
-            const startX = 50;
-            const startY = h - 30;
-            let targetX = w * 0.7;
-            let targetY = h * 0.3;
-            
-            // Pre-Crash Turbulence
-            let turbX = 0, turbY = 0;
-            if(aviatorState.status === 'flying') {
-                if(aviatorState.crashPoint - aviatorState.multiplier < 0.5) { // Close to crash
-                     turbX = (Math.random() - 0.5) * 10;
-                     turbY = (Math.random() - 0.5) * 10;
-                } else {
-                    turbY = Math.sin(timestamp * 0.01) * 3 + Math.sin(timestamp * 0.025) * 2;
-                }
-            }
-            
-            currentX = startX + (targetX - startX) * progress + turbX;
-            currentY = startY + (targetY - startY) * progress + turbY;
-
-            const cp1X = startX + (currentX - startX) * 0.5;
-            const cp1Y = startY;
-            
-            if (aviatorState.status !== 'crashed') {
-                const grad = ctx.createLinearGradient(0, startY, 0, currentY);
-                grad.addColorStop(0, "rgba(239, 68, 68, 0)"); 
-                grad.addColorStop(1, "rgba(239, 68, 68, 0.4)"); 
-                
-                ctx.beginPath();
-                ctx.moveTo(startX, startY);
-                ctx.quadraticCurveTo(cp1X, cp1Y, currentX, currentY);
-                ctx.lineTo(currentX, h); 
-                ctx.lineTo(startX, h);   
-                ctx.closePath();
-                ctx.fillStyle = grad;
-                ctx.fill();
-
-                ctx.beginPath();
-                ctx.moveTo(startX, startY);
-                ctx.quadraticCurveTo(cp1X, cp1Y, currentX, currentY);
-                ctx.strokeStyle = "red";
-                ctx.lineWidth = 4;
-                ctx.stroke();
-            }
-            
-            let dx = currentX - cp1X;
-            let dy = currentY - cp1Y;
-            let angle = Math.atan2(dy, dx);
-            if (progress >= 1 && aviatorState.status !== 'crashed') {
-               angle = 0; 
-            } else if (aviatorState.status === 'crashed') {
-               angle = Math.PI / 4; // Nose down
-               currentX += (aviatorState.crashTimer * 200); // Fly off screen down-right
-               currentY += (aviatorState.crashTimer * 200);
-               aviatorState.crashTimer += dt;
-            }
-            
-            const isVIP = (currentUser && currentUser.points > 50000);
-            drawPlane(ctx, currentX, currentY, angle, timestamp, isVIP);
-        }
-        
-        ctx.restore(); // Undo zoom
-
-        // Draw Particles (Sparks, Smoke, Coins) independently of zoom so they render correctly
-        drawParticles(ctx, dt, w, h);
-
-        // Logic Updates
-        if (aviatorState.status === 'flying') {
-            const timeElapsed = (timestamp - aviatorState.startTime) / 1000;
-            aviatorState.multiplier = Math.pow(Math.E, 0.15 * timeElapsed) || 1.00;
-            
-            const engine = document.getElementById('audioEngine');
-            if(engine) engine.playbackRate = Math.min(3.0, 1.0 + (aviatorState.multiplier * 0.05));
-
-            aviatorState.bets.forEach(bet => {
-                if(bet.active && !bet.cashedOut && bet.auto && aviatorState.multiplier >= bet.auto) {
-                    cashOutBet(bet.id, bet.auto, currentX, currentY);
-                }
-            });
-            
-            document.getElementById('aviatorMultiplier').style.opacity = '1';
-            document.getElementById('aviatorMultiplier').innerText = aviatorState.multiplier.toFixed(2) + "x";
-
-            // Network Disconnect Auto-Loss feature
-            if(!navigator.onLine && !aviatorState.networkLostProcessed) {
-                aviatorState.networkLostProcessed = true;
-                triggerCrash(true); // Force crash and lose immediately
-            }
-
-            if (aviatorState.multiplier >= aviatorState.crashPoint && !aviatorState.networkLostProcessed) {
-                aviatorState.multiplier = aviatorState.crashPoint;
-                document.getElementById('aviatorMultiplier').innerText = aviatorState.crashPoint.toFixed(2) + "x";
-                triggerCrash(false, currentX, currentY);
-            }
-        }
-        
-        animationFrameId = requestAnimationFrame(drawAviatorFrame);
-    }
-
-    function drawPlane(ctx, x, y, angle, timestamp, isVIP) {
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(angle);
-        
-        ctx.drawImage(isVIP ? goldenPlaneImg : planeImg, -40, -20, 80, 40);
-        
-        ctx.fillStyle = "rgba(255,255,255,0.4)";
-        ctx.beginPath();
-        ctx.ellipse(35, 0, 4, 15 + Math.sin(timestamp*0.05)*5, 0, 0, Math.PI*2);
-        ctx.fill();
-        
-        ctx.restore();
-    }
-    
-    function drawParticles(ctx, dt, w, h) {
-        // Coins
-        for (let i = coins.length - 1; i >= 0; i--) {
-            const p = coins[i];
-            p.y += p.vy * dt; p.x += p.vx * dt; p.life -= dt;
-            ctx.fillStyle = `rgba(255, 215, 0, ${p.life})`;
-            ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
-            if(p.life <= 0) coins.splice(i, 1);
-        }
-        // Sparks
-        for (let i = sparks.length - 1; i >= 0; i--) {
-            const p = sparks[i];
-            p.y += p.vy * dt; p.x += p.vx * dt; p.life -= dt;
-            ctx.fillStyle = `rgba(0, 255, 0, ${p.life})`;
-            ctx.fillRect(p.x, p.y, p.size, p.size);
-            if(p.life <= 0) sparks.splice(i, 1);
-        }
-        // Smoke
-        for (let i = smokeParticles.length - 1; i >= 0; i--) {
-            const p = smokeParticles[i];
-            p.y += p.vy * dt; p.x += p.vx * dt;
-            p.r += 20 * dt; // expand
-            p.life -= dt;
-            ctx.fillStyle = `rgba(30, 30, 30, ${p.life})`;
-            ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
-            if(p.life <= 0) smokeParticles.splice(i, 1);
-        }
-    }
-
-    function createSparks(x, y) {
-        for(let i=0; i<20; i++) {
-            sparks.push({ x, y, vx: (Math.random()-0.5)*200, vy: (Math.random()-0.5)*200, life: 0.5, size: Math.random()*3+2 });
-        }
-    }
-    
-    function createSmoke(x, y) {
-        for(let i=0; i<15; i++) {
-            smokeParticles.push({ x: x + (Math.random()-0.5)*30, y: y + (Math.random()-0.5)*30, vx: (Math.random()-0.5)*50, vy: (Math.random()-0.5)*50 - 50, life: 1.0, r: Math.random()*10+5 });
-        }
-    }
-
-    function triggerCoinRain() {
-        for(let i=0; i<100; i++) {
-            coins.push({ x: Math.random() * document.getElementById('aviatorCanvas').width, y: -20 - Math.random()*100, vx: 0, vy: 200 + Math.random()*200, r: Math.random()*4+4, life: 3.0 });
-        }
-    }
-    
-    function startBettingPhase() {
-        if (aviatorState.status === 'betting') return;
-        aviatorState.status = 'betting';
-        aviatorState.bettingTimeLeft = 5.0;
-        document.getElementById('aviatorCrashText').style.opacity = '0';
-        document.getElementById('aviatorMultiplier').style.opacity = '0'; // Hide mult during betting
-        
-        // Reset inputs and buttons
-        aviatorState.bets.forEach(bet => {
-            if(!bet.active) {
-                const btn = document.getElementById(`aviatorBtn${bet.id}`);
-                btn.className = "bet-btn idle";
-                btn.innerText = "Bet";
-                document.getElementById(`aviatorBet${bet.id}`).disabled = false;
-                document.getElementById(`aviatorAuto${bet.id}`).disabled = false;
-            }
-        });
-        
-        if(!animationFrameId) {
-            animationFrameId = requestAnimationFrame((t) => {
-                lastTime = t;
-                drawAviatorFrame(t);
-            });
-        }
-    }
-
-    async function startAviatorRound() {
-        if(aviatorState.status !== 'betting') return;
-        // Get fair RNG crash point from backend
-        // To save API calls in this demo if no bets, we can mock it, but let's call API
-        try {
-            const res = await fetch('/api/aviator/start', { 
-                method: 'POST', 
-                headers: {'Content-Type':'application/json'}, 
-                body: JSON.stringify({ userId: userId || 'test_user', bets: aviatorState.bets }) 
-            });
-            const data = await res.json();
-            aviatorState.crashPoint = data.crashPoint;
-            aviatorState.roundId = data.roundId;
-            aviatorState.history = data.history || [];
-            aviatorState.serverHash = data.serverHash;
-            updateAviatorHistoryBar();
-            
-            // Mock Top bets and Chat
-            const names = ['Alem', 'Besh', 'Mese', 'Tiru', 'Yonas', 'Dawit'];
-            const rName = () => names[Math.floor(Math.random()*names.length)];
-            const rAmt = () => Math.floor(Math.random()*500 + 10);
-            const liveBetsHtml = Array.from({length: 5}).map(()=> `<div style="display:flex; justify-content:space-between; margin-bottom:2px;"><span>${rName()}</span><span style="color:var(--gold-color);">${rAmt()} Gems</span></div>`).join('');
-            document.getElementById('aviatorLiveBetsPanel').innerHTML = liveBetsHtml;
-            
-            const msgs = ['Let\'s go!', 'Cash out early?', 'Waiting for 10x', 'Scary...', 'wow'];
-            const chatHtml = Array.from({length: 3}).map(()=> `<div style="margin-bottom:2px;"><span style="color:var(--accent-color); font-weight:bold;">${rName()}:</span> ${msgs[Math.floor(Math.random()*msgs.length)]}</div>`).join('');
-            document.getElementById('aviatorChatOverlay').innerHTML = chatHtml;
-            
-        } catch(e) {
-            console.error(e);
-            // Fallback fair math if offline
-            const rand = Math.random();
-            aviatorState.crashPoint = parseFloat(Math.max(1.00, 0.99 / (1 - rand)).toFixed(2));
-        }
-
-        // Prepare UI for flight
-        aviatorState.bets.forEach(bet => {
-            if(bet.active) {
-                const btn = document.getElementById(`aviatorBtn${bet.id}`);
-                btn.className = "bet-btn active";
-                btn.innerText = "Cash Out";
-            }
-        });
-        
-        document.getElementById('aviatorCrashText').style.opacity = '0';
-        document.getElementById('aviatorMultiplier').style.color = "white";
-        document.getElementById('aviatorMultiplier').innerText = "1.00x";
-        
-        const engine = document.getElementById('audioEngine');
-        engine.playbackRate = 1.0;
-        engine.play().catch(()=>{});
-
-        // Launch
-        aviatorState.status = 'flying';
-        aviatorState.multiplier = 1.00;
-        aviatorState.startTime = 0; // Set in RAF
-        resizeCanvas();
-        if(animationFrameId) cancelAnimationFrame(animationFrameId);
-        animationFrameId = requestAnimationFrame(drawAviatorFrame);
-    }
-
-    function triggerCrash(isDisconnect = false, planeX = 0, planeY = 0) {
-        if(aviatorState.status === 'crashed') return;
-        aviatorState.status = 'crashed';
-        aviatorState.crashTimer = 0;
-        
-        const engine = document.getElementById('audioEngine');
-        engine.pause();
-        engine.currentTime = 0;
-        
-        document.getElementById('audioCrash').play().catch(()=>{});
-        if(planeX && planeY) createSmoke(planeX, planeY);
-        
-        document.getElementById('aviatorMultiplier').style.color = "var(--danger-color)";
-        document.getElementById('aviatorCrashText').innerText = isDisconnect ? "CONNECTION LOST" : "FLEW AWAY!";
-        document.getElementById('aviatorCrashText').style.opacity = '1';
-        
-        // Reset bets
-        aviatorState.bets.forEach(bet => {
-            if(bet.active && !bet.cashedOut) {
-                // Lost
-                const btn = document.getElementById(`aviatorBtn${bet.id}`);
-                btn.className = "bet-btn idle";
-                btn.innerText = "Bet";
-                bet.active = false;
-            }
-            
-            // Re-enable inputs if not autoplaying
-            const autoPlay = document.getElementById(`aviatorAutoPlay${bet.id}`).checked;
-            if(!autoPlay) {
-                document.getElementById(`aviatorBet${bet.id}`).disabled = false;
-                document.getElementById(`aviatorAuto${bet.id}`).disabled = false;
-            }
-        });
-        
-        updateAviatorHistoryBar();
-        
-        setTimeout(() => {
-            // Check AutoPlay
-            aviatorState.bets.forEach(bet => {
-                if(document.getElementById(`aviatorAutoPlay${bet.id}`).checked) {
-                    document.getElementById(`aviatorBet${bet.id}`).disabled = true;
-                    document.getElementById(`aviatorAuto${bet.id}`).disabled = true;
-                    bet.active = true;
-                    bet.cashedOut = false;
-                    bet.amount = parseFloat(document.getElementById(`aviatorBet${bet.id}`).value) || 0;
-                    bet.auto = parseFloat(document.getElementById(`aviatorAuto${bet.id}`).value) || null;
-                    const btn = document.getElementById(`aviatorBtn${bet.id}`);
-                    btn.className = "bet-btn waiting";
-                    btn.innerText = "Cancel";
-                }
-            });
-            startBettingPhase();
-        }, 3000);
-    }
-
-    function updateAviatorHistoryBar() {
-        const bar = document.getElementById('aviatorHistoryBar');
-        if(!bar) return;
-        if(!aviatorState.history || aviatorState.history.length === 0) return;
-        
-        let html = '';
-        aviatorState.history.slice().reverse().forEach(mult => {
-            let color = "var(--primary-color)"; // blue
-            if(mult >= 10.0) color = "var(--gold-color)";
-            else if(mult >= 2.0) color = "var(--accent-color)"; // purple
-            html += `<span class="history-pill" style="color:${color}; border-color:${color};">${mult.toFixed(2)}x</span>`;
-        });
-        bar.innerHTML = html;
-    }
-    
-    function showProvablyFair() {
-        if(!aviatorState.serverHash) return showToast("No active round data");
-        alert(`PROVABLY FAIR\n\nServer Hash (SHA-256):\n${aviatorState.serverHash}\n\nUnchangeable and cryptographically secure.`);
-    }
-
-    function switchAviatorTab(tab) {
-        document.querySelectorAll('.aviator-tab').forEach(t => t.classList.remove('active'));
-        event.target.classList.add('active');
-        const p = document.getElementById('aviatorLiveBetsPanel');
-        if(tab === 'bets') {
-            p.innerHTML = `<div style="text-align:center; margin-top:10px;">Waiting for players...</div>`;
-        } else {
-            p.innerHTML = `<div style="text-align:center; margin-top:10px;">No history yet.</div>`;
-        }
-    }
-
-    // Call this when opening the game
-    function initAviator() {
-        resizeCanvas();
-        if(aviatorState.status === 'idle') {
-            startBettingPhase();
-        }
-    }
-
-    // --- ADVANCED OX GAME (Minimax Algorithm) ---
-    let oxBoardState = ['', '', '', '', '', '', '', '', ''];
-    let oxCurrentPlayer = 'X'; // User is X
-    let oxGameActive = false;
-    let oxBetAmount = 0;
-    
-    const winConditions = [
-        [0, 1, 2], [3, 4, 5], [6, 7, 8],
-        [0, 3, 6], [1, 4, 7], [2, 5, 8],
-        [0, 4, 8], [2, 4, 6]
-    ];
-    
-    function resetOXBoard() {
-        oxBoardState = ['', '', '', '', '', '', '', '', ''];
-        oxCurrentPlayer = 'X';
-        oxGameActive = true;
-        document.getElementById('oxResult').innerText = "";
-        const cells = document.querySelectorAll('#oxGrid .glass-panel');
-        cells.forEach((cell, idx) => {
-            cell.innerText = "";
-            cell.style.color = "inherit";
-            // Remove old listener to avoid duplicates, then add new
-            const newCell = cell.cloneNode(true);
-            cell.parentNode.replaceChild(newCell, cell);
-            newCell.addEventListener('click', () => handleOXCellClick(idx));
-        });
-    }
-
-    async function findOXMatch(playBot) {
-        if(!playBot) return alert("Online Multiplayer coming soon. Try the Unbeatable Bot!");
-        
-        oxBetAmount = parseInt(document.getElementById('oxBet').value);
-        if(isNaN(oxBetAmount) || oxBetAmount <= 0) return alert("Invalid bet.");
-        
-        document.getElementById('oxMatchStatus').innerText = "Matched with UNBEATABLE BOT (Minimax)";
-        document.getElementById('oxBoard').style.display = 'block';
-        resetOXBoard();
-    }
-
-    function checkOXWin(board) {
-        for(let i=0; i<winConditions.length; i++) {
-            const [a,b,c] = winConditions[i];
-            if(board[a] && board[a] === board[b] && board[a] === board[c]) return board[a];
-        }
-        if(!board.includes('')) return 'Tie';
-        return null;
-    }
-
-    // Minimax Algorithm
-    function minimax(board, depth, isMaximizing) {
-        const result = checkOXWin(board);
-        if (result === 'O') return 10 - depth;
-        if (result === 'X') return depth - 10;
-        if (result === 'Tie') return 0;
-
-        if (isMaximizing) {
-            let bestScore = -Infinity;
-            for(let i=0; i<9; i++) {
-                if(board[i] === '') {
-                    board[i] = 'O';
-                    let score = minimax(board, depth + 1, false);
-                    board[i] = '';
-                    bestScore = Math.max(score, bestScore);
-                }
-            }
-            return bestScore;
-        } else {
-            let bestScore = Infinity;
-            for(let i=0; i<9; i++) {
-                if(board[i] === '') {
-                    board[i] = 'X';
-                    let score = minimax(board, depth + 1, true);
-                    board[i] = '';
-                    bestScore = Math.min(score, bestScore);
-                }
-            }
-            return bestScore;
-        }
-    }
-
-    function bestOXMove() {
-        let bestScore = -Infinity;
-        let move;
-        for(let i=0; i<9; i++) {
-            if(oxBoardState[i] === '') {
-                oxBoardState[i] = 'O';
-                let score = minimax(oxBoardState, 0, false);
-                oxBoardState[i] = '';
-                if(score > bestScore) {
-                    bestScore = score;
-                    move = i;
-                }
-            }
-        }
-        return move;
-    }
-
-    async function handleOXCellClick(idx) {
-        if(!oxGameActive || oxBoardState[idx] !== '' || oxCurrentPlayer !== 'X') return;
-        
-        oxBoardState[idx] = 'X';
-        const cells = document.querySelectorAll('#oxGrid .glass-panel');
-        cells[idx].innerText = 'X';
-        cells[idx].style.color = "var(--success-color)";
-        
-        const result = checkOXWin(oxBoardState);
-        if(result) { return finalizeOXRound(result); }
-        
-        oxCurrentPlayer = 'O'; // Bot's turn
-        
-        // Slight delay for realism
-        setTimeout(() => {
-            if(!oxGameActive) return;
-            const botMove = bestOXMove();
-            if(botMove !== undefined) {
-                oxBoardState[botMove] = 'O';
-                cells[botMove].innerText = 'O';
-                cells[botMove].style.color = "var(--danger-color)";
-                
-                const botResult = checkOXWin(oxBoardState);
-                if(botResult) { return finalizeOXRound(botResult); }
-                oxCurrentPlayer = 'X';
-            }
-        }, 500);
-    }
-    
-    async function finalizeOXRound(result) {
-        oxGameActive = false;
-        const resultDiv = document.getElementById('oxResult');
-        
-        // Sync with backend (Simplified for demo, real app would send move log)
-        if(result === 'X') {
-            resultDiv.innerText = `You Won! +${oxBetAmount} Gems`;
-            resultDiv.style.color = "var(--success-color)";
-        } else if (result === 'O') {
-            resultDiv.innerText = `Bot Won! -${oxBetAmount} Gems`;
-            resultDiv.style.color = "var(--danger-color)";
-            await fetch('/api/ox', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userId: userId||'test_user', bet: oxBetAmount, playBot:true}) });
-        } else {
-            resultDiv.innerText = `It's a Draw! Bet returned.`;
-            resultDiv.style.color = "var(--gold-color)";
-        }
-    }
-</script>
-
-<!-- FEATURES LOGIC SCRIPT (Idle Miner & Exchange) -->
-<script>
-    // Idle Miner Logic
-    let idleGems = 0.00;
-    setInterval(() => {
-        idleGems += 0.01;
-        const minerDisplay = document.getElementById('idleMinerVal');
-        if(minerDisplay) minerDisplay.innerText = idleGems.toFixed(2);
-    }, 60000); // Every minute
-
-    // Exchange Logic (Frontend Mock)
-    async function processExchange() {
-        const amt = parseFloat(document.getElementById('exchangeAmount').value);
-        if(!amt || amt <= 0) return showToast("Enter valid amount", "error");
-
-        const btn = document.getElementById('exchangeBtn');
-        const oldHtml = btn.innerHTML;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Converting...';
-        btn.disabled = true;
-
-        try {
-            const res = await fetch(`${API_BASE_URL}/api/exchange`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: userId, gemsToExchange: amt })
-            });
-            const data = await res.json();
-
-            if(data.success) {
-                // Play success sound & confetti
-                playSuccessSound();
-                triggerConfetti();
-                showToast(`Converted! Added ${data.realMoney.toFixed(2)} to Real Balance`, "success");
-
-                // Update local user state
-                currentUser.points -= amt;
-                currentUser.realBalance = (currentUser.realBalance || 0) + data.realMoney;
-
-                // Refresh UI
-                updateUI();
-                renderExchange(document.getElementById('mainContent'));
-                document.getElementById('exchangeAmount').value = '';
-            } else {
-                showToast(data.error || "Exchange failed", "error");
-            }
-        } catch(e) {
-            showToast("Network error during exchange.", "error");
-        } finally {
-            btn.innerHTML = oldHtml;
-            btn.disabled = false;
-        }
-    }
-</script>

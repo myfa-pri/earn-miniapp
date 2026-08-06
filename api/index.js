@@ -178,6 +178,20 @@ app.post('/api/webhook', async (req, res) => {
                         parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: "🚀 Open Mini App", web_app: { url: `${webUrl}` } }]] }
                     });
                 }
+            } else if (text === '/admin') {
+                const config = (await dbGet('config')) || {};
+                const webUrl = config.webAppUrl || 'https://earn-miniapp.vercel.app'; 
+                const adminIds = (config.adminTelegramIds || '').split(',').map(id => id.trim());
+                
+                if (adminIds.includes(chatId)) {
+                    const caption = `<b>Welcome Admin ${accountName}</b>\n\nClick below to open the Admin Panel.`;
+                    await bot.sendMessage(chatId, caption, {
+                        parse_mode: 'HTML',
+                        reply_markup: { inline_keyboard: [[{ text: "⚙️ Open Admin Panel", web_app: { url: `${webUrl}/myfa.html` } }]] }
+                    });
+                } else {
+                    await bot.sendMessage(chatId, "Unauthorized.", { parse_mode: 'HTML' });
+                }
             }
         }
         return res.status(200).send('OK');
@@ -440,6 +454,35 @@ app.post('/api/exchange', async (req, res) => {
     }
 });
 
+app.post('/api/promo/redeem', async (req, res) => {
+    const { userId, code } = req.body;
+    if (!userId || !code) return res.status(400).json({error: "Missing parameters"});
+    
+    const promo = await dbGet(`promos/${code}`);
+    if (!promo) return res.status(404).json({error: "Invalid promo code"});
+    if (promo.uses >= promo.maxUses) return res.status(400).json({error: "Promo code expired"});
+    
+    const user = await dbGet(`users/${userId}`);
+    if (!user) return res.status(404).json({error: "User not found"});
+    
+    if (user.redeemedPromos && user.redeemedPromos.includes(code)) {
+        return res.status(400).json({error: "You have already redeemed this promo code"});
+    }
+    
+    const newPoints = (user.points || 0) + parseInt(promo.reward);
+    const redeemed = user.redeemedPromos ? [...user.redeemedPromos, code] : [code];
+    
+    await dbUpdate(`users/${userId}`, { 
+        points: newPoints,
+        redeemedPromos: redeemed,
+        logs: logAction(user, `Redeemed promo code ${code} for ${promo.reward} Gems`)
+    });
+    
+    await dbUpdate(`promos/${code}`, { uses: (promo.uses || 0) + 1 });
+    
+    res.json({ success: true, reward: promo.reward, newPoints });
+});
+
 app.post('/api/request-withdrawal', async (req, res) => {
     const { userId, amount, method, account, accountName } = req.body;
     const u = await dbGet(`users/${userId}`);
@@ -680,6 +723,21 @@ const checkAdmin = (req, res, next) => {
     next(); 
 };
 
+async function addAdminLog(adminId, action) {
+    const log = { timestamp: Date.now(), adminId: adminId || 'Unknown', action };
+    const db = await dbGet('') || {};
+    const adminLogs = db.adminLogs || [];
+    adminLogs.push(log);
+    // Keep last 100 logs
+    if (adminLogs.length > 100) adminLogs.shift();
+    await dbSet('adminLogs', adminLogs);
+}
+
+app.post('/api/admin/logs', checkAdmin, async (req, res) => {
+    const logs = await dbGet('adminLogs') || [];
+    res.json(logs);
+});
+
 app.post('/api/admin/data', checkAdmin, async (req, res) => {
     const db = (await dbGet('')) || {};
     res.json({
@@ -695,43 +753,52 @@ app.post('/api/admin/data', checkAdmin, async (req, res) => {
 
 app.post('/api/admin/config-update', checkAdmin, async (req, res) => {
     if(req.body.fullConfig) await dbUpdate('config', req.body.fullConfig);
+    await addAdminLog(req.body.adminId, 'Updated Master Config');
     res.json({success:true});
 });
 
 app.post('/api/admin/user-action', checkAdmin, async (req, res) => {
-    const { userId, action, value } = req.body;
+    const { userId, action, value, adminId } = req.body;
     const u = await dbGet(`users/${userId}`);
     if(!u) return res.status(404).json({error:"User not found"});
 
     if(action === 'add-balance') {
         await dbUpdate(`users/${userId}`, { points: (u.points||0) + parseInt(value), logs: logAction(u, `Admin added ${value} Gems`) });
+        await addAdminLog(adminId, `Added ${value} Gems to ${userId}`);
     } else if(action === 'deduct-balance') {
         await dbUpdate(`users/${userId}`, { points: Math.max(0, (u.points||0) - parseInt(value)), logs: logAction(u, `Admin deducted ${value} Gems`) });
+        await addAdminLog(adminId, `Deducted ${value} Gems from ${userId}`);
     } else if(action === 'reset-ads') {
         await dbUpdate(`users/${userId}`, { dailyAdsWatched: 0, logs: logAction(u, `Admin reset daily ads`) });
+        await addAdminLog(adminId, `Reset daily ads for ${userId}`);
     } else if(action === 'toggle-ban') {
         await dbUpdate(`users/${userId}`, { isBanned: !u.isBanned, logs: logAction(u, `Admin ${u.isBanned?'unbanned':'banned'}`) });
+        await addAdminLog(adminId, `${u.isBanned?'Unbanned':'Banned'} user ${userId}`);
     } else if(action === 'toggle-vip') {
         await dbUpdate(`users/${userId}`, { isVip: !u.isVip, logs: logAction(u, `Admin ${u.isVip?'removed':'granted'} VIP`) });
+        await addAdminLog(adminId, `${u.isVip?'Removed':'Granted'} VIP for ${userId}`);
     }
     res.json({success:true});
 });
 
 app.post('/api/admin/tasks', checkAdmin, async (req, res) => {
-    const { action, task } = req.body;
+    const { action, task, adminId } = req.body;
     if(action === 'create') {
         const taskId = 'task_' + Date.now();
         await dbSet(`bonusTasks/${taskId}`, task);
+        await addAdminLog(adminId, `Created bonus task ${task.name}`);
     } else if(action === 'delete') {
         await dbRemove(`bonusTasks/${task.id}`);
+        await addAdminLog(adminId, `Deleted bonus task ${task.id}`);
     }
     res.json({success:true});
 });
 
 app.post('/api/admin/promos', checkAdmin, async (req, res) => {
-    const { action, promo } = req.body;
+    const { action, promo, adminId } = req.body;
     if(action === 'create') {
         await dbSet(`promos/${promo.code}`, { reward: promo.reward, maxUses: promo.maxUses, uses: 0 });
+        await addAdminLog(adminId, `Created promo code ${promo.code}`);
     }
     res.json({success:true});
 });
@@ -747,6 +814,7 @@ app.post('/api/admin/withdrawals', checkAdmin, async (req, res) => {
             bot.sendMessage(w.userId, `✅ Your withdrawal of $${w.amount} to ${w.method} has been approved!`).catch(()=>{});
         } else if(action === 'reject') {
             await dbUpdate(`withdrawals/${id}`, { status: 'rejected', reason: reason || 'Violation of terms' });
+            await addAdminLog(adminId, `Rejected withdrawal ${id}`);
             // Refund realBalance
             const u = await dbGet(`users/${w.userId}`);
             if(u) await dbUpdate(`users/${w.userId}`, { realBalance: (u.realBalance||0) + w.amount });
@@ -757,8 +825,8 @@ app.post('/api/admin/withdrawals', checkAdmin, async (req, res) => {
 });
 
 app.post('/api/admin/broadcast', checkAdmin, async (req, res) => {
-    // Save to Firebase so active clients can pick it up via listeners
-    await dbSet('globalBroadcast', { message: req.body.message, timestamp: Date.now() });
+    await dbSet('toastBroadcast', { id: Date.now(), text: req.body.text });
+    await addAdminLog(req.body.adminId, `Broadcasted toast: ${req.body.text}`);
     res.json({success:true});
 });
 

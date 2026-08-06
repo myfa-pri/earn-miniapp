@@ -671,7 +671,8 @@
 
         async function renderReferrals(c) {
             const botLink = (typeof appConfig !== 'undefined' && appConfig.telegramBotLink) ? appConfig.telegramBotLink : 'https://t.me/beshbesh_bot';
-            const refLink = `${botLink}/earn?startapp=ref${userId}`;
+            const shortname = (typeof appConfig !== 'undefined' && appConfig.miniAppShortname) ? appConfig.miniAppShortname : 'earn';
+            const refLink = `${botLink}/${shortname}?startapp=ref${userId}`;
             
             c.innerHTML = `
                 <div class="card glass" style="text-align:center; padding:30px 20px; position:relative; overflow:hidden;">
@@ -809,6 +810,13 @@
         function renderGames(c) {
             c.innerHTML = `
                 <h2 style="margin-bottom: 20px;"><i class="fa-solid fa-gamepad" style="color:var(--color-purple);"></i> Game Hub</h2>
+                
+                <div class="glass" style="margin-bottom:20px; border-radius:15px; padding:15px; display:flex; gap:10px; align-items:center;">
+                    <i class="fa-solid fa-gift" style="color:var(--color-magenta); font-size:1.5rem;"></i>
+                    <input type="text" id="promoCodeInput" placeholder="Enter Promo Code..." style="flex:1; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:10px; color:white; outline:none; text-transform:uppercase;">
+                    <button class="btn btn-primary" style="width:auto; padding:10px 15px; border-radius:10px;" onclick="redeemPromoCode()">Redeem</button>
+                </div>
+
                 <div class="game-hub-list">
                     <div class="game-row glass" onclick="openGame('aviator')">
                         <div class="game-icon-box" style="color:var(--danger-color);"><i class="fa-solid fa-plane-up"></i></div>
@@ -1113,16 +1121,138 @@
                 btn.disabled = false;
             }
         }
-        async function renderLeaderboard(c) {
+           async function renderLeaderboard(c) {
             c.innerHTML = `
+                <style>
+                    /* Leaderboard Custom CSS */
+                    .skeleton-row {
+                        height: 60px;
+                        background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0.05) 75%);
+                        background-size: 200% 100%;
+                        animation: shimmer 1.5s infinite;
+                        border-radius: 16px;
+                        margin-bottom: 8px;
+                    }
+                    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+                    
+                    .podium-container {
+                        display: flex;
+                        align-items: flex-end;
+                        justify-content: center;
+                        gap: 15px;
+                        margin-bottom: 30px;
+                        margin-top: 40px;
+                    }
+                    
+                    .podium-tier {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        text-align: center;
+                    }
+                    
+                    .podium-avatar {
+                        border-radius: 50%;
+                        object-fit: cover;
+                        background: var(--bg-color);
+                        z-index: 2;
+                        position: relative;
+                    }
+                    
+                    /* Gold - Rank 1 */
+                    .podium-tier.rank-1 .podium-avatar {
+                        width: 80px; height: 80px;
+                        border: 4px solid #FFD700;
+                        box-shadow: 0 0 25px rgba(255, 215, 0, 0.6);
+                    }
+                    /* Silver - Rank 2 */
+                    .podium-tier.rank-2 .podium-avatar {
+                        width: 65px; height: 65px;
+                        border: 3px solid #C0C0C0;
+                        box-shadow: 0 0 15px rgba(192, 192, 192, 0.6);
+                    }
+                    /* Bronze - Rank 3 */
+                    .podium-tier.rank-3 .podium-avatar {
+                        width: 65px; height: 65px;
+                        border: 3px solid #CD7F32;
+                        box-shadow: 0 0 15px rgba(205, 127, 50, 0.6);
+                    }
+                    
+                    .podium-crown { font-size: 1.5rem; margin-bottom: -15px; z-index: 3; position: relative; }
+                    .rank-1 .podium-crown { color: #FFD700; filter: drop-shadow(0 0 10px #FFD700); font-size: 2rem; margin-bottom: -20px; }
+                    .rank-2 .podium-crown { color: #C0C0C0; filter: drop-shadow(0 0 8px #C0C0C0); }
+                    .rank-3 .podium-crown { color: #CD7F32; filter: drop-shadow(0 0 8px #CD7F32); }
+                    
+                    .podium-name {
+                        font-weight: 800; color: white;
+                        margin-top: 10px;
+                        max-width: 90px;
+                        text-overflow: ellipsis; white-space: nowrap; overflow: hidden;
+                    }
+                    .rank-1 .podium-name { font-size: 1.1rem; max-width: 110px; }
+                    
+                    .podium-gems { font-size: 0.9rem; font-weight: 900; margin-top: 5px; display:flex; align-items:center; justify-content:center; gap:5px;}
+                    .rank-1 .podium-gems { color: #FFD700; text-shadow: 0 0 10px rgba(255,215,0,0.8); }
+                    .rank-2 .podium-gems { color: #C0C0C0; }
+                    .rank-3 .podium-gems { color: #CD7F32; }
+
+                    .lb-list-item {
+                        display: flex; align-items: center; justify-content: space-between;
+                        background: rgba(255, 255, 255, 0.05);
+                        border: 1px solid rgba(255, 255, 255, 0.1);
+                        border-radius: 16px; margin-bottom: 8px; padding: 10px 15px;
+                        backdrop-filter: blur(16px);
+                    }
+                    
+                    .lb-badge {
+                        width: 25px; height: 25px; border-radius: 50%;
+                        background: rgba(255,255,255,0.1);
+                        display: flex; align-items: center; justify-content: center;
+                        font-size: 0.8rem; font-weight: bold; color: #94A3B8;
+                        margin-right: 12px;
+                    }
+                    
+                    .lb-avatar {
+                        width: 45px; height: 45px; border-radius: 50%; object-fit: cover;
+                        margin-right: 12px;
+                    }
+                    
+                    .lb-name {
+                        flex: 1; font-weight: 800; color: white;
+                        text-overflow: ellipsis; white-space: nowrap; overflow: hidden;
+                    }
+                    
+                    .lb-gems {
+                        font-weight: 900; color: var(--color-cyan);
+                        display: flex; align-items: center; gap: 5px;
+                    }
+                    
+                    .lb-sticky-footer {
+                        position: fixed; bottom: 80px; left: 0; right: 0; z-index: 90;
+                        background: rgba(10, 10, 10, 0.7);
+                        backdrop-filter: blur(16px);
+                        border-top: 2px solid transparent;
+                        border-image: linear-gradient(90deg, #00F2FE, #4FACFE, #F093FB) 1;
+                        padding: 10px 20px;
+                        display: flex; justify-content: space-between; align-items: center;
+                    }
+                </style>
                 <div style="text-align:center; padding: 20px 0;">
                     <h2><i class="fa-solid fa-trophy" style="color:var(--gold-color); font-size: 2rem; margin-bottom: 10px; display:inline-block; filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.5));"></i><br>Top 100 Players</h2>
                     <p style="font-size:0.85rem; color:#94A3B8;">The best of the best.</p>
                 </div>
-                <div id="leaderboardLoading" style="text-align:center; padding: 30px;"><i class="fa-solid fa-spinner fa-spin fa-2x" style="color:var(--color-cyan);"></i></div>
-                <div id="top3Container" class="top-3-container" style="display:none; margin-top:20px;"></div>
-                <div id="leaderboardList" style="display:flex; flex-direction:column; gap:10px; margin-bottom: 80px; margin-top:20px;"></div>
-                <div class="leaderboard-footer glass" id="leaderboardFooter" style="display:none; justify-content:space-between; align-items:center;"></div>
+                
+                <div id="leaderboardLoading" style="padding: 0 15px;">
+                    <div class="skeleton-row"></div>
+                    <div class="skeleton-row"></div>
+                    <div class="skeleton-row"></div>
+                    <div class="skeleton-row"></div>
+                    <div class="skeleton-row"></div>
+                </div>
+                
+                <div id="podiumContainer" class="podium-container" style="display:none;"></div>
+                <div id="leaderboardList" style="padding: 0 15px; margin-bottom: 140px; display:none;"></div>
+                <div id="leaderboardFooter" class="lb-sticky-footer" style="display:none;"></div>
             `;
             
             try {
@@ -1133,101 +1263,95 @@
                 if (loader) loader.style.display = 'none';
 
                 const listContainer = document.getElementById('leaderboardList');
-                if (!listContainer) return; // Prevent innerHTML null crash if user navigated away
+                if (!listContainer) return; // user navigated away
 
                 if (data.frozen) {
                     const banner = document.createElement('div');
                     banner.style = "background:var(--danger-color); color:white; text-align:center; padding:10px; font-weight:bold; position:sticky; top:0; z-index:99; margin-bottom:15px;";
                     banner.innerHTML = "🏆 Leaderboard is Currently Frozen for Payouts";
-                    listContainer.parentNode.insertBefore(banner, document.getElementById('top3Container'));
+                    listContainer.parentNode.insertBefore(banner, document.getElementById('podiumContainer'));
                 }
                 
                 const top100 = data.byPoints || [];
                 
-                // Render Top 3
+                // --- PODIUM (Top 3) ---
+                const podiumCont = document.getElementById('podiumContainer');
                 const top3 = top100.slice(0, 3);
-                // We want order: 2, 1, 3 for podium layout
-                const order = [1, 0, 2]; 
-                let top3Html = '';
                 
-                order.forEach(idx => {
-                    const u = top3[idx];
-                    if(!u) return;
-                    const rank = idx + 1;
-                    const avatarUrl = `${API_BASE_URL}/api/avatar/${u.id}`;
-                    const realName = ((u.firstName || '') + ' ' + (u.lastName || '')).trim() || u.username || 'User';
+                if (top3.length > 0) {
+                    // Order for layout: 2nd, 1st, 3rd
+                    const order = [1, 0, 2];
+                    let podiumHtml = '';
                     
-                    let crownColor = '';
-                    if(rank === 1) crownColor = 'var(--gold-color)';
-                    if(rank === 2) crownColor = 'silver';
-                    if(rank === 3) crownColor = '#cd7f32'; // bronze
-
-                    let podiumHeight = rank === 1 ? '160px' : (rank === 2 ? '130px' : '110px');
-                    let podiumBg = rank === 1 ? 'linear-gradient(135deg, rgba(255,215,0,0.2), rgba(255,215,0,0.05))' : 'rgba(255,255,255,0.05)';
-                    let glow = rank === 1 ? '0 0 20px rgba(255,215,0,0.3)' : 'none';
-
-                    top3Html += `
-                        <div class="top-3-item" style="display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:180px; width:30%;">
-                            <div style="color:${crownColor}; font-size:1.5rem; margin-bottom:5px; filter:drop-shadow(0 0 5px ${crownColor});"><i class="fa-solid fa-crown"></i></div>
-                            <img src="${avatarUrl}" loading="lazy" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(realName)}&background=00F2FE&color=fff';" style="width:50px; height:50px; border-radius:50%; border:2px solid ${crownColor}; margin-bottom:10px; z-index:2; background:var(--bg-color);">
-                            <div style="background:${podiumBg}; border:1px solid rgba(255,255,255,0.1); border-radius:15px 15px 5px 5px; width:100%; height:${podiumHeight}; display:flex; flex-direction:column; justify-content:center; align-items:center; box-shadow:${glow}; backdrop-filter:blur(16px);">
-                                <div style="font-size:1.2rem; font-weight:900; color:white; opacity:0.5;">${rank}</div>
-                                <div style="font-weight:700; font-size:0.8rem; color:white; margin:5px 0; width:90%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:center;">${realName}</div>
-                                <div style="font-size:0.8rem; color:var(--color-magenta); text-shadow:0 0 10px var(--color-magenta); font-weight:900;"><i class="fa-solid fa-gem"></i> ${(u.points||0).toLocaleString()}</div>
+                    order.forEach(idx => {
+                        const u = top3[idx];
+                        if(!u) return;
+                        
+                        const rank = idx + 1;
+                        const realName = u.accountName || u.username || 'Anonymous';
+                        const avatarUrl = `${API_BASE_URL}/api/avatar/${u.id}`;
+                        const fbUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(realName)}&background=B026FF&color=fff`;
+                        
+                        podiumHtml += `
+                            <div class="podium-tier rank-${rank}">
+                                <div class="podium-crown"><i class="fa-solid fa-crown"></i></div>
+                                <img src="${avatarUrl}" class="podium-avatar" loading="lazy" onerror="this.onerror=null; this.src='${fbUrl}';">
+                                <div class="podium-name">${realName}</div>
+                                <div class="podium-gems"><i class="fa-solid fa-gem"></i> ${Number(u.points || 0).toLocaleString()}</div>
                             </div>
-                        </div>
-                    `;
-                });
-                
-                const top3Cont = document.getElementById('top3Container');
-                if(top3.length > 0 && top3Cont) {
-                    top3Cont.innerHTML = top3Html;
-                    top3Cont.style.display = 'flex';
-                    top3Cont.style.justifyContent = 'center';
-                    top3Cont.style.alignItems = 'flex-end';
-                    top3Cont.style.gap = '10px';
+                        `;
+                    });
+                    podiumCont.innerHTML = podiumHtml;
+                    podiumCont.style.display = 'flex';
                 }
 
-                // Render Rest (4-100)
-                const rest = top100.slice(3);
+                // --- LIST (4 to 100) ---
                 let listHtml = '';
-                rest.forEach((u, idx) => {
-                    const rank = idx + 4;
+                for (let i = 3; i < top100.length; i++) {
+                    const u = top100[i];
+                    const rank = i + 1;
+                    const realName = u.accountName || u.username || 'Anonymous';
                     const avatarUrl = `${API_BASE_URL}/api/avatar/${u.id}`;
-                    const realName = ((u.firstName || '') + ' ' + (u.lastName || '')).trim() || u.username || 'User';
+                    const fbUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(realName)}&background=B026FF&color=fff`;
+                    
                     listHtml += `
-                        <div class="leaderboard-list-item glass" style="display:flex; align-items:center; padding:15px; border-radius:15px; gap:15px; backdrop-filter:blur(16px);">
-                            <div style="font-weight:900; font-size:1.2rem; color:#94a3b8; width:30px; text-align:center;">${rank}</div>
-                            <img src="${avatarUrl}" loading="lazy" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(realName)}&background=00F2FE&color=fff';" style="width:45px; height:45px; border-radius:50%; border:1px solid rgba(255,255,255,0.2);">
-                            <div style="flex-grow:1; min-width: 0;">
-                                <div style="font-weight:800; color:white; font-size:1rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${realName}</div>
-                            </div>
-                            <div style="color:var(--color-magenta); text-shadow:0 0 10px var(--color-magenta); font-weight:900; font-size:1.1rem; flex-shrink: 0;"><i class="fa-solid fa-gem"></i> ${(u.points||0).toLocaleString()}</div>
+                        <div class="lb-list-item">
+                            <div class="lb-badge">${rank}</div>
+                            <img src="${avatarUrl}" class="lb-avatar" loading="lazy" onerror="this.onerror=null; this.src='${fbUrl}';">
+                            <div class="lb-name">${realName}</div>
+                            <div class="lb-gems">${Number(u.points || 0).toLocaleString()} <i class="fa-solid fa-gem"></i></div>
                         </div>
                     `;
-                });
-                
+                }
                 listContainer.innerHTML = listHtml;
-                
-                // Footer Logic
-                const footer = document.getElementById('leaderboardFooter');
-                if (!footer) return;
+                listContainer.style.display = 'block';
 
+                // --- STICKY FOOTER (99+) ---
+                const footer = document.getElementById('leaderboardFooter');
                 const userRank = data.userRankPoints;
                 
-                let myAvatar = currentUser.avatarUrl || `https://ui-avatars.com/api/?name=${currentUser.username}&background=00F2FE&color=fff`;
+                let myName = currentUser.accountName || currentUser.username || 'Anonymous';
+                let myAvatar = currentUser.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(myName)}&background=B026FF&color=fff`;
                 
+                let displayRank = (userRank && userRank >= 1 && userRank <= 100) ? userRank : '99+';
+                let rankColor = displayRank === '99+' ? 'var(--color-magenta)' : 'white';
+
                 footer.innerHTML = `
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <img src="${myAvatar}" style="width:40px; height:40px; border-radius:50%; border:2px solid var(--color-purple);">
-                        <div>
-                            <div style="font-weight:bold; font-size:0.8rem; color:#94A3B8;">My Rank</div>
-                            <div style="font-weight:900; font-size:1.1rem; color:white;">#${(userRank && userRank <= 100) ? userRank : '99+'}</div>
+                    <div style="display:flex; align-items:center; gap:10px; max-width: 45%;">
+                        <img src="${myAvatar}" style="width:40px; height:40px; border-radius:50%; border:2px solid var(--color-cyan);">
+                        <div style="text-overflow: ellipsis; white-space: nowrap; overflow: hidden; max-width: 100%;">
+                            <div style="font-weight:800; font-size:1rem; color:white; text-overflow: ellipsis; white-space: nowrap; overflow: hidden;">${myName}</div>
                         </div>
                     </div>
+                    <div style="text-align:center;">
+                        <div style="font-weight:bold; font-size:0.75rem; color:#94A3B8;">Rank</div>
+                        <div style="font-weight:900; font-size:1.1rem; color:${rankColor};">${displayRank === '99+' ? displayRank : '#' + displayRank}</div>
+                    </div>
                     <div style="text-align:right;">
-                        <div style="font-weight:bold; font-size:0.8rem; color:#94A3B8;">Gems</div>
-                        <div style="font-weight:900; font-size:1.1rem; color:var(--color-cyan);"><i class="fa-solid fa-gem"></i> ${currentUser.points}</div>
+                        <div style="font-weight:bold; font-size:0.75rem; color:#94A3B8;">Gems</div>
+                        <div style="font-weight:900; font-size:1.1rem; color:var(--color-cyan); display:flex; align-items:center; gap:5px; justify-content:flex-end;">
+                            ${Number(currentUser.points).toLocaleString()} <i class="fa-solid fa-gem"></i>
+                        </div>
                     </div>
                 `;
                 footer.style.display = 'flex';
@@ -1342,7 +1466,7 @@
                     <!-- Provably Fair Modal -->
                     <div id="pfModal" class="glass" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); width:90%; max-width:400px; padding:20px; z-index:9999; border-radius:15px; text-align:center;">
                         <h3 style="color:var(--color-cyan); margin-bottom:15px;"><i class="fa-solid fa-shield-halved"></i> Provably Fair</h3>
-                        <p style="color:#94A3B8; font-size:0.9rem; line-height:1.5;">This game is secured by SHA-256 server-side cryptography. The outcome is generated before the round begins and is 100% mathematically fair.</p>
+                        <p style="color:#94A3B8; font-size:0.9rem; line-height:1.5;">This game is secured by Own Myfa Server. The outcome is generated before the round begins and is 100%fair.</p>
                         <button class="btn btn-secondary" onclick="document.getElementById('pfModal').style.display='none'" style="margin-top:20px; width:100%;">Close</button>
                     </div>
 
@@ -2100,12 +2224,12 @@
                     <p style="color:#94a3b8; font-size:0.9rem;">Drag the icons into the correct sequence. 3 tries/day!</p>
                     <p id="comboTriesTxt" style="color:var(--danger-color); font-weight:bold; margin-top:5px;"></p>
                     
-                    <div id="comboBank" style="margin:20px auto; display:flex; flex-wrap:wrap; gap:10px; justify-content:center; min-height:60px; background:rgba(255,255,255,0.05); padding:10px; border-radius:15px;" ondrop="comboDrop(event, 'bank')" ondragover="comboAllowDrop(event)">
+                    <div id="comboBank" style="margin:20px auto; display:flex; flex-wrap:wrap; gap:10px; justify-content:center; min-height:60px; background:var(--glass-bg); border:1px solid var(--glass-border); padding:10px; border-radius:15px;" ondrop="comboDrop(event, 'bank')" ondragover="comboAllowDrop(event)">
                         ${shuffled.map(k => `<div id="${k}" class="combo-drag" draggable="true" ondragstart="comboDrag(event)" style="width:50px; height:50px; cursor:grab;">${comboSVGs[k]}</div>`).join('')}
                     </div>
 
                     <div id="comboSlots" style="margin:20px auto; display:grid; grid-template-columns:repeat(3, 80px); gap:10px; justify-content:center;">
-                        ${[0,1,2,3,4,5,6,7,8].map(i => `<div class="combo-slot" id="slot-${i}" ondrop="comboDrop(event, 'slot-${i}')" ondragover="comboAllowDrop(event)" style="width:80px; height:80px; background:rgba(255,255,255,0.1); border:1px dashed rgba(255,255,255,0.3); border-radius:15px; display:flex; justify-content:center; align-items:center;"></div>`).join('')}
+                        ${[0,1,2,3,4,5,6,7,8].map(i => `<div class="combo-slot" id="slot-${i}" ondrop="comboDrop(event, 'slot-${i}')" ondragover="comboAllowDrop(event)" style="width:80px; height:80px; background:var(--glass-bg); border:1px dashed var(--glass-border); border-radius:15px; display:flex; justify-content:center; align-items:center;"></div>`).join('')}
                     </div>
                     
                     <button class="btn btn-primary" onclick="checkComboPattern()">Check Pattern</button>

@@ -217,11 +217,11 @@ h1, h2, h3, h4, h5, h6 { font-weight: 800; letter-spacing: -0.5px; }
 /* Restoring Aviator / OX specific basics so we don't break them */
 .combo-source-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
 .combo-target-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
-.combo-card { aspect-ratio: 1; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: grab; background: rgba(100,100,100,0.1); }
+.combo-card { aspect-ratio: 1; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: grab; background: var(--glass-bg); border: 1px solid var(--glass-border); box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
 .combo-slot { aspect-ratio: 1; border: 2px dashed rgba(100,100,100,0.4); border-radius: 12px; display: flex; align-items: center; justify-content: center; }
 
 .ox-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; max-width: 300px; margin: 0 auto; }
-.ox-cell { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 3rem; font-weight: 900; cursor: pointer; border-radius: 12px; background: rgba(100,100,100,0.1); }
+.ox-cell { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 3rem; font-weight: 900; cursor: pointer; border-radius: 12px; background: var(--glass-bg); border: 1px solid var(--glass-border); box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
 .ox-cell.x { color: var(--color-cyan); }
 .ox-cell.o { color: var(--color-magenta); }
 

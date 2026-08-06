@@ -390,30 +390,54 @@ app.post('/api/watch-ad', async (req, res) => {
 
 // TASK 2: EXCHANGE REPLACEMENT 
 app.post('/api/exchange', async (req, res) => {
-    const { userId, gemsToExchange } = req.body;
+    const { userId, amount, mode } = req.body; // mode: 'gemsToCash' or 'cashToGems'
     const u = await dbGet(`users/${userId}`);
     const c = await dbGet('config') || {};
     const rate = c.exchangeRate || 100; // e.g. 100 Gems = 1 Unit
     
-    if(u.points < gemsToExchange) return res.status(400).json({error: "Not enough Gems"});
+    // Legacy support for frontend not updated yet
+    const exchangeMode = mode || 'gemsToCash';
+    const exchangeAmt = amount || req.body.gemsToExchange;
     
-    let realMoney = gemsToExchange / rate;
-    let taxAmount = 0;
-    
-    if (c.taxRate && parseFloat(c.taxRate) > 0) {
-        taxAmount = gemsToExchange * (parseFloat(c.taxRate) / 100);
-        realMoney = (gemsToExchange - taxAmount) / rate;
-        const stats = await dbGet('stats') || {};
-        stats.totalBurned = (stats.totalBurned || 0) + taxAmount;
-        await dbUpdate('stats', stats).catch(()=>{});
-    }
+    if (exchangeMode === 'gemsToCash') {
+        if(u.points < exchangeAmt) return res.status(400).json({error: "Not enough Gems"});
+        
+        let realMoney = exchangeAmt / rate;
+        let taxAmount = 0;
+        
+        if (c.taxRate && parseFloat(c.taxRate) > 0) {
+            taxAmount = exchangeAmt * (parseFloat(c.taxRate) / 100);
+            realMoney = (exchangeAmt - taxAmount) / rate;
+            const stats = await dbGet('stats') || {};
+            stats.totalBurned = (stats.totalBurned || 0) + taxAmount;
+            await dbUpdate('stats', stats).catch(()=>{});
+        }
 
-    await dbUpdate(`users/${userId}`, { 
-        points: u.points - gemsToExchange, 
-        realBalance: (u.realBalance||0) + realMoney,
-        logs: logAction(u, `Exchanged ${gemsToExchange} Gems (Tax: ${taxAmount}) for ${realMoney} Units`)
-    });
-    res.json({ success: true, realMoney });
+        await dbUpdate(`users/${userId}`, { 
+            points: u.points - exchangeAmt, 
+            realBalance: (u.realBalance||0) + realMoney,
+            logs: logAction(u, `Exchanged ${exchangeAmt} Gems (Tax: ${taxAmount}) for ${realMoney} Units`)
+        });
+        res.json({ success: true, realMoney, points: u.points - exchangeAmt });
+    } else if (exchangeMode === 'cashToGems') {
+        if((u.realBalance || 0) < exchangeAmt) return res.status(400).json({error: "Not enough Cash"});
+        
+        let gemsReceived = exchangeAmt * rate;
+        let taxAmount = 0;
+        
+        if (c.cashToGemsTaxRate && parseFloat(c.cashToGemsTaxRate) > 0) {
+            taxAmount = exchangeAmt * (parseFloat(c.cashToGemsTaxRate) / 100);
+            gemsReceived = (exchangeAmt - taxAmount) * rate;
+            // No burn for cash? Or maybe just note it
+        }
+
+        await dbUpdate(`users/${userId}`, { 
+            points: u.points + gemsReceived, 
+            realBalance: (u.realBalance||0) - exchangeAmt,
+            logs: logAction(u, `Exchanged ${exchangeAmt} Units (Tax: ${taxAmount}) for ${gemsReceived} Gems`)
+        });
+        res.json({ success: true, gemsReceived, realBalance: (u.realBalance||0) - exchangeAmt });
+    }
 });
 
 app.post('/api/request-withdrawal', async (req, res) => {

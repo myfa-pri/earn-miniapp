@@ -824,6 +824,58 @@ app.post('/api/admin/withdrawals', checkAdmin, async (req, res) => {
     res.json({success:true});
 });
 
+
+app.post('/api/admin/broadcast-telegram', checkAdmin, async (req, res) => {
+    const { message, imageUrl, target, targetIds, buttons, adminId } = req.body;
+    let users = [];
+    
+    if (target === 'all') {
+        const allUsers = await dbGet('users') || {};
+        users = Object.keys(allUsers);
+    } else {
+        users = targetIds.split(',').map(id => id.trim()).filter(id => id);
+    }
+    
+    if (users.length === 0) return res.status(400).json({error: "No target users found"});
+    
+    let inline_keyboard = [];
+    if(buttons && buttons.length > 0) {
+        let row = [];
+        buttons.forEach(b => row.push({ text: b.text, url: b.url }));
+        inline_keyboard.push(row);
+    }
+    
+    const opts = { parse_mode: 'HTML' };
+    if (inline_keyboard.length > 0) opts.reply_markup = { inline_keyboard };
+    
+    let successCount = 0;
+    
+    // Asynchronous send to not block the request for too long, but we'll await in batches for safety
+    // For small sets, we can just map and Promise.all
+    res.json({success: true, count: users.length}); // Respond early to prevent timeout
+    
+    await addAdminLog(adminId, Started Telegram Broadcast to \ users);
+    
+    (async () => {
+        for(let i=0; i<users.length; i++) {
+            const uid = users[i];
+            try {
+                if(imageUrl) {
+                    await bot.sendPhoto(uid, imageUrl, { caption: message, ...opts });
+                } else {
+                    await bot.sendMessage(uid, message, opts);
+                }
+                successCount++;
+            } catch(e) {
+                // Ignore blocked bot errors
+            }
+            // Delay 50ms to prevent hitting Telegram rate limits (30 msgs/sec max)
+            await new Promise(r => setTimeout(r, 50));
+        }
+        await addAdminLog(adminId, Completed Telegram Broadcast: Delivered to \/\);
+    })();
+});
+
 app.post('/api/admin/broadcast', checkAdmin, async (req, res) => {
     await dbSet('toastBroadcast', { id: Date.now(), text: req.body.text });
     await addAdminLog(req.body.adminId, `Broadcasted toast: ${req.body.text}`);
@@ -860,10 +912,15 @@ app.post('/api/admin/channel/post', checkAdmin, async (req, res) => {
 });
 
 app.post('/api/channel/react', async (req, res) => {
-    const { postId, emoji } = req.body;
+    const { postId, emoji, userId } = req.body;
     let posts = await dbGet('channelPosts') || [];
     const p = posts.find(p => p.id === postId);
     if (p) {
+        p.userReactions = p.userReactions || {};
+        if (p.userReactions[userId]) {
+            return res.status(400).json({error: "You have already reacted to this post."});
+        }
+        p.userReactions[userId] = emoji;
         p.reactions = p.reactions || {};
         p.reactions[emoji] = (p.reactions[emoji] || 0) + 1;
         await dbSet('channelPosts', posts);

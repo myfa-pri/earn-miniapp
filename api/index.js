@@ -854,7 +854,7 @@ app.post('/api/admin/broadcast-telegram', checkAdmin, async (req, res) => {
     // For small sets, we can just map and Promise.all
     res.json({success: true, count: users.length}); // Respond early to prevent timeout
     
-    await addAdminLog(adminId, Started Telegram Broadcast to \ users);
+    await addAdminLog(adminId, `Started Telegram Broadcast to ${users.length} users`);
     
     (async () => {
         for(let i=0; i<users.length; i++) {
@@ -872,7 +872,7 @@ app.post('/api/admin/broadcast-telegram', checkAdmin, async (req, res) => {
             // Delay 50ms to prevent hitting Telegram rate limits (30 msgs/sec max)
             await new Promise(r => setTimeout(r, 50));
         }
-        await addAdminLog(adminId, Completed Telegram Broadcast: Delivered to \/\);
+        await addAdminLog(adminId, `Completed Telegram Broadcast: Delivered to ${successCount}/${users.length}`);
     })();
 });
 

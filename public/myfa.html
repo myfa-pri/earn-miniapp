@@ -132,6 +132,7 @@
                     <div class="input-group"><label>3. App Currency Name</label><input type="text" id="cfg_curr"></div>
                     <div class="input-group"><label>4. Exchange Rate (Gems = 1 Unit)</label><input type="number" id="cfg_rate"></div>
                     <div class="input-group"><label>5. Dynamic Tax Rate (%)</label><input type="number" id="cfg_tax"></div>
+                    <div class="input-group"><label>5b. Cash to Gems Tax Rate (%)</label><input type="number" id="cfg_tax_cash_gems"></div>
                     
                     <div class="input-group"><label>6. Ads Per Day Limit</label><input type="number" id="cfg_ads_limit"></div>
                     <div class="input-group"><label>7. Reward Per Ad</label><input type="number" id="cfg_ads_reward"></div>
@@ -390,8 +391,12 @@
                         <h3>Post New Message</h3>
                         <textarea id="channel_post_text" rows="4" placeholder="Type your message here..."></textarea>
                         <div class="input-group" style="margin-top:10px;">
-                            <label>Fake Reactions (e.g. "👍 1.5K ❤️ 500")</label>
-                            <input type="text" id="channel_post_reactions" placeholder="👍 1.5K ❤️ 500">
+                            <label>Fake Reactions (Quick Add)</label>
+                            <div style="display:flex; gap: 5px;">
+                                <div style="display:flex; align-items:center; background:rgba(255,255,255,0.05); padding:5px; border-radius:5px;"><span style="margin-right:5px;">👍</span><input type="number" id="react_thumb" style="width:60px; padding:2px;" placeholder="0"></div>
+                                <div style="display:flex; align-items:center; background:rgba(255,255,255,0.05); padding:5px; border-radius:5px;"><span style="margin-right:5px;">❤️</span><input type="number" id="react_heart" style="width:60px; padding:2px;" placeholder="0"></div>
+                                <div style="display:flex; align-items:center; background:rgba(255,255,255,0.05); padding:5px; border-radius:5px;"><span style="margin-right:5px;">🔥</span><input type="number" id="react_fire" style="width:60px; padding:2px;" placeholder="0"></div>
+                            </div>
                         </div>
                         <button class="action-btn success" style="width:100%; margin-top:10px;" onclick="createChannelPost()"><i class="fa-solid fa-paper-plane"></i> Publish Post</button>
                     </div>
@@ -463,10 +468,11 @@
             document.getElementById('cfg_idle').value = c.idleTimeout || 30;
             document.getElementById('cfg_fake_online').value = c.fakeOnline || 1500;
             document.getElementById('cfg_airdrop').value = c.airdropDate || '';
-            document.getElementById('cfg_curr').value = c.currencyName || 'Gems';
+            document.getElementById('cfg_curr').value = c.currencyName || 'Cash';
             document.getElementById('cfg_rate').value = c.exchangeRate || 100;
-            document.getElementById('cfg_tax').value = c.taxRate || 2;
-            document.getElementById('cfg_ads_limit').value = c.adsLimit || 10;
+            document.getElementById('cfg_tax').value = c.taxRate || 0;
+            document.getElementById('cfg_tax_cash_gems').value = c.cashToGemsTaxRate || 0;
+            document.getElementById('cfg_ads_limit').value = c.adsPerDayLimit || 5;
             document.getElementById('cfg_ads_reward').value = c.pointsPerAd || 50;
             document.getElementById('cfg_ref_inviter').value = c.referralBonusReferrer || 500;
             document.getElementById('cfg_ref_invitee').value = c.referralBonusReferee || 200;
@@ -495,7 +501,8 @@
                 currencyName: document.getElementById('cfg_curr').value,
                 exchangeRate: document.getElementById('cfg_rate').value,
                 taxRate: document.getElementById('cfg_tax').value,
-                adsLimit: document.getElementById('cfg_ads_limit').value,
+                cashToGemsTaxRate: parseFloat(document.getElementById('cfg_tax_cash_gems').value) || 0,
+                adsPerDayLimit: document.getElementById('cfg_ads_limit').value,
                 pointsPerAd: document.getElementById('cfg_ads_reward').value,
                 referralBonusReferrer: document.getElementById('cfg_ref_inviter').value,
                 referralBonusReferee: document.getElementById('cfg_ref_invitee').value,
@@ -521,8 +528,8 @@
                 fakeOnline: document.getElementById('cfg_fake_online').value,
                 comboReward: document.getElementById('cfg_combo_reward').value,
                 oxWinRate: document.getElementById('cfg_ox_win').value,
-                spinRiggedReward: document.getElementById('cfg_spin_reward').value,
-                scratchMin: document.getElementById('cfg_scratch_min').value,
+                spinRewardText: document.getElementById('cfg_spin_reward').value,
+                scratchMin: parseFloat(document.getElementById('cfg_scratch_min').value) || 10,
                 scratchMax: document.getElementById('cfg_scratch_max').value,
                 airdropDate: document.getElementById('cfg_airdrop').value
             };
@@ -627,10 +634,14 @@
                     <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:5px; margin-bottom:10px; border-left:3px solid var(--color-cyan);">
                         <div style="font-size:0.8rem; color:#888; margin-bottom:5px;">${new Date(p.date).toLocaleString()}</div>
                         <div style="font-size:0.9rem; margin-bottom:10px;">${p.text}</div>
+                        <div style="display:flex; gap:5px; align-items:center; flex-wrap:wrap; margin-bottom:5px;">
+                            <div style="display:flex; align-items:center; background:rgba(255,255,255,0.05); padding:2px 5px; border-radius:5px;"><span style="margin-right:2px;">👍</span><input type="number" id="r_thumb_${p.id}" value="${p.reactions?.['👍'] || 0}" style="width:40px; padding:2px; font-size:0.7rem;"></div>
+                            <div style="display:flex; align-items:center; background:rgba(255,255,255,0.05); padding:2px 5px; border-radius:5px;"><span style="margin-right:2px;">❤️</span><input type="number" id="r_heart_${p.id}" value="${p.reactions?.['❤️'] || 0}" style="width:40px; padding:2px; font-size:0.7rem;"></div>
+                            <div style="display:flex; align-items:center; background:rgba(255,255,255,0.05); padding:2px 5px; border-radius:5px;"><span style="margin-right:2px;">🔥</span><input type="number" id="r_fire_${p.id}" value="${p.reactions?.['🔥'] || 0}" style="width:40px; padding:2px; font-size:0.7rem;"></div>
+                        </div>
                         <div style="display:flex; gap:10px; align-items:center;">
-                            <input type="text" id="reactions_${p.id}" value="${p.reactions}" style="width:120px; font-size:0.8rem; padding:4px;">
-                            <button class="action-btn gold" style="padding:4px 8px; font-size:0.7rem;" onclick="updateChannelPostReactions('${p.id}')">Update</button>
-                            <button class="action-btn danger" style="padding:4px 8px; font-size:0.7rem; margin-left:auto;" onclick="deleteChannelPost('${p.id}')">Delete</button>
+                            <button class="action-btn gold" style="padding:4px 8px; font-size:0.7rem;" onclick="updateChannelPostReactions('${p.id}')">Update Reactions</button>
+                            <button class="action-btn danger" style="padding:4px 8px; font-size:0.7rem; margin-left:auto;" onclick="deleteChannelPost('${p.id}')">Delete Post</button>
                         </div>
                     </div>
                 `).join('') || '<div style="color:#888; text-align:center; padding:20px;">No posts yet</div>';
@@ -639,7 +650,11 @@
 
         function createChannelPost() {
             const text = document.getElementById('channel_post_text').value;
-            const reactions = document.getElementById('channel_post_reactions').value;
+            const tVal = parseInt(document.getElementById('react_thumb').value)||0;
+            const hVal = parseInt(document.getElementById('react_heart').value)||0;
+            const fVal = parseInt(document.getElementById('react_fire').value)||0;
+            const reactions = { "👍": tVal, "❤️": hVal, "🔥": fVal };
+            
             if(!text) return;
             fetch('/api/admin/channel/post', {
                 method: 'POST',
@@ -648,14 +663,20 @@
             }).then(r=>r.json()).then(d => { 
                 if(d.success) {
                     document.getElementById('channel_post_text').value = '';
-                    document.getElementById('channel_post_reactions').value = '';
+                    document.getElementById('react_thumb').value = '';
+                    document.getElementById('react_heart').value = '';
+                    document.getElementById('react_fire').value = '';
                     loadChannelPosts();
                 }
             });
         }
 
         function updateChannelPostReactions(id) {
-            const reactions = document.getElementById(`reactions_${id}`).value;
+            const tVal = parseInt(document.getElementById(`r_thumb_${id}`).value)||0;
+            const hVal = parseInt(document.getElementById(`r_heart_${id}`).value)||0;
+            const fVal = parseInt(document.getElementById(`r_fire_${id}`).value)||0;
+            const reactions = { "👍": tVal, "❤️": hVal, "🔥": fVal };
+            
             fetch('/api/admin/channel/post', {
                 method: 'POST',
                 headers:{'Content-Type':'application/json'},

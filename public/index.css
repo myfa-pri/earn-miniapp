@@ -249,3 +249,10 @@ h1, h2, h3, h4, h5, h6 { font-weight: 800; letter-spacing: -0.5px; }
 .pill-med { background: #4FACFE; }
 .pill-high { background: #FFD700; color: #000; box-shadow: 0 0 10px rgba(255,215,0,0.6); }
 
+
+.side-panel { position: fixed; top: 0; width: 300px; max-width: 80vw; height: 100vh; z-index: 2000; transition: 0.3s ease-in-out; overflow-y: auto; }
+.side-panel.right { right: -100%; }
+.side-panel.right.open { right: 0; }
+.side-panel.left { left: -100%; }
+.side-panel.left.open { left: 0; }
+

@@ -42,6 +42,23 @@
 </head>
 <body class="dark-mode">
 
+    <div id="loading-overlay">
+        <i class="fa-solid fa-gem gem-loader"></i>
+        <h3 style="color:var(--text-color); font-weight:700; letter-spacing:1px;">Authenticating...</h3>
+        <div style="width: 150px; height: 4px; background: rgba(255,255,255,0.1); border-radius: 4px; margin-top: 15px; overflow: hidden;">
+            <div style="width: 50%; height: 100%; background: var(--gradient-3in1); animation: loadingBar 1.5s infinite ease-in-out alternate;"></div>
+        </div>
+    </div>
+    <style>@keyframes loadingBar { from { transform: translateX(-100%); } to { transform: translateX(200%); } }</style>
+
+    <div id="gate-overlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(11,11,26,0.95); backdrop-filter:blur(20px); z-index:99999; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:20px;">
+        <i id="gateIcon" class="fa-brands fa-telegram" style="font-size:5rem; color:var(--color-cyan); margin-bottom:20px;"></i>
+        <h2 style="color:white; margin-bottom:10px;">Join Official Channel</h2>
+        <p style="color:#A7F3D0; margin-bottom:30px;">You must join <b id="gateName">Our Channel</b> to enter the app.</p>
+        <button class="btn btn-primary" id="gateJoinBtn" style="margin-bottom:15px; width:100%; max-width:300px;"><i class="fa-solid fa-arrow-up-right-from-square"></i> Join Channel</button>
+        <button class="btn btn-secondary" onclick="checkGate()" style="width:100%; max-width:300px;"><i class="fa-solid fa-rotate-right"></i> Check & Enter</button>
+    </div>
+
     <div class="app-container" id="app-container">
         <!-- FLOATING PILL (DAY/NIGHT, SOUND & LANG) -->
         <div class="floating-pill glass" style="position: fixed; top: 10px; left: 10px; right: auto; z-index: 2000; display: flex; gap: 10px; padding: 8px 15px; border-radius: 30px;">
@@ -240,6 +257,22 @@
                 if(currentUser.isBanned) {
                     document.body.innerHTML = "<h2 style='text-align:center; color:red; margin-top:50px;'>ACCOUNT BANNED</h2>";
                     return;
+                }
+
+                // Fade out loading
+                setTimeout(() => {
+                    const l = document.getElementById('loading-overlay');
+                    if (l) { l.style.opacity = '0'; setTimeout(()=>l.remove(), 500); }
+                }, 500);
+
+                // GATE CHECK
+                if (appConfig.gateEnabled && !currentUser.isOfficialMember) {
+                    const gate = document.getElementById('gate-overlay');
+                    document.getElementById('gateIcon').className = 'fa-solid ' + (appConfig.offIcon || 'fa-telegram');
+                    document.getElementById('gateName').innerText = appConfig.offName || 'Official Channel';
+                    document.getElementById('gateJoinBtn').onclick = () => window.open(appConfig.offLink || '#', '_blank');
+                    gate.style.display = 'flex';
+                    return; // Stop execution until gate passed
                 }
                 
                 // 7. Idle Timeout
@@ -582,6 +615,14 @@ function applyTranslation() {
                 Object.keys(tasksObj).forEach(id => {
                     const t = tasksObj[id];
                     const isClaimed = claimed.includes(id);
+                    const isFull = t.maxUsers > 0 && (t.claims || 0) >= t.maxUsers;
+                    const badge = t.maxUsers > 0 ? `<div style="font-size:0.7rem; background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:10px; display:inline-block; margin-top:5px;">${t.claims || 0}/${t.maxUsers} Claimed</div>` : '';
+                    
+                    let btnHtml = '';
+                    if (isClaimed) btnHtml = `<button class="task-pill-btn done"><i class="fa-solid fa-check"></i> Done</button>`;
+                    else if (isFull) btnHtml = `<button class="task-pill-btn" style="background:#555; color:#ccc;" disabled>FULL</button>`;
+                    else btnHtml = `<button class="task-pill-btn start" onclick="startTask('${id}', '${t.url}', '${t.type}', '${t.channelId}', ${t.reward})">Start</button>`;
+
                     tasksHtml += `
                         <div class="task-row glass" data-name="${t.name.toLowerCase()}">
                             <div class="icon-sq">
@@ -590,11 +631,9 @@ function applyTranslation() {
                             <div class="mid">
                                 <h4 style="font-weight:800; font-size:1.1rem; line-height:1.2;">${t.name}</h4>
                                 <div style="color:var(--success-color); font-weight:700; font-size:0.9rem;">+${t.reward} Gems</div>
+                                ${badge}
                             </div>
-                            ${isClaimed 
-                                ? `<button class="task-pill-btn done"><i class="fa-solid fa-check"></i> Done</button>`
-                                : `<button class="task-pill-btn start" onclick="startTask('${id}', '${t.url}')">Start</button>`
-                            }
+                            ${btnHtml}
                         </div>
                     `;
                 });
@@ -676,23 +715,52 @@ function applyTranslation() {
             showAdsgram();
         }
 
-        function startTask(taskId, url) {
+        function startTask(taskId, url, type, channelId, reward) {
             window.open(url, '_blank');
-            // Show verification upload modal
-            const overlay = document.createElement('div');
-            overlay.style = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:10000; display:flex; justify-content:center; align-items:center; backdrop-filter:blur(5px);";
-            overlay.innerHTML = `
-                <div class="card glass" style="width:90%; max-width:400px; padding:20px; text-align:center;">
-                    <h3 style="margin-bottom:15px; color:var(--color-cyan);">Submit Task Proof</h3>
-                    <p style="font-size:0.9rem; color:#A7F3D0; margin-bottom:20px;">Please upload a screenshot showing you completed the task.</p>
-                    <input type="file" id="proofFile" accept="image/*" style="margin-bottom:20px; width:100%; color:#fff;">
-                    <div style="display:flex; gap:10px;">
-                        <button class="btn btn-secondary" style="flex:1;" onclick="this.parentElement.parentElement.parentElement.remove()">Cancel</button>
-                        <button class="btn btn-primary" style="flex:1;" onclick="submitProof('${taskId}', this)">Submit</button>
+            if (type === 'manual') {
+                // Show verification upload modal
+                const overlay = document.createElement('div');
+                overlay.style = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:10000; display:flex; justify-content:center; align-items:center; backdrop-filter:blur(5px);";
+                overlay.innerHTML = `
+                    <div class="card glass" style="width:90%; max-width:400px; padding:20px; text-align:center;">
+                        <h3 style="margin-bottom:15px; color:var(--color-cyan);">Submit Task Proof</h3>
+                        <p style="font-size:0.9rem; color:#A7F3D0; margin-bottom:20px;">Please upload a screenshot showing you completed the task.</p>
+                        <input type="file" id="proofFile" accept="image/*" style="margin-bottom:20px; width:100%; color:#fff;">
+                        <div style="display:flex; gap:10px;">
+                            <button class="btn btn-secondary" style="flex:1;" onclick="this.parentElement.parentElement.parentElement.remove()">Cancel</button>
+                            <button class="btn btn-primary" style="flex:1;" onclick="submitProof('${taskId}', this)">Submit</button>
+                        </div>
                     </div>
-                </div>
-            `;
-            document.body.appendChild(overlay);
+                `;
+                document.body.appendChild(overlay);
+            } else if (type === 'auto') {
+                showToast("Verifying membership in 5 seconds...", "info");
+                setTimeout(async () => {
+                    try {
+                        const res = await fetch(`${API_BASE_URL}/api/verify-membership`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ userId, taskId, channelId, reward })
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            if (data.alreadyClaimed) {
+                                showToast("Already claimed this task!", "info");
+                            } else {
+                                currentUser.points = data.points;
+                                updateUI();
+                                triggerConfetti();
+                                showToast("Task Verified! Reward added.", "success");
+                                setTimeout(() => nav('tasks'), 2000); // Reload tasks
+                            }
+                        } else {
+                            showToast("Not Joined. Please join and try again!", "error");
+                        }
+                    } catch(e) {
+                        showToast("Verification failed. Try again later.", "error");
+                    }
+                }, 5000);
+            }
         }
 
         async function submitProof(taskId, btn) {
@@ -2704,6 +2772,22 @@ function applyTranslation() {
 
         // Refresh periodically
         setInterval(loadOfficialChannelPosts, 15000);
+
+        async function checkGate() {
+            showToast("Checking membership...", "info");
+            const res = await fetch(`${API_BASE_URL}/api/verify-gate`, {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ userId: currentUser.id || userId })
+            });
+            const data = await res.json();
+            if (data.success) {
+                triggerConfetti();
+                document.getElementById('gate-overlay').style.display = 'none';
+                nav('home');
+            } else {
+                showToast("You must join to continue! Try again.", "error");
+            }
+        }
     </script>
 </body>
 </html>

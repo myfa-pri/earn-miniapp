@@ -67,7 +67,8 @@
         tr:hover td { background: rgba(255,255,255,0.02); }
         /* MOBILE RESPONSIVENESS */
         @media (max-width: 768px) {
-            .grid-2, .grid-3, .stat-grid { grid-template-columns: 1fr !important; }
+            body, .main-content { overflow-x: hidden; width: 100vw; box-sizing: border-box; }
+            .grid-2, .grid-3, .stat-grid { grid-template-columns: 1fr !important; gap: 15px; }
             .sidebar { position: fixed; left: -100%; z-index: 1000; transition: 0.3s ease; height: 100vh; }
             .sidebar.show-sidebar { left: 0; }
             .mobile-sidebar-close { display: block !important; }
@@ -162,7 +163,8 @@
                     <div class="input-group"><label>5. Dynamic Tax Rate (%)</label><input type="number" id="cfg_tax"></div>
                     <div class="input-group"><label>5b. Cash to Gems Tax Rate (%)</label><input type="number" id="cfg_tax_cash_gems"></div>
                     
-                    <div class="input-group"><label>6. Ads Per Day Limit</label><input type="number" id="cfg_ads_limit"></div>
+                    <div class="input-group"><label>6a. Monetag Daily Limit</label><input type="number" id="cfg_monetag_limit"></div>
+                    <div class="input-group"><label>6b. Adsgram Daily Limit</label><input type="number" id="cfg_adsgram_limit"></div>
                     <div class="input-group"><label>7. Reward Per Ad</label><input type="number" id="cfg_ads_reward"></div>
                     <div class="input-group"><label>8. Inviter Referral Bonus</label><input type="number" id="cfg_ref_inviter"></div>
                     <div class="input-group"><label>9. Invitee Referral Bonus</label><input type="number" id="cfg_ref_invitee"></div>
@@ -534,7 +536,8 @@
             document.getElementById('cfg_rate').value = c.exchangeRate || 100;
             document.getElementById('cfg_tax').value = c.taxRate || 0;
             document.getElementById('cfg_tax_cash_gems').value = c.cashToGemsTaxRate || 0;
-            document.getElementById('cfg_ads_limit').value = c.adsPerDayLimit || 5;
+            document.getElementById('cfg_monetag_limit').value = c.monetagLimit || 5;
+            document.getElementById('cfg_adsgram_limit').value = c.adsgramLimit || 5;
             document.getElementById('cfg_ads_reward').value = c.pointsPerAd || 50;
             document.getElementById('cfg_ref_inviter').value = c.referralBonusReferrer || 500;
             document.getElementById('cfg_ref_invitee').value = c.referralBonusReferee || 200;
@@ -565,7 +568,8 @@
                 exchangeRate: document.getElementById('cfg_rate').value,
                 taxRate: document.getElementById('cfg_tax').value,
                 cashToGemsTaxRate: parseFloat(document.getElementById('cfg_tax_cash_gems').value) || 0,
-                adsPerDayLimit: document.getElementById('cfg_ads_limit').value,
+                monetagLimit: document.getElementById('cfg_monetag_limit').value,
+                adsgramLimit: document.getElementById('cfg_adsgram_limit').value,
                 pointsPerAd: document.getElementById('cfg_ads_reward').value,
                 referralBonusReferrer: document.getElementById('cfg_ref_inviter').value,
                 referralBonusReferee: document.getElementById('cfg_ref_invitee').value,

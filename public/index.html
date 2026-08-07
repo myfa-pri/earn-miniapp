@@ -979,32 +979,42 @@ function applyTranslation() {
         }
 
         // --- AD NETWORK LOGIC ---
-        let adController = null;
-        function initAdsgram() {
-            if(window.Adsgram) {
-                adController = window.Adsgram.init({ blockId: "41731" });
-            }
-        }
+        let AdController = null;
 
         function showAdsgram() {
-            if(adController) {
-                adController.show().then((result) => {
-                    setTimeout(() => {
-                        fetch(`${API_BASE_URL}/api/user/${userId}`)
-                        .then(r => r.json())
-                        .then(data => {
-                            currentUser = data;
-                            updateUI();
-                            if(typeof triggerConfetti === 'function') triggerConfetti();
-                            showToast("Ad Verified! Cash Added.", "success");
-                        });
-                    }, 1500);
-                }).catch((result) => {
-                    showToast('Ad skipped or unavailable.', 'error');
-                });
-            } else {
-                showToast('Adsgram is not initialized.', 'error');
+            if (!window.Adsgram) {
+                return showToast("Ad system loading... Please wait a few seconds.", "info");
             }
+            if (AdController === null) {
+                try {
+                    AdController = window.Adsgram.init({ blockId: "41731" });
+                } catch (e) {
+                    return showToast("Failed to connect to Ad Server.", "error");
+                }
+            }
+            
+            AdController.show().then((result) => {
+                setTimeout(() => {
+                    fetch(`${API_BASE_URL}/api/user/${userId}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        currentUser = data;
+                        updateUI();
+                        nav('tasks');
+                        if (typeof triggerConfetti === 'function') triggerConfetti();
+                        showToast("Ad Verified! Real Money added.", "success");
+                    });
+                }, 1500);
+            }).catch((err) => {
+                const desc = err?.description || '';
+                if (desc === 'No ads available') {
+                    showToast("No ads available", "info");
+                } else if (desc === 'Ad closed' || err?.done === false) {
+                    showToast("You closed the ad early!", "error");
+                } else {
+                    showToast("Ad failed to load.", "error");
+                }
+            });
         }
 
         function renderGames(c) {

@@ -267,7 +267,7 @@
                 }, 500);
 
                 // GATE CHECK
-                if (appConfig.gateEnabled && !currentUser.isOfficialMember && appConfig.officialChannels && appConfig.officialChannels.length > 0) {
+                if (currentUser.requireGate === true) {
                     const gate = document.getElementById('gate-overlay');
                     const listHtml = appConfig.officialChannels.map((ch, idx) => {
                         const finalUrl = ch.link.startsWith('@') ? 'https://t.me/' + ch.link.substring(1) : ch.link;
@@ -2789,6 +2789,36 @@ function applyTranslation() {
         // Refresh periodically
         setInterval(loadOfficialChannelPosts, 15000);
 
+        async function claimPromo() {
+            const codeInput = document.getElementById('promoCodeInput');
+            if(!codeInput) return;
+            const code = codeInput.value.trim();
+            if(!code) return showToast("Enter a promo code", "error");
+            
+            const btn = document.getElementById('claimPromoBtn');
+            if(btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
+            
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/claim-promo`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ userId: currentUser.id || userId, code })
+                });
+                const data = await res.json();
+                if(data.success) {
+                    currentUser.points = data.points;
+                    updateUI();
+                    showToast(`Promo Claimed! +${data.reward} Gems`, "success");
+                    codeInput.value = '';
+                } else {
+                    showToast(data.error || "Failed to claim", "error");
+                }
+            } catch(e) {
+                showToast("Network error", "error");
+            } finally {
+                if(btn) { btn.disabled = false; btn.innerHTML = 'Claim'; }
+            }
+        }
+
         async function checkGate() {
             const btn = document.getElementById('verifyGateBtn');
             if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Verifying...'; }
@@ -2801,8 +2831,9 @@ function applyTranslation() {
                 const data = await res.json();
                 if (data.success) {
                     triggerConfetti();
-                    document.getElementById('gate-overlay').style.display = 'none';
-                    nav('home');
+                    const gate = document.getElementById('gate-overlay');
+                    gate.style.opacity = '0';
+                    setTimeout(() => { gate.style.display = 'none'; typeof setupApp === 'function' ? setupApp() : nav('home'); }, 500);
                 } else {
                     showToast(data.message || "You must join all channels to continue!", "error");
                 }

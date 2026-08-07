@@ -278,9 +278,9 @@ app.get('/api/user/:id', async (req, res) => {
 
     // TASK 1: ALWAYS ON GATE CHECK
     if (config.gateEnabled && config.officialChannels && config.officialChannels.length > 0) {
-        const checks = config.officialChannels.map(ch => safeCheckMembership(ch.id, userId));
+        const checks = config.officialChannels.map(ch => fastChatCheck(ch.id, userId, BOT_TOKEN));
         const results = await Promise.all(checks);
-        const allPassed = results.every(member => ['creator', 'administrator', 'member'].includes(member.status));
+        const allPassed = results.every(member => member.success);
         if (!allPassed) {
             u.requireGate = true;
             u.isOfficialMember = false;
@@ -341,13 +341,24 @@ app.get('/api/leaderboard/:id', async (req, res) => {
     res.json({ frozen: false, byPoints: top100, userRankPoints: userRank });
 });
 
-// TASK 1: SAFE MEMBERSHIP CHECK
-async function safeCheckMembership(channelId, userId) {
+// TASK 1: LIGHT-SPEED TELEGRAM MEMBERSHIP API
+async function fastChatCheck(channelId, userId, botToken) {
     try {
-        const member = await bot.getChatMember(channelId, userId);
-        return { status: member.status };
+        const url = `https://api.telegram.org/bot${botToken}/getChatMember?chat_id=${channelId}&user_id=${userId}`;
+        const controller = new AbortController();
+        const fetchPromise = fetch(url, { signal: controller.signal }).then(res => res.json());
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => { controller.abort(); reject(new Error('timeout')); }, 3000));
+        
+        const data = await Promise.race([fetchPromise, timeoutPromise]);
+        
+        if (data && data.ok && data.result) {
+            const status = data.result.status;
+            if (['creator', 'administrator', 'member'].includes(status)) return { success: true, status };
+            return { success: false, status };
+        }
+        return { success: false, status: 'error' };
     } catch (e) {
-        return { status: 'left', error: e.message };
+        return { success: false, status: 'error' };
     }
 }
 
@@ -366,12 +377,11 @@ app.post('/api/verify-membership', async (req, res) => {
     if((u.claimedBonuses||[]).includes(taskId)) return res.json({success:true, alreadyClaimed:true});
     
     try {
-        const member = await safeCheckMembership(channelId, userId);
-        if (member.error) {
+        const member = await fastChatCheck(channelId, userId, BOT_TOKEN);
+        if (member.status === 'error') {
             return res.json({ success: false, error: "Verification failed. Is the bot an admin in the channel?" });
         }
-        const status = member.status;
-        if (status === 'creator' || status === 'administrator' || status === 'member') {
+        if (member.success) {
             
             // CHECK TASK LIMITS (TASK 3)
             if (t.maxUsers && t.maxUsers > 0) {
@@ -406,17 +416,25 @@ app.post('/api/claim-promo', async (req, res) => {
     if(!u) return res.status(404).json({error:"Not found"});
     const promos = await dbGet('promos') || {};
     const promo = promos[code];
-    if(!promo) return res.json({ success: false, error: "Invalid promo code" });
-    if(promo.uses >= (promo.maxUses || promo.limit || 999)) return res.json({ success: false, error: "Promo code fully claimed" });
-    if((u.claimedPromos || []).includes(code)) return res.json({ success: false, error: "Already claimed" });
+    if(!promo) return res.json({ success: false, error: "Invalid Code" });
+    
+    // Support limit or maxUses
+    const limit = promo.limit !== undefined ? promo.limit : (promo.maxUses !== undefined ? promo.maxUses : 999);
+    
+    if((promo.uses || 0) >= limit) return res.json({ success: false, error: "Limit Reached" });
+    if((u.claimedPromos || []).includes(code)) return res.json({ success: false, error: "Already Claimed" });
+    
     promo.uses = (promo.uses || 0) + 1;
     await dbUpdate(`promos/${code}`, { uses: promo.uses });
-    const newBal = (u.points || 0) + promo.reward;
+    
+    const reward = parseInt(promo.reward) || 0;
+    const newBal = (u.points || 0) + reward;
+    
     await dbUpdate(`users/${userId}`, {
         points: newBal, claimedPromos: [...(u.claimedPromos || []), code],
-        logs: logAction(u, `Claimed promo code ${code} (+${promo.reward} Gems)`)
+        logs: logAction(u, `Claimed promo code ${code} (+${reward} Gems)`)
     });
-    res.json({ success: true, reward: promo.reward, points: newBal });
+    res.json({ success: true, newBal: newBal, reward: reward });
 });
 
 // TASK 5: VERIFY GATE ROUTE
@@ -431,12 +449,10 @@ app.post('/api/verify-gate', async (req, res) => {
             return res.json({ success: true });
         }
 
-        const checks = c.officialChannels.map(ch => safeCheckMembership(ch.id, userId));
+        const checks = c.officialChannels.map(ch => fastChatCheck(ch.id, userId, BOT_TOKEN));
         const results = await Promise.all(checks);
         
-        const allPassed = results.every(member => {
-            return member.status === 'creator' || member.status === 'administrator' || member.status === 'member';
-        });
+        const allPassed = results.every(member => member.success);
 
         if (allPassed) {
             let updates = { isOfficialMember: true };
@@ -450,7 +466,7 @@ app.post('/api/verify-gate', async (req, res) => {
                     await dbUpdate(`users/${u.referredBy}`, { 
                         points: (referrer.points || 0) + rBonus, 
                         referredUsers: newRefList, 
-                        logs: logAction(referrer, `Referral joined official channels (+${rBonus} Gems)`) 
+                        logs: logAction(referrer, `Invited user passed channel gate: +${rBonus} Gems`) 
                     });
                     bot.sendMessage(u.referredBy, `<b>🎉 New Referral Verified!</b>\n${u.accountName} joined the channel.\nYou earned +${rBonus} Gems.`, {parse_mode:'HTML'}).catch(() => {});
                     updates.referralAwarded = true;
@@ -860,14 +876,16 @@ const checkAdmin = (req, res, next) => {
     next(); 
 };
 
-async function logAdminAction(adminId, actionStr) {
-    const log = { timestamp: Date.now(), adminId: adminId || 'Unknown', action: actionStr };
-    const db = await dbGet('') || {};
-    const adminLogs = db.adminLogs || [];
-    adminLogs.push(log);
-    // Keep last 100 logs
-    if (adminLogs.length > 100) adminLogs.shift();
+async function writeAdminLog(action) {
+    const logStr = `[${new Date().toISOString()}] ${action}`;
+    const adminLogs = await dbGet('adminLogs') || [];
+    adminLogs.push(logStr);
+    if (adminLogs.length > 50) adminLogs.shift();
     await dbSet('adminLogs', adminLogs);
+}
+
+async function logAdminAction(adminId, actionStr) {
+    await writeAdminLog(actionStr);
 }
 const addAdminLog = logAdminAction;
 

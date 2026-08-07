@@ -268,3 +268,27 @@ h1, h2, h3, h4, h5, h6 { font-weight: 800; letter-spacing: -0.5px; }
     transition: opacity 0.5s ease;
 }
 .gem-loader { font-size: 4rem; color: #fff; animation: breatheGlow 2s infinite ease-in-out; margin-bottom: 20px; }
+
+@keyframes shineText {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+}
+@keyframes floatIcon {
+    0% { transform: translateY(0px); filter: drop-shadow(0 0 15px var(--color-cyan)); }
+    50% { transform: translateY(-10px); filter: drop-shadow(0 0 25px var(--color-purple)); }
+    100% { transform: translateY(0px); filter: drop-shadow(0 0 15px var(--color-cyan)); }
+}
+@keyframes staggerFadeIn {
+    0% { opacity: 0; transform: translateY(20px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+.shine-text {
+    background: linear-gradient(90deg, #00F2FE, #F093FB, #00F2FE);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    color: transparent;
+    animation: shineText 3s linear infinite;
+}
+.staggered-card {
+    opacity: 0;
+}

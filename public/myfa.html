@@ -246,6 +246,15 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="grid-1" style="margin-top:20px; border-top:1px solid var(--glass-border); padding-top:20px;">
+                    <div>
+                        <h3>Admin Activity Log</h3>
+                        <div id="admin_activity_log" style="background:rgba(0,0,0,0.5); padding:15px; border-radius:8px; height:280px; overflow-y:auto; font-family:monospace; font-size:0.8rem; color:#FBBF24;">
+                            Loading admin logs...
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -534,6 +543,18 @@
                 populateTasks(globalData.tasks);
                 populateWithdrawals(globalData.withdrawals);
                 populateVerifications(globalData.verifications);
+                
+                // TASK 5: Populate Admin Logs
+                const logBox = document.getElementById('admin_activity_log');
+                if (logBox && globalData.adminLogs) {
+                    if (globalData.adminLogs.length === 0) {
+                        logBox.innerHTML = 'No admin activity recorded yet.';
+                    } else {
+                        logBox.innerHTML = globalData.adminLogs.map(l => 
+                            `> [${new Date(l.timestamp).toLocaleString()}] Admin ${l.adminId}: ${l.action}<br>`
+                        ).join('');
+                    }
+                }
                 
                 // Populate RTP Tracker
                 if (document.getElementById('rtp_bot_profit')) {

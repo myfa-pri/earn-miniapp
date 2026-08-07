@@ -141,6 +141,7 @@
                         <label class="toggle-label">1. Global Maintenance Mode <input type="checkbox" id="cfg_maint"></label>
                         <label class="toggle-label">2. 2X Global Multiplier <input type="checkbox" id="cfg_2x"></label>
                         <label class="toggle-label">21. Global Chat Overlay <input type="checkbox" id="cfg_chat"></label>
+                        <label class="toggle-label">50. Mandatory Official Channel Gate <input type="checkbox" id="cfg_gate"></label>
                         <label class="toggle-label">22. Leaderboard Freeze <input type="checkbox" id="cfg_freeze"></label>
                         <label class="toggle-label">23. VPN/Proxy Blocker <input type="checkbox" id="cfg_vpn"></label>
                         <label class="toggle-label">25. Default Sound Effects <input type="checkbox" id="cfg_sound"></label>
@@ -263,6 +264,14 @@
                             <label>43. Task Icon Selector (FontAwesome)</label>
                             <select id="task_icon"><option value="fa-telegram">fa-telegram</option><option value="fa-youtube">fa-youtube</option><option value="fa-twitter">fa-twitter</option></select>
                         </div>
+                        <div class="input-group">
+                            <label>43b. Task Type</label>
+                            <select id="task_type"><option value="auto">Auto (Telegram Join)</option><option value="manual">Manual (Screenshot)</option></select>
+                        </div>
+                        <div class="input-group">
+                            <label>43c. Max Users (0 = Unlimited)</label>
+                            <input type="number" id="task_limit" placeholder="0">
+                        </div>
                         <button class="action-btn success" onclick="createTask()"><i class="fa-solid fa-plus"></i> Create Task</button>
                     </div>
                     <div>
@@ -272,7 +281,17 @@
                 </div>
             </div>
 
-            <div class="grid-2">
+            <div class="panel glass" style="margin-top:20px;">
+                <h2><i class="fa-solid fa-lock"></i> Official Channel Setup (Gate)</h2>
+                <div class="grid-2">
+                    <div class="input-group"><label>Channel Name</label><input type="text" id="cfg_off_name" placeholder="e.g. MYFA Official"></div>
+                    <div class="input-group"><label>Channel Link</label><input type="text" id="cfg_off_link" placeholder="e.g. https://t.me/myfachannel"></div>
+                    <div class="input-group"><label>Telegram Channel ID</label><input type="text" id="cfg_off_id" placeholder="e.g. @myfachannel"></div>
+                    <div class="input-group"><label>FontAwesome Icon</label><input type="text" id="cfg_off_icon" placeholder="fa-telegram"></div>
+                </div>
+            </div>
+
+            <div class="grid-2" style="margin-top:20px;">
                 <div class="panel glass">
                     <h2><i class="fa-solid fa-gift"></i> Promo Codes</h2>
                     <div class="input-group"><label>46. Promo Code Word</label><input type="text" id="promo_code" placeholder="FREEGEMS"></div>
@@ -535,6 +554,11 @@
             document.getElementById('cfg_vpn').checked = c.blockVpn || false;
             document.getElementById('cfg_sound').checked = c.defaultSound !== false;
             document.getElementById('cfg_night').checked = c.defaultNight !== false;
+            document.getElementById('cfg_gate').checked = c.gateEnabled || false;
+            document.getElementById('cfg_off_name').value = c.offName || '';
+            document.getElementById('cfg_off_link').value = c.offLink || '';
+            document.getElementById('cfg_off_id').value = c.offChannelId || '';
+            document.getElementById('cfg_off_icon').value = c.offIcon || '';
             document.getElementById('cfg_lang').value = c.forcedLang || 'auto';
             document.getElementById('cfg_sessions').value = c.maxSessions || 1;
             document.getElementById('cfg_idle').value = c.idleTimeout || 30;
@@ -572,6 +596,16 @@
             const cfg = {
                 maintenanceMode: document.getElementById('cfg_maint').checked,
                 globalMultiplier: document.getElementById('cfg_2x').checked ? 2 : 1,
+                globalChat: document.getElementById('cfg_chat').checked,
+                leaderboardFreeze: document.getElementById('cfg_freeze').checked,
+                blockVpn: document.getElementById('cfg_vpn').checked,
+                defaultSound: document.getElementById('cfg_sound').checked,
+                defaultNight: document.getElementById('cfg_night').checked,
+                gateEnabled: document.getElementById('cfg_gate').checked,
+                offName: document.getElementById('cfg_off_name').value,
+                offLink: document.getElementById('cfg_off_link').value,
+                offChannelId: document.getElementById('cfg_off_id').value,
+                offIcon: document.getElementById('cfg_off_icon').value,
                 currencyName: document.getElementById('cfg_curr').value,
                 exchangeRate: document.getElementById('cfg_rate').value,
                 taxRate: document.getElementById('cfg_tax').value,
@@ -669,7 +703,11 @@
                 name: document.getElementById('task_name').value,
                 reward: parseInt(document.getElementById('task_reward').value),
                 url: document.getElementById('task_url').value,
-                icon: document.getElementById('task_icon').value
+                icon: document.getElementById('task_icon').value,
+                type: document.getElementById('task_type').value,
+                channelId: document.getElementById('task_url').value,
+                maxUsers: parseInt(document.getElementById('task_limit').value) || 0,
+                claims: 0
             };
             fetch('/api/admin/tasks', {
                 method: 'POST',

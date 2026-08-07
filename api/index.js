@@ -164,7 +164,10 @@ app.post('/api/webhook', async (req, res) => {
                 await ensureUserExists(chatId, accountName, refParam);
                 
                 const config = (await dbGet('config')) || {};
-                const webUrl = config.webAppUrl || 'https://earn-miniapp.vercel.app'; 
+                const protocol = req.headers['x-forwarded-proto'] || 'https';
+                const host = req.headers.host;
+                const fallbackUrl = `${protocol}://${host}`;
+                const webUrl = (config && config.webAppUrl) ? config.webAppUrl : fallbackUrl; 
                 const caption = `<b>${accountName} እንኳን ወደ MYFA BIRR መጡ! </b>\n\nከታች ያለውን MYFA BIRR የሚለውን ይጫኑ ገንዘብ ለማግኘት እና መተግበሪያውን ለመጀመር።`;
 
                 // TASK 1 FIX: Strictly use pure webUrl, NEVER append ?userId=
@@ -180,7 +183,10 @@ app.post('/api/webhook', async (req, res) => {
                 }
             } else if (text === '/admin') {
                 const config = (await dbGet('config')) || {};
-                const webUrl = config.webAppUrl || 'https://earn-miniapp.vercel.app'; 
+                const protocol = req.headers['x-forwarded-proto'] || 'https';
+                const host = req.headers.host;
+                const fallbackUrl = `${protocol}://${host}`;
+                const webUrl = (config && config.webAppUrl) ? config.webAppUrl : fallbackUrl; 
                 const adminIds = (config.adminTelegramIds || '').split(',').map(id => id.trim());
                 
                 if (adminIds.includes(chatId)) {

@@ -256,3 +256,15 @@ h1, h2, h3, h4, h5, h6 { font-weight: 800; letter-spacing: -0.5px; }
 .side-panel.left { left: -100%; }
 .side-panel.left.open { left: 0; }
 
+@keyframes breatheGlow {
+    0% { filter: drop-shadow(0 0 10px var(--color-cyan)); transform: scale(1); }
+    50% { filter: drop-shadow(0 0 30px var(--color-purple)) drop-shadow(0 0 15px var(--color-magenta)); transform: scale(1.1); }
+    100% { filter: drop-shadow(0 0 10px var(--color-cyan)); transform: scale(1); }
+}
+#loading-overlay {
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(11, 11, 26, 0.95); backdrop-filter: blur(20px);
+    z-index: 100000; display: flex; flex-direction: column; justify-content: center; align-items: center;
+    transition: opacity 0.5s ease;
+}
+.gem-loader { font-size: 4rem; color: #fff; animation: breatheGlow 2s infinite ease-in-out; margin-bottom: 20px; }

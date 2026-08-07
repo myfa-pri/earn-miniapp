@@ -52,11 +52,12 @@
     <style>@keyframes loadingBar { from { transform: translateX(-100%); } to { transform: translateX(200%); } }</style>
 
     <div id="gate-overlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(11,11,26,0.95); backdrop-filter:blur(20px); z-index:99999; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:20px;">
-        <i id="gateIcon" class="fa-brands fa-telegram" style="font-size:5rem; color:var(--color-cyan); margin-bottom:20px;"></i>
-        <h2 style="color:white; margin-bottom:10px;">Join Official Channel</h2>
-        <p style="color:#A7F3D0; margin-bottom:30px;">You must join <b id="gateName">Our Channel</b> to enter the app.</p>
-        <button class="btn btn-primary" id="gateJoinBtn" style="margin-bottom:15px; width:100%; max-width:300px;"><i class="fa-solid fa-arrow-up-right-from-square"></i> Join Channel</button>
-        <button class="btn btn-secondary" onclick="checkGate()" style="width:100%; max-width:300px;"><i class="fa-solid fa-rotate-right"></i> Check & Enter</button>
+        <i class="fa-solid fa-lock" style="font-size:3rem; color:var(--color-cyan); margin-bottom:15px; filter: drop-shadow(0 0 15px var(--color-cyan));"></i>
+        <h2 style="color:white; margin-bottom:20px; font-weight:800;">Complete Tasks to Enter</h2>
+        <div id="gateChannelList" style="width:100%; max-width:400px; display:flex; flex-direction:column; gap:10px; margin-bottom:30px; max-height: 50vh; overflow-y: auto;">
+            <!-- Channels dynamically injected here -->
+        </div>
+        <button class="btn btn-primary" onclick="checkGate()" style="width:100%; max-width:400px; padding:15px; font-size:1.1rem; border-radius:12px;"><i class="fa-solid fa-check-double"></i> Verify & Enter</button>
     </div>
 
     <div class="app-container" id="app-container">
@@ -266,11 +267,21 @@
                 }, 500);
 
                 // GATE CHECK
-                if (appConfig.gateEnabled && !currentUser.isOfficialMember) {
+                if (appConfig.gateEnabled && !currentUser.isOfficialMember && appConfig.officialChannels && appConfig.officialChannels.length > 0) {
                     const gate = document.getElementById('gate-overlay');
-                    document.getElementById('gateIcon').className = 'fa-solid ' + (appConfig.offIcon || 'fa-telegram');
-                    document.getElementById('gateName').innerText = appConfig.offName || 'Official Channel';
-                    document.getElementById('gateJoinBtn').onclick = () => window.open(appConfig.offLink || '#', '_blank');
+                    const listHtml = appConfig.officialChannels.map(ch => {
+                        const finalUrl = ch.link.startsWith('@') ? 'https://t.me/' + ch.link.substring(1) : ch.link;
+                        return `
+                        <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); padding:15px; border-radius:12px; backdrop-filter:blur(10px);">
+                            <div style="display:flex; align-items:center; gap:12px; text-align:left;">
+                                <i class="fa-brands ${ch.icon || 'fa-telegram'}" style="font-size:1.8rem; color:var(--color-cyan);"></i>
+                                <span style="color:white; font-weight:600; font-size:1rem; line-height:1.2;">${ch.name}</span>
+                            </div>
+                            <button onclick="window.open('${finalUrl}', '_blank')" style="background:var(--gradient-3in1); border:none; color:white; padding:8px 20px; border-radius:20px; font-weight:700; cursor:pointer;">Join</button>
+                        </div>
+                        `;
+                    }).join('');
+                    document.getElementById('gateChannelList').innerHTML = listHtml;
                     gate.style.display = 'flex';
                     return; // Stop execution until gate passed
                 }
@@ -716,7 +727,8 @@ function applyTranslation() {
         }
 
         function startTask(taskId, url, type, channelId, reward) {
-            window.open(url, '_blank');
+            const finalUrl = url.startsWith('@') ? 'https://t.me/' + url.substring(1) : url;
+            window.open(finalUrl, '_blank');
             if (type === 'manual') {
                 // Show verification upload modal
                 const overlay = document.createElement('div');
@@ -2785,7 +2797,7 @@ function applyTranslation() {
                 document.getElementById('gate-overlay').style.display = 'none';
                 nav('home');
             } else {
-                showToast("You must join to continue! Try again.", "error");
+                showToast(data.message || "You must join all channels to continue!", "error");
             }
         }
     </script>

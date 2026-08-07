@@ -263,7 +263,9 @@ app.get('/api/user/:id', async (req, res) => {
             u.streak = 1; 
         }
         u.lastLoginDate = now;
-        dbUpdate(`users/${userId}`, { streak: u.streak, lastLoginDate: now, activeSessions: u.activeSessions }).catch(()=>{});
+        u.monetagWatchedToday = 0;
+        u.adsgramWatchedToday = 0;
+        dbUpdate(`users/${userId}`, { streak: u.streak, lastLoginDate: now, activeSessions: u.activeSessions, monetagWatchedToday: 0, adsgramWatchedToday: 0 }).catch(()=>{});
     } else if (sessionId) {
         dbUpdate(`users/${userId}`, { activeSessions: u.activeSessions }).catch(()=>{});
     }
@@ -393,17 +395,26 @@ app.get('/api/avatar/:userId', async (req, res) => {
 // 6. ECONOMY API (Ads, Promo, Exchange, Withdraw)
 // ============================================================================
 app.post('/api/watch-ad', async (req, res) => {
-    const { userId } = req.body;
+    const { userId, network } = req.body;
     const u = await dbGet(`users/${userId}`);
     const c = (await dbGet('config')) || {};
     if(u) {
+        const limit = network === 'monetag' ? (c.monetagLimit || 5) : (c.adsgramLimit || 5);
+        const watchedToday = network === 'monetag' ? (u.monetagWatchedToday || 0) : (u.adsgramWatchedToday || 0);
+
+        if (watchedToday >= limit) return res.status(403).json({ error: "Limit reached" });
+
         const pts = (c.pointsPerAd || 50) * (c.globalMultiplier || 1);
-        await dbUpdate(`users/${userId}`, {
+        
+        let updates = {
             points: (u.points || 0) + pts,
-            adsWatchedToday: (u.adsWatchedToday || 0) + 1,
             totalAdsWatchedLifetime: (u.totalAdsWatchedLifetime || 0) + 1,
-            logs: logAction(u, `Watched Ad (+${pts} Gems)`)
-        });
+            logs: logAction(u, `Watched ${network} Ad (+${pts} Gems)`)
+        };
+        if (network === 'monetag') updates.monetagWatchedToday = watchedToday + 1;
+        else if (network === 'adsgram') updates.adsgramWatchedToday = watchedToday + 1;
+
+        await dbUpdate(`users/${userId}`, updates);
         res.json({success:true});
     } else res.status(404).send();
 });

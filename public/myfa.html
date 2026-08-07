@@ -282,13 +282,15 @@
             </div>
 
             <div class="panel glass" style="margin-top:20px;">
-                <h2><i class="fa-solid fa-lock"></i> Official Channel Setup (Gate)</h2>
+                <h2><i class="fa-solid fa-lock"></i> Manage Mandatory Channels (Gate)</h2>
                 <div class="grid-2">
                     <div class="input-group"><label>Channel Name</label><input type="text" id="cfg_off_name" placeholder="e.g. MYFA Official"></div>
                     <div class="input-group"><label>Channel Link</label><input type="text" id="cfg_off_link" placeholder="e.g. https://t.me/myfachannel"></div>
                     <div class="input-group"><label>Telegram Channel ID</label><input type="text" id="cfg_off_id" placeholder="e.g. @myfachannel"></div>
                     <div class="input-group"><label>FontAwesome Icon</label><input type="text" id="cfg_off_icon" placeholder="fa-telegram"></div>
+                    <button class="action-btn success" style="grid-column: span 2;" onclick="addOfficialChannel()"><i class="fa-solid fa-plus"></i> Add Channel</button>
                 </div>
+                <div id="official_channels_list" style="margin-top:20px; display:flex; flex-direction:column; gap:10px;"></div>
             </div>
 
             <div class="grid-2" style="margin-top:20px;">
@@ -555,10 +557,8 @@
             document.getElementById('cfg_sound').checked = c.defaultSound !== false;
             document.getElementById('cfg_night').checked = c.defaultNight !== false;
             document.getElementById('cfg_gate').checked = c.gateEnabled || false;
-            document.getElementById('cfg_off_name').value = c.offName || '';
-            document.getElementById('cfg_off_link').value = c.offLink || '';
-            document.getElementById('cfg_off_id').value = c.offChannelId || '';
-            document.getElementById('cfg_off_icon').value = c.offIcon || '';
+            officialChannels = c.officialChannels || [];
+            if(typeof renderOfficialChannels === 'function') renderOfficialChannels();
             document.getElementById('cfg_lang').value = c.forcedLang || 'auto';
             document.getElementById('cfg_sessions').value = c.maxSessions || 1;
             document.getElementById('cfg_idle').value = c.idleTimeout || 30;
@@ -587,9 +587,41 @@
             document.getElementById('cfg_max_with').value = c.maxWithdraw || 50;
             document.getElementById('cfg_tg_link').value = c.telegramBotLink || 'https://t.me/beshbesh_bot';
             document.getElementById('cfg_miniapp_shortname').value = c.miniAppShortname || 'earn';
-            document.getElementById('cfg_support').value = c.supportChannel || '';
+document.getElementById('cfg_support').value = c.supportChannel || '';
             document.getElementById('cfg_admin_chat').value = c.telegramChatId || '';
             document.getElementById('cfg_admin_telegram_ids').value = c.adminTelegramIds || '';
+        }
+
+        let officialChannels = [];
+        function renderOfficialChannels() {
+            const list = document.getElementById('official_channels_list');
+            if(!list) return;
+            list.innerHTML = officialChannels.map((ch, idx) => `
+                <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); padding:10px; border-radius:8px;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <i class="fa-brands ${ch.icon || 'fa-telegram'}" style="color:var(--color-cyan);"></i>
+                        <b>${ch.name}</b> <span style="font-size:0.8rem; color:#aaa;">(${ch.id})</span>
+                    </div>
+                    <button class="action-btn danger" style="padding:5px 10px; font-size:0.8rem; width:auto;" onclick="deleteOfficialChannel(${idx})"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            `).join('');
+        }
+        function addOfficialChannel() {
+            const name = document.getElementById('cfg_off_name').value;
+            const link = document.getElementById('cfg_off_link').value;
+            const id = document.getElementById('cfg_off_id').value;
+            const icon = document.getElementById('cfg_off_icon').value || 'fa-telegram';
+            if(!name || !link || !id) return alert("Fill Name, Link, and ID");
+            officialChannels.push({name, link, id, icon});
+            renderOfficialChannels();
+            document.getElementById('cfg_off_name').value = '';
+            document.getElementById('cfg_off_link').value = '';
+            document.getElementById('cfg_off_id').value = '';
+            document.getElementById('cfg_off_icon').value = '';
+        }
+        function deleteOfficialChannel(idx) {
+            officialChannels.splice(idx, 1);
+            renderOfficialChannels();
         }
 
         function saveMasterConfig() {
@@ -602,10 +634,7 @@
                 defaultSound: document.getElementById('cfg_sound').checked,
                 defaultNight: document.getElementById('cfg_night').checked,
                 gateEnabled: document.getElementById('cfg_gate').checked,
-                offName: document.getElementById('cfg_off_name').value,
-                offLink: document.getElementById('cfg_off_link').value,
-                offChannelId: document.getElementById('cfg_off_id').value,
-                offIcon: document.getElementById('cfg_off_icon').value,
+                officialChannels: officialChannels,
                 currencyName: document.getElementById('cfg_curr').value,
                 exchangeRate: document.getElementById('cfg_rate').value,
                 taxRate: document.getElementById('cfg_tax').value,

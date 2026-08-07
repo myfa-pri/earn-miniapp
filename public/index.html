@@ -658,14 +658,17 @@ function applyTranslation() {
 
             const monetagWatchedToday = currentUser.monetagWatchedToday || 0;
             const adsgramWatchedToday = currentUser.adsgramWatchedToday || 0;
+            const adsterraWatchedToday = currentUser.adsterraWatchedToday || 0;
             const monetagLimit = appConfig.monetagLimit || 5;
             const adsgramLimit = appConfig.adsgramLimit || 5;
+            const adsterraLimit = appConfig.adsterraLimit || 10;
             const monetagLimitReached = monetagWatchedToday >= monetagLimit;
             const adsgramLimitReached = adsgramWatchedToday >= adsgramLimit;
+            const adsterraLimitReached = adsterraWatchedToday >= adsterraLimit;
 
             c.innerHTML = `
                 <!-- Daily Earning Top Ad Grid -->
-                <div class="ad-grid">
+                <div class="ad-grid" style="grid-template-columns: repeat(3, 1fr);">
                     <!-- Monetag Ad -->
                     <div class="ad-card glass" ${monetagLimitReached ? '' : 'onclick="triggerMonetagAd()"'} style="${monetagLimitReached ? 'opacity: 0.5; cursor: not-allowed;' : ''}">
                         <i class="fa-brands fa-youtube" style="font-size:3.5rem; color:#EF4444; filter:drop-shadow(0 0 15px rgba(239,68,68,0.6)); margin-bottom:12px; display:inline-block;"></i>
@@ -684,6 +687,16 @@ function applyTranslation() {
                         ${adsgramLimitReached 
                             ? `<div style="color:var(--danger-color); font-weight:700; font-size:0.9rem;">Limit Reached</div>`
                             : `<div style="color:var(--success-color); font-weight:800; font-size:0.95rem;">+$${appConfig.realMoneyPerAd || 0.05} Cash</div>`
+                        }
+                    </div>
+                    <!-- Adsterra Ad -->
+                    <div class="ad-card glass" id="adsterra-card" ${adsterraLimitReached ? '' : 'onclick="triggerAdsterraAd()"'} style="${adsterraLimitReached ? 'opacity: 0.5; cursor: not-allowed;' : ''}">
+                        <i class="fa-solid fa-star" style="font-size:3.5rem; color:#10B981; filter:drop-shadow(0 0 15px rgba(16,185,129,0.6)); margin-bottom:12px; display:inline-block;"></i>
+                        <div style="font-weight:800; font-size:1.1rem; margin-bottom:5px;">Premium Ad</div>
+                        <div style="font-size: 0.8rem; color: #94A3B8; margin-bottom: 5px;">${adsterraWatchedToday} / ${adsterraLimit}</div>
+                        ${adsterraLimitReached 
+                            ? `<div style="color:var(--danger-color); font-weight:700; font-size:0.9rem;">Limit Reached</div>`
+                            : `<div id="adsterra-reward-text" style="color:var(--success-color); font-weight:800; font-size:0.95rem;">+$${appConfig.realMoneyPerAd || 0.01} Cash</div>`
                         }
                     </div>
                 </div>
@@ -745,6 +758,55 @@ function applyTranslation() {
 
         function triggerAdsgramAd() {
             showAdsgram();
+        }
+
+        let adsterraInterval = null;
+        function triggerAdsterraAd() {
+            if (!appConfig.adsterraLink) return showToast("Adsterra link not configured.", "error");
+            
+            const watchedToday = currentUser.adsterraWatchedToday || 0;
+            const limit = appConfig.adsterraLimit || 10;
+            if(watchedToday >= limit) return showToast("Daily limit reached!", "error");
+            
+            window.open(appConfig.adsterraLink, '_blank');
+            
+            const card = document.getElementById('adsterra-card');
+            const txt = document.getElementById('adsterra-reward-text');
+            if (card) { card.style.pointerEvents = 'none'; card.style.opacity = '0.7'; }
+            
+            let timeLeft = 15;
+            if (txt) txt.innerText = `Watching... ${timeLeft}s`;
+            
+            clearInterval(adsterraInterval);
+            adsterraInterval = setInterval(() => {
+                timeLeft--;
+                if (txt) txt.innerText = `Watching... ${timeLeft}s`;
+                if (timeLeft <= 0) {
+                    clearInterval(adsterraInterval);
+                    if (txt) txt.innerText = "Verifying...";
+                    
+                    fetch(`${API_BASE_URL}/api/adsterra-reward`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ userId: userId })
+                    }).then(r => r.json()).then(data => {
+                        if (data.success) {
+                            currentUser.realBalance = (currentUser.realBalance || 0) + (appConfig.realMoneyPerAd || 0.01);
+                            currentUser.adsterraWatchedToday = watchedToday + 1;
+                            updateUI();
+                            if(typeof triggerConfetti === 'function') triggerConfetti();
+                            showToast(`Earned $${(appConfig.realMoneyPerAd || 0.01).toFixed(2)} Cash from Premium Ad!`, 'success');
+                            nav('tasks'); // Refresh tasks page to update counter
+                        } else {
+                            showToast(data.error || "Verification failed.", "error");
+                            nav('tasks');
+                        }
+                    }).catch(() => {
+                        showToast("Network Error", "error");
+                        nav('tasks');
+                    });
+                }
+            }, 1000);
         }
 
         function startTask(taskId, url, type, channelId, reward) {
@@ -897,7 +959,7 @@ function applyTranslation() {
                         <i class="fa-solid fa-user-astronaut"></i>
                     </div>
                     <h2 style="font-size:1.8rem; margin-bottom:5px; background:var(--gradient-main); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">Invite & Earn</h2>
-                    <div style="color:#94A3B8; font-size:0.95rem; margin-bottom:25px; font-weight:600;">Earn 100 Gems for every friend you invite!</div>
+                    <div style="color:#94A3B8; font-size:0.95rem; margin-bottom:25px; font-weight:600;">Earn $${appConfig.referralBonusReferrer || 0} Cash for every friend you invite!</div>
                     
                     <div class="qr-glow-box" style="display:flex; justify-content:center; align-items:center; margin:0 auto 20px auto; width:150px; height:150px;">
                         <div id="qrCodeContainer"></div>
@@ -957,7 +1019,7 @@ function applyTranslation() {
                                 <div style="font-weight:800; font-size:1rem; color:white;">${r.accountName}</div>
                                 <div style="font-size:0.75rem; color:#94A3B8;">${new Date(r.createdAt).toLocaleDateString()}</div>
                             </div>
-                            <div style="color:var(--success-color); font-weight:900; font-size:1rem; text-shadow:0 0 10px var(--success-color);">+100 Gems <i class='fa-solid fa-check'></i></div>
+                            <div style="color:var(--success-color); font-weight:900; font-size:1rem; text-shadow:0 0 10px var(--success-color);">+$${appConfig.referralBonusReferrer || 0} <i class='fa-solid fa-check'></i></div>
                         </div>
                     `).join('');
                 }
@@ -1006,13 +1068,13 @@ function applyTranslation() {
                     });
                 }, 1500);
             }).catch((err) => {
-                const desc = err?.description || '';
-                if (desc === 'No ads available') {
-                    showToast("No ads available", "info");
-                } else if (desc === 'Ad closed' || err?.done === false) {
-                    showToast("You closed the ad early!", "error");
+                const desc = String(err?.description || err?.error || '').toLowerCase();
+                if (desc.includes('ad closed') || err?.done === false) {
+                    showToast("You closed the ad early! No reward.", "error");
+                } else if (desc.includes('no ads available')) {
+                    showToast("No ads available right now. Try again later!", "info");
                 } else {
-                    showToast("Ad failed to load.", "error");
+                    showToast("Ad system is currently pending/inactive.", "error");
                 }
             });
         }

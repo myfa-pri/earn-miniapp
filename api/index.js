@@ -380,9 +380,18 @@ app.post('/api/verify-gate', async (req, res) => {
     if(!u) return res.status(404).json({error: "User not found"});
 
     try {
-        const member = await bot.getChatMember(c.offChannelId, userId);
-        const status = member.status;
-        if (status === 'creator' || status === 'administrator' || status === 'member') {
+        if (!c.officialChannels || c.officialChannels.length === 0) {
+            return res.json({ success: true });
+        }
+
+        const checks = c.officialChannels.map(ch => bot.getChatMember(ch.id, userId));
+        const results = await Promise.all(checks);
+        
+        const allPassed = results.every(member => {
+            return member.status === 'creator' || member.status === 'administrator' || member.status === 'member';
+        });
+
+        if (allPassed) {
             let updates = { isOfficialMember: true };
             
             // Referral Logic Validation
@@ -403,10 +412,10 @@ app.post('/api/verify-gate', async (req, res) => {
             await dbUpdate(`users/${userId}`, updates);
             return res.json({ success: true });
         } else {
-            return res.json({ success: false });
+            return res.json({ success: false, message: "You must join all channels to continue!" });
         }
     } catch(e) {
-        return res.json({ success: false, error: e.message });
+        return res.json({ success: false, message: "You must join all channels to continue!", error: e.message });
     }
 });
 

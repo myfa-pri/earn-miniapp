@@ -357,11 +357,74 @@
             }
         }
 
+const amharicDict = {
+    "Home": "መነሻ",
+    "Earn": "ያግኙ",
+    "Tasks": "ተግባራት",
+    "Leaderboard": "መሪ ሰሌዳ",
+    "Invite": "ጋብዝ",
+    "Invite & Earn": "ጋብዘው ያግኙ",
+    "Earn 100 Gems for every friend you invite!": "ለሚጋብዙት ጓደኛ 100 እንቁዎችን ያግኙ!",
+    "Your Invite Link": "የእርስዎ መጋበዣ ሊንክ",
+    "Copy Link": "ሊንኩን ኮፒ ያድርጉ",
+    "Share Link": "ሊንኩን ያጋሩ",
+    "Referrals": "ሪፈራሎች",
+    "Daily Combo": "ዕለታዊ ጥምረት",
+    "Multiple OX": "የኦክስ ጨዋታ",
+    "Official Channel": "ይፋዊ ቻናል",
+    "Top 100 Players": "ምርጥ 100 ተጫዋቾች",
+    "Current Balance": "የአሁኑ ቀሪ ሂሳብ",
+    "Redeem": "መቀየር",
+    "Enter Promo Code...": "የፕሮሞ ኮድ ያስገቡ...",
+    "Withdraw": "ገንዘብ ማውጣት",
+    "Coming Soon": "በቅርብ ቀን",
+    "Loading...": "በመጫን ላይ..."
+};
+
+function translateDOM(node) {
+    if(currentLang === 'EN') return; 
+    if (node.nodeType === Node.TEXT_NODE) {
+        let text = node.textContent.trim();
+        if (amharicDict[text]) {
+            node.originalText = text;
+            node.textContent = node.textContent.replace(text, amharicDict[text]);
+        }
+    } else {
+        if(node.tagName === 'SCRIPT' || node.tagName === 'STYLE') return;
+        for (let i = 0; i < node.childNodes.length; i++) {
+            translateDOM(node.childNodes[i]);
+        }
+    }
+}
+
+function restoreDOM(node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+        if (node.originalText) {
+            node.textContent = node.textContent.replace(node.textContent.trim(), node.originalText);
+            delete node.originalText;
+        }
+    } else {
+        if(node.tagName === 'SCRIPT' || node.tagName === 'STYLE') return;
+        for (let i = 0; i < node.childNodes.length; i++) {
+            restoreDOM(node.childNodes[i]);
+        }
+    }
+}
+
+function applyTranslation() {
+    if (currentLang === 'AM') {
+        translateDOM(document.body);
+    } else {
+        restoreDOM(document.body);
+    }
+}
+
         function toggleLang() {
             currentLang = currentLang === 'EN' ? 'AM' : 'EN';
             localStorage.setItem('appLang', currentLang);
             if(document.getElementById('langToggle')) document.getElementById('langToggle').innerText = currentLang;
-            showToast(`Language switched to ${currentLang}`, 'success');
+            applyTranslation();
+            showToast(currentLang === 'AM' ? 'ቋንቋ ወደ አማርኛ ተቀይሯል' : 'Language switched to EN', 'success');
             nav(document.querySelector('.nav-item.active').dataset.page);
         }
 
@@ -487,12 +550,12 @@
                     </div>
                     <div class="stat-box glass">
                         <div class="stat-icon" style="color:var(--color-purple); background:rgba(79, 172, 254, 0.1);"><i class="fa-solid fa-video"></i></div>
-                        <div style="font-size:1.2rem; font-weight:800;">${10 - (currentUser.dailyAdsWatched || 0)}</div>
+                        <div style="font-size:1.2rem; font-weight:800;">${((appConfig.monetagLimit || 5) - (currentUser.monetagWatchedToday || 0)) + ((appConfig.adsgramLimit || 5) - (currentUser.adsgramWatchedToday || 0))}</div>
                         <div style="font-size:0.7rem; color:#64748B; font-weight:600;">Ads Left</div>
                     </div>
                     <div class="stat-box glass">
                         <div class="stat-icon" style="color:var(--gold-color); background:rgba(255, 215, 0, 0.1);"><i class="fa-solid fa-eye"></i></div>
-                        <div style="font-size:1.2rem; font-weight:800;">${currentUser.dailyAdsWatched || 0}</div>
+                        <div style="font-size:1.2rem; font-weight:800;">${(currentUser.monetagWatchedToday || 0) + (currentUser.adsgramWatchedToday || 0)}</div>
                         <div style="font-size:0.7rem; color:#64748B; font-weight:600;">Ads Watched</div>
                     </div>
                     <div class="stat-box glass">
@@ -539,27 +602,35 @@
                 tasksHtml = '<div style="text-align:center; padding:20px;">Failed to load tasks.</div>';
             }
 
-            const adsWatched = currentUser.dailyAdsWatched || 0;
-            const adsLimit = 10;
-            const limitReached = adsWatched >= adsLimit;
+            const monetagWatchedToday = currentUser.monetagWatchedToday || 0;
+            const adsgramWatchedToday = currentUser.adsgramWatchedToday || 0;
+            const monetagLimit = appConfig.monetagLimit || 5;
+            const adsgramLimit = appConfig.adsgramLimit || 5;
+            const monetagLimitReached = monetagWatchedToday >= monetagLimit;
+            const adsgramLimitReached = adsgramWatchedToday >= adsgramLimit;
 
             c.innerHTML = `
                 <!-- Daily Earning Top Ad Grid -->
                 <div class="ad-grid">
                     <!-- Monetag Ad -->
-                    <div class="ad-card glass" onclick="triggerMonetagAd()">
+                    <div class="ad-card glass" ${monetagLimitReached ? '' : 'onclick="triggerMonetagAd()"'} style="${monetagLimitReached ? 'opacity: 0.5; cursor: not-allowed;' : ''}">
                         <i class="fa-brands fa-youtube" style="font-size:3.5rem; color:#EF4444; filter:drop-shadow(0 0 15px rgba(239,68,68,0.6)); margin-bottom:12px; display:inline-block;"></i>
                         <div style="font-weight:800; font-size:1.1rem; margin-bottom:5px;">Watch Ad</div>
-                        ${limitReached 
+                        <div style="font-size: 0.8rem; color: #94A3B8; margin-bottom: 5px;">${monetagWatchedToday} / ${monetagLimit}</div>
+                        ${monetagLimitReached 
                             ? `<div style="color:var(--danger-color); font-weight:700; font-size:0.9rem;">Limit Reached</div>`
                             : `<div style="color:var(--success-color); font-weight:800; font-size:0.95rem;">+50 Gems</div>`
                         }
                     </div>
                     <!-- Adsgram Ad -->
-                    <div class="ad-card glass" onclick="triggerAdsgramAd()">
+                    <div class="ad-card glass" ${adsgramLimitReached ? '' : 'onclick="triggerAdsgramAd()"'} style="${adsgramLimitReached ? 'opacity: 0.5; cursor: not-allowed;' : ''}">
                         <i class="fa-solid fa-fire" style="font-size:3.5rem; color:var(--gold-color); filter:drop-shadow(0 0 15px rgba(255,215,0,0.6)); margin-bottom:12px; display:inline-block;"></i>
                         <div style="font-weight:800; font-size:1.1rem; margin-bottom:5px;">Special Ad</div>
-                        <div style="color:var(--success-color); font-weight:800; font-size:0.95rem;">+50 Gems</div>
+                        <div style="font-size: 0.8rem; color: #94A3B8; margin-bottom: 5px;">${adsgramWatchedToday} / ${adsgramLimit}</div>
+                        ${adsgramLimitReached 
+                            ? `<div style="color:var(--danger-color); font-weight:700; font-size:0.9rem;">Limit Reached</div>`
+                            : `<div style="color:var(--success-color); font-weight:800; font-size:0.95rem;">+50 Gems</div>`
+                        }
                     </div>
                 </div>
 
@@ -796,14 +867,16 @@
         function rewardUserForAd(network) {
             // Give 50 gems as example
             currentUser.points += 50;
+            if (network === 'monetag') currentUser.monetagWatchedToday = (currentUser.monetagWatchedToday || 0) + 1;
+            else if (network === 'adsgram') currentUser.adsgramWatchedToday = (currentUser.adsgramWatchedToday || 0) + 1;
             updateUI();
             showToast(`Earned 50 Gems from ${network}!`, 'success');
             
             // Note: In production, send a POST to the backend to securely credit the gems
-            fetch(`${API_BASE_URL}/api/user/${userId}/add-points`, {
+            fetch(`${API_BASE_URL}/api/watch-ad`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ points: 50, reason: `Watched ${network} Ad` })
+                body: JSON.stringify({ userId: userId, network: network })
             }).catch(e => console.error(e));
         }
 
@@ -1428,10 +1501,7 @@
                             <h2 style="color:var(--danger-color); margin:0;"><i class="fa-solid fa-plane-up"></i> Aviator</h2>
                             <button onclick="document.getElementById('pfModal').style.display='flex'" style="background:none; border:none; color:#94A3B8; cursor:pointer;"><i class="fa-solid fa-shield-halved"></i></button>
                         </div>
-                        <div style="display:flex; gap:10px;">
-                            <button class="panel-toggle-btn" style="border-radius:10px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding: 8px 12px; display:flex; align-items:center; gap:5px;" onclick="document.getElementById('myBetsSide').classList.toggle('open')"><i class="fa-solid fa-clock-rotate-left"></i> My Bets</button>
-                            <button class="panel-toggle-btn" style="border-radius:10px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding: 8px 12px; display:flex; align-items:center; gap:5px;" onclick="document.getElementById('topBetsSide').classList.toggle('open')"><i class="fa-solid fa-trophy"></i> Top Bets</button>
-                        </div>
+
                     </div>
 
                     <!-- 1. Multiplier History Bar -->
@@ -1471,6 +1541,10 @@
                     </div>
 
                     <!-- 18. Dual Independent Auto-Cashouts & Betting Panels -->
+                    <div style="display:flex; justify-content:center; gap:10px; margin-bottom:15px;">
+                        <button class="panel-toggle-btn" style="border-radius:10px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding: 8px 12px; display:flex; align-items:center; gap:5px; flex:1; justify-content:center;" onclick="document.getElementById('myBetsSide').classList.toggle('open')"><i class="fa-solid fa-clock-rotate-left"></i> My Bets</button>
+                        <button class="panel-toggle-btn" style="border-radius:10px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding: 8px 12px; display:flex; align-items:center; gap:5px; flex:1; justify-content:center;" onclick="document.getElementById('topBetsSide').classList.toggle('open')"><i class="fa-solid fa-trophy"></i> Top Bets</button>
+                    </div>
                     <div class="bet-panel-container" style="display:flex; flex-direction:column; gap:15px;">
                         <!-- Panel 1 -->
                         <div class="bet-panel glass" style="padding:15px; border-radius:15px; border:1px solid rgba(255,255,255,0.1); background:linear-gradient(145deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01));">

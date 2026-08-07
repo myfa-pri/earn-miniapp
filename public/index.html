@@ -51,13 +51,13 @@
     </div>
     <style>@keyframes loadingBar { from { transform: translateX(-100%); } to { transform: translateX(200%); } }</style>
 
-    <div id="gate-overlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(11,11,26,0.95); backdrop-filter:blur(20px); z-index:99999; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:20px;">
-        <i class="fa-solid fa-lock" style="font-size:3rem; color:var(--color-cyan); margin-bottom:15px; filter: drop-shadow(0 0 15px var(--color-cyan));"></i>
-        <h2 style="color:white; margin-bottom:20px; font-weight:800;">Complete Tasks to Enter</h2>
-        <div id="gateChannelList" style="width:100%; max-width:400px; display:flex; flex-direction:column; gap:10px; margin-bottom:30px; max-height: 50vh; overflow-y: auto;">
+    <div id="gate-overlay" style="display:none; background: rgba(11, 11, 42, 0.95); backdrop-filter: blur(20px); z-index: 9999; position: fixed; inset: 0; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:20px;">
+        <i class="fa-solid fa-shield-halved" style="font-size:4rem; color:var(--color-cyan); margin-bottom:15px; animation: floatIcon 3s ease-in-out infinite;"></i>
+        <h2 class="shine-text" style="margin-bottom:20px; font-weight:800; font-size:1.8rem;">Complete Tasks to Enter</h2>
+        <div id="gateChannelList" style="width:100%; max-width:400px; display:flex; flex-direction:column; margin-bottom:30px; max-height: 50vh; overflow-y: auto; padding-right:10px;">
             <!-- Channels dynamically injected here -->
         </div>
-        <button class="btn btn-primary" onclick="checkGate()" style="width:100%; max-width:400px; padding:15px; font-size:1.1rem; border-radius:12px;"><i class="fa-solid fa-check-double"></i> Verify & Enter</button>
+        <button id="verifyGateBtn" onclick="checkGate()" style="width:100%; max-width:400px; padding:18px; font-size:1.2rem; border-radius:12px; background:var(--gradient-3in1); border:none; color:white; font-weight:800; cursor:pointer; box-shadow: 0 0 20px rgba(0, 242, 254, 0.4); transition: transform 0.2s;"><i class="fa-solid fa-check-double"></i> Verify & Enter</button>
     </div>
 
     <div class="app-container" id="app-container">
@@ -269,15 +269,15 @@
                 // GATE CHECK
                 if (appConfig.gateEnabled && !currentUser.isOfficialMember && appConfig.officialChannels && appConfig.officialChannels.length > 0) {
                     const gate = document.getElementById('gate-overlay');
-                    const listHtml = appConfig.officialChannels.map(ch => {
+                    const listHtml = appConfig.officialChannels.map((ch, idx) => {
                         const finalUrl = ch.link.startsWith('@') ? 'https://t.me/' + ch.link.substring(1) : ch.link;
                         return `
-                        <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); padding:15px; border-radius:12px; backdrop-filter:blur(10px);">
+                        <div class="staggered-card" style="display:flex; justify-content:space-between; align-items:center; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 15px; margin-bottom: 12px; animation: staggerFadeIn 0.5s ease forwards; animation-delay: ${idx * 0.15}s;">
                             <div style="display:flex; align-items:center; gap:12px; text-align:left;">
                                 <i class="fa-brands ${ch.icon || 'fa-telegram'}" style="font-size:1.8rem; color:var(--color-cyan);"></i>
-                                <span style="color:white; font-weight:600; font-size:1rem; line-height:1.2;">${ch.name}</span>
+                                <span style="color:white; font-weight:600; font-size:1.1rem; line-height:1.2;">${ch.name}</span>
                             </div>
-                            <button onclick="window.open('${finalUrl}', '_blank')" style="background:var(--gradient-3in1); border:none; color:white; padding:8px 20px; border-radius:20px; font-weight:700; cursor:pointer;">Join</button>
+                            <button onclick="window.open('${finalUrl}', '_blank')" style="background:linear-gradient(90deg, var(--color-cyan), var(--color-purple)); border:none; color:white; padding:8px 25px; border-radius:50px; font-weight:700; cursor:pointer; box-shadow:0 4px 15px rgba(0,242,254,0.3);">Join</button>
                         </div>
                         `;
                     }).join('');
@@ -632,7 +632,7 @@ function applyTranslation() {
                     let btnHtml = '';
                     if (isClaimed) btnHtml = `<button class="task-pill-btn done"><i class="fa-solid fa-check"></i> Done</button>`;
                     else if (isFull) btnHtml = `<button class="task-pill-btn" style="background:#555; color:#ccc;" disabled>FULL</button>`;
-                    else btnHtml = `<button class="task-pill-btn start" onclick="startTask('${id}', '${t.url}', '${t.type}', '${t.channelId}', ${t.reward})">Start</button>`;
+                    else btnHtml = `<button id="task-btn-${id}" class="task-pill-btn start" onclick="startTask('${id}', '${t.url}', '${t.type}', '${t.channelId}', ${t.reward})">Start</button>`;
 
                     tasksHtml += `
                         <div class="task-row glass" data-name="${t.name.toLowerCase()}">
@@ -746,6 +746,8 @@ function applyTranslation() {
                 `;
                 document.body.appendChild(overlay);
             } else if (type === 'auto') {
+                const btn = document.getElementById('task-btn-' + taskId);
+                if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Verifying...'; }
                 showToast("Verifying membership in 5 seconds...", "info");
                 setTimeout(async () => {
                     try {
@@ -766,10 +768,12 @@ function applyTranslation() {
                                 setTimeout(() => nav('tasks'), 2000); // Reload tasks
                             }
                         } else {
-                            showToast("Not Joined. Please join and try again!", "error");
+                            showToast(data.error || "Not Joined. Please join and try again!", "error");
                         }
                     } catch(e) {
                         showToast("Verification failed. Try again later.", "error");
+                    } finally {
+                        if (btn) { btn.disabled = false; btn.innerHTML = 'Start'; }
                     }
                 }, 5000);
             }
@@ -2786,18 +2790,26 @@ function applyTranslation() {
         setInterval(loadOfficialChannelPosts, 15000);
 
         async function checkGate() {
+            const btn = document.getElementById('verifyGateBtn');
+            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Verifying...'; }
             showToast("Checking membership...", "info");
-            const res = await fetch(`${API_BASE_URL}/api/verify-gate`, {
-                method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ userId: currentUser.id || userId })
-            });
-            const data = await res.json();
-            if (data.success) {
-                triggerConfetti();
-                document.getElementById('gate-overlay').style.display = 'none';
-                nav('home');
-            } else {
-                showToast(data.message || "You must join all channels to continue!", "error");
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/verify-gate`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ userId: currentUser.id || userId })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    triggerConfetti();
+                    document.getElementById('gate-overlay').style.display = 'none';
+                    nav('home');
+                } else {
+                    showToast(data.message || "You must join all channels to continue!", "error");
+                }
+            } catch(e) {
+                showToast("Network error. Try again.", "error");
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check-double"></i> Verify & Enter'; }
             }
         }
     </script>

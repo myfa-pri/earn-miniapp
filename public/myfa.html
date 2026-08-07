@@ -169,6 +169,8 @@
                     
                     <div class="input-group"><label>6a. Monetag Daily Limit</label><input type="number" id="cfg_monetag_limit"></div>
                     <div class="input-group"><label>6b. Adsgram Daily Limit</label><input type="number" id="cfg_adsgram_limit"></div>
+                    <div class="input-group"><label>6c. Adsterra Direct Link</label><input type="text" id="cfg_adsterra_link" placeholder="https://..."></div>
+                    <div class="input-group"><label>6d. Adsterra Daily Limit</label><input type="number" id="cfg_adsterra_limit" placeholder="10"></div>
                     <div class="input-group"><label>7. Reward Per Ad (Real Money $)</label><input type="number" id="cfg_real_money_ad" step="0.01" placeholder="0.05"></div>
                     <div class="input-group"><label>8. Inviter Referral Bonus</label><input type="number" id="cfg_ref_inviter"></div>
                     <div class="input-group"><label>9. Invitee Referral Bonus</label><input type="number" id="cfg_ref_invitee"></div>
@@ -591,6 +593,8 @@
             document.getElementById('cfg_tax_cash_gems').value = c.cashToGemsTaxRate || 0;
             document.getElementById('cfg_monetag_limit').value = c.monetagLimit || 5;
             document.getElementById('cfg_adsgram_limit').value = c.adsgramLimit || 5;
+            document.getElementById('cfg_adsterra_link').value = c.adsterraLink || '';
+            document.getElementById('cfg_adsterra_limit').value = c.adsterraLimit || 10;
             document.getElementById('cfg_real_money_ad').value = c.realMoneyPerAd || 0.05;
             document.getElementById('cfg_ref_inviter').value = c.referralBonusReferrer || 500;
             document.getElementById('cfg_ref_invitee').value = c.referralBonusReferee || 200;
@@ -662,6 +666,8 @@ document.getElementById('cfg_support').value = c.supportChannel || '';
                 cashToGemsTaxRate: parseFloat(document.getElementById('cfg_tax_cash_gems').value) || 0,
                 monetagLimit: document.getElementById('cfg_monetag_limit').value,
                 adsgramLimit: document.getElementById('cfg_adsgram_limit').value,
+                adsterraLink: document.getElementById('cfg_adsterra_link').value,
+                adsterraLimit: document.getElementById('cfg_adsterra_limit').value,
                 realMoneyPerAd: parseFloat(document.getElementById('cfg_real_money_ad').value) || 0.05,
                 referralBonusReferrer: document.getElementById('cfg_ref_inviter').value,
                 referralBonusReferee: document.getElementById('cfg_ref_invitee').value,

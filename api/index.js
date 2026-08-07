@@ -327,6 +327,16 @@ app.get('/api/leaderboard/:id', async (req, res) => {
     res.json({ frozen: false, byPoints: top100, userRankPoints: userRank });
 });
 
+// TASK 1: SAFE MEMBERSHIP CHECK
+async function safeCheckMembership(channelId, userId) {
+    try {
+        const member = await bot.getChatMember(channelId, userId);
+        return { status: member.status };
+    } catch (e) {
+        return { status: 'left', error: e.message };
+    }
+}
+
 // Tasks & Referrals
 app.get('/api/tasks', async (req, res) => {
     const tasksObj = await dbGet('bonusTasks') || {};
@@ -342,7 +352,7 @@ app.post('/api/verify-membership', async (req, res) => {
     if((u.claimedBonuses||[]).includes(taskId)) return res.json({success:true, alreadyClaimed:true});
     
     try {
-        const member = await bot.getChatMember(channelId, userId);
+        const member = await safeCheckMembership(channelId, userId);
         const status = member.status;
         if (status === 'creator' || status === 'administrator' || status === 'member') {
             
@@ -384,7 +394,7 @@ app.post('/api/verify-gate', async (req, res) => {
             return res.json({ success: true });
         }
 
-        const checks = c.officialChannels.map(ch => bot.getChatMember(ch.id, userId));
+        const checks = c.officialChannels.map(ch => safeCheckMembership(ch.id, userId));
         const results = await Promise.all(checks);
         
         const allPassed = results.every(member => {

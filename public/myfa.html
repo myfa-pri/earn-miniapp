@@ -66,16 +66,18 @@
         th { color: #94A3B8; font-weight: 700; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px; }
         tr:hover td { background: rgba(255,255,255,0.02); }
         /* MOBILE RESPONSIVENESS */
+        .mobile-topbar { display: none; }
         @media (max-width: 768px) {
-            body, .main-content { overflow-x: hidden; width: 100vw; box-sizing: border-box; }
+            .mobile-topbar { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: rgba(11, 11, 42, 0.95); position: fixed; top: 0; left: 0; width: 100vw; z-index: 9999; border-bottom: 1px solid var(--glass-border); font-size: 1.2rem; font-weight: bold; }
+            .sidebar { position: fixed; left: -100%; top: 0; bottom: 0; z-index: 10000; width: 260px; transition: 0.3s ease; }
+            .sidebar.mobile-open { left: 0; }
+            .main-content { width: 100vw; padding: 15px; padding-top: 70px; margin: 0; box-sizing: border-box; overflow-x: hidden; }
+            body { overflow-x: hidden; width: 100vw; box-sizing: border-box; }
             .grid-2, .grid-3, .stat-grid { grid-template-columns: 1fr !important; gap: 15px; }
-            .sidebar { position: fixed; left: -100%; z-index: 1000; transition: 0.3s ease; height: 100vh; }
-            .sidebar.show-sidebar { left: 0; }
+            input, select, textarea, .input-group { width: 100% !important; box-sizing: border-box; }
             .mobile-sidebar-close { display: block !important; }
-            .mobile-header { display: flex !important; }
         }
-        .mobile-sidebar-close { display: none; position: absolute; top: 15px; right: 15px; cursor: pointer; font-size: 24px; z-index: 1001; }
-        .mobile-header { display: none; padding: 15px; background: var(--card); border: 1px solid var(--glass-border); border-radius: 12px; margin-bottom: 20px; align-items: center; font-size: 24px; cursor: pointer; }
+        .mobile-sidebar-close { display: none; position: absolute; top: 15px; right: 15px; cursor: pointer; font-size: 24px; color: #fff; z-index: 10001; }
     </style>
 
     <script>
@@ -105,7 +107,7 @@
 
     <!-- SIDEBAR -->
     <div class="sidebar">
-        <i class="fa-solid fa-xmark mobile-sidebar-close" onclick="document.querySelector('.sidebar').classList.remove('show-sidebar')"></i>
+        <i class="fa-solid fa-xmark mobile-sidebar-close" onclick="toggleAdminSidebar()"></i>
         <div class="sidebar-brand"><i class="fa-solid fa-bolt"></i> MYFA OS</div>
         <div class="nav-link active" onclick="nav('master')"><i class="fa-solid fa-server"></i> Master Config (32)</div>
         <div class="nav-link" onclick="nav('users')"><i class="fa-solid fa-users-gear"></i> Moderation (8)</div>
@@ -119,8 +121,9 @@
 
     <!-- MAIN CONTENT -->
     <div class="main-content">
-        <div class="mobile-header glass" onclick="document.querySelector('.sidebar').classList.add('show-sidebar')">
-            <i class="fa-solid fa-bars hamburger-menu"></i>
+        <div class="mobile-topbar">
+            <span><i class="fa-solid fa-bolt" style="color:var(--gold);"></i> MYFA Admin</span>
+            <i class="fa-solid fa-bars" onclick="toggleAdminSidebar()" style="cursor:pointer; font-size:1.5rem;"></i>
         </div>
 
         <!-- ==========================================
@@ -485,6 +488,11 @@
             } else { alert("Invalid Credentials"); }
         }
 
+        function toggleAdminSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            if (sidebar) sidebar.classList.toggle('mobile-open');
+        }
+
         function nav(id) {
             document.querySelectorAll('.nav-link').forEach(e => e.classList.remove('active'));
             document.querySelector(`.nav-link[onclick="nav('${id}')"]`).classList.add('active');
@@ -492,8 +500,8 @@
             document.getElementById(id).classList.add('active');
             
             const sidebar = document.querySelector('.sidebar');
-            if (sidebar && sidebar.classList.contains('show-sidebar')) {
-                sidebar.classList.remove('show-sidebar');
+            if (sidebar && sidebar.classList.contains('mobile-open')) {
+                sidebar.classList.remove('mobile-open');
             }
         }
 

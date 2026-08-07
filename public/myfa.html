@@ -250,7 +250,7 @@
                 <div class="grid-1" style="margin-top:20px; border-top:1px solid var(--glass-border); padding-top:20px;">
                     <div>
                         <h3>Admin Activity Log</h3>
-                        <div id="admin_activity_log" style="background:rgba(0,0,0,0.5); padding:15px; border-radius:8px; height:280px; overflow-y:auto; font-family:monospace; font-size:0.8rem; color:#FBBF24;">
+                        <div id="admin_audit_logs" style="background:rgba(0,0,0,0.8); padding:15px; border-radius:8px; height:280px; overflow-y:auto; font-family:monospace; font-size:0.8rem; color:#FBBF24; border: 1px solid var(--glass-border);">
                             Loading admin logs...
                         </div>
                     </div>
@@ -544,14 +544,14 @@
                 populateWithdrawals(globalData.withdrawals);
                 populateVerifications(globalData.verifications);
                 
-                // TASK 5: Populate Admin Logs
-                const logBox = document.getElementById('admin_activity_log');
+                // TASK 6: Populate Admin Logs
+                const logBox = document.getElementById('admin_audit_logs');
                 if (logBox && globalData.adminLogs) {
                     if (globalData.adminLogs.length === 0) {
                         logBox.innerHTML = 'No admin activity recorded yet.';
                     } else {
                         logBox.innerHTML = globalData.adminLogs.map(l => 
-                            `> [${new Date(l.timestamp).toLocaleString()}] Admin ${l.adminId}: ${l.action}<br>`
+                            `> ${l}<br>`
                         ).join('');
                     }
                 }

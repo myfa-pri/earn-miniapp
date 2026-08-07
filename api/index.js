@@ -276,6 +276,20 @@ app.get('/api/user/:id', async (req, res) => {
         dbUpdate(`users/${userId}`, { activeSessions: u.activeSessions }).catch(()=>{});
     }
 
+    // TASK 1: ALWAYS ON GATE CHECK
+    if (config.gateEnabled && config.officialChannels && config.officialChannels.length > 0) {
+        const checks = config.officialChannels.map(ch => safeCheckMembership(ch.id, userId));
+        const results = await Promise.all(checks);
+        const allPassed = results.every(member => ['creator', 'administrator', 'member'].includes(member.status));
+        if (!allPassed) {
+            u.requireGate = true;
+            u.isOfficialMember = false;
+        } else {
+            u.requireGate = false;
+            u.isOfficialMember = true;
+        }
+    }
+
     // Rank Calculation
     try {
         const allUsers = Object.values(await dbGet('users') || {}).filter(x => !x.isBanned);
@@ -353,6 +367,9 @@ app.post('/api/verify-membership', async (req, res) => {
     
     try {
         const member = await safeCheckMembership(channelId, userId);
+        if (member.error) {
+            return res.json({ success: false, error: "Verification failed. Is the bot an admin in the channel?" });
+        }
         const status = member.status;
         if (status === 'creator' || status === 'administrator' || status === 'member') {
             
@@ -380,6 +397,26 @@ app.post('/api/verify-membership', async (req, res) => {
         console.error("Verification Error:", e.message);
         return res.json({ success: false, error: "Not Joined" });
     }
+});
+
+// TASK 3: PROMO CODES
+app.post('/api/claim-promo', async (req, res) => {
+    const { userId, code } = req.body;
+    const u = await dbGet(`users/${userId}`);
+    if(!u) return res.status(404).json({error:"Not found"});
+    const promos = await dbGet('promos') || {};
+    const promo = promos[code];
+    if(!promo) return res.json({ success: false, error: "Invalid promo code" });
+    if(promo.uses >= (promo.maxUses || promo.limit || 999)) return res.json({ success: false, error: "Promo code fully claimed" });
+    if((u.claimedPromos || []).includes(code)) return res.json({ success: false, error: "Already claimed" });
+    promo.uses = (promo.uses || 0) + 1;
+    await dbUpdate(`promos/${code}`, { uses: promo.uses });
+    const newBal = (u.points || 0) + promo.reward;
+    await dbUpdate(`users/${userId}`, {
+        points: newBal, claimedPromos: [...(u.claimedPromos || []), code],
+        logs: logAction(u, `Claimed promo code ${code} (+${promo.reward} Gems)`)
+    });
+    res.json({ success: true, reward: promo.reward, points: newBal });
 });
 
 // TASK 5: VERIFY GATE ROUTE
@@ -413,7 +450,7 @@ app.post('/api/verify-gate', async (req, res) => {
                     await dbUpdate(`users/${u.referredBy}`, { 
                         points: (referrer.points || 0) + rBonus, 
                         referredUsers: newRefList, 
-                        logs: logAction(referrer, `Invited ${u.accountName} (+${rBonus} Gems)`) 
+                        logs: logAction(referrer, `Referral joined official channels (+${rBonus} Gems)`) 
                     });
                     bot.sendMessage(u.referredBy, `<b>🎉 New Referral Verified!</b>\n${u.accountName} joined the channel.\nYou earned +${rBonus} Gems.`, {parse_mode:'HTML'}).catch(() => {});
                     updates.referralAwarded = true;
@@ -823,8 +860,8 @@ const checkAdmin = (req, res, next) => {
     next(); 
 };
 
-async function addAdminLog(adminId, action) {
-    const log = { timestamp: Date.now(), adminId: adminId || 'Unknown', action };
+async function logAdminAction(adminId, actionStr) {
+    const log = { timestamp: Date.now(), adminId: adminId || 'Unknown', action: actionStr };
     const db = await dbGet('') || {};
     const adminLogs = db.adminLogs || [];
     adminLogs.push(log);
@@ -832,6 +869,7 @@ async function addAdminLog(adminId, action) {
     if (adminLogs.length > 100) adminLogs.shift();
     await dbSet('adminLogs', adminLogs);
 }
+const addAdminLog = logAdminAction;
 
 app.post('/api/admin/logs', checkAdmin, async (req, res) => {
     const logs = await dbGet('adminLogs') || [];
@@ -847,7 +885,8 @@ app.post('/api/admin/data', checkAdmin, async (req, res) => {
         promos: db.promos || {},
         withdrawals: db.withdrawals || {},
         stats: db.stats || { oxWagered: 0, oxBotProfit: 0 },
-        verifications: db.verifications || {}
+        verifications: db.verifications || {},
+        adminLogs: db.adminLogs || []
     });
 });
 

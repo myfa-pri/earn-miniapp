@@ -57,7 +57,7 @@
         <div id="gateChannelList" style="width:100%; max-width:400px; display:flex; flex-direction:column; margin-bottom:30px; max-height: 50vh; overflow-y: auto; padding-right:10px;">
             <!-- Channels dynamically injected here -->
         </div>
-        <button id="verifyGateBtn" onclick="checkGate()" style="width:100%; max-width:400px; padding:18px; font-size:1.2rem; border-radius:12px; background:var(--gradient-3in1); border:none; color:white; font-weight:800; cursor:pointer; box-shadow: 0 0 20px rgba(0, 242, 254, 0.4); transition: transform 0.2s;"><i class="fa-solid fa-check-double"></i> Verify & Enter</button>
+        <button id="verifyGateBtn" onclick="checkGate()" style="width:100%; max-width:400px; padding:18px; font-size:1.2rem; border-radius:12px; background:var(--gradient-3in1); border:none; color:white; font-weight:800; cursor:pointer; box-shadow: 0 0 20px rgba(0, 242, 254, 0.4); transition: transform 0.2s;"><i class="fa-solid fa-check-double"></i> Check</button>
     </div>
 
     <div class="app-container" id="app-container">
@@ -277,7 +277,7 @@
                                 <i class="fa-brands ${ch.icon || 'fa-telegram'}" style="font-size:1.8rem; color:var(--color-cyan);"></i>
                                 <span style="color:white; font-weight:600; font-size:1.1rem; line-height:1.2;">${ch.name}</span>
                             </div>
-                            <button onclick="window.open('${finalUrl}', '_blank')" style="background:linear-gradient(90deg, var(--color-cyan), var(--color-purple)); border:none; color:white; padding:8px 25px; border-radius:50px; font-weight:700; cursor:pointer; box-shadow:0 4px 15px rgba(0,242,254,0.3);">Join</button>
+                            <button onclick="window.open('${finalUrl}', '_blank'); document.getElementById('verifyGateBtn').innerHTML = '<i class=\\'fa-solid fa-check-double\\'></i> Check'; document.getElementById('verifyGateBtn').style.background = '#3B82F6';" style="background:linear-gradient(90deg, var(--color-cyan), var(--color-purple)); border:none; color:white; padding:8px 25px; border-radius:50px; font-weight:700; cursor:pointer; box-shadow:0 4px 15px rgba(0,242,254,0.3);">Join Channel</button>
                         </div>
                         `;
                     }).join('');
@@ -617,7 +617,8 @@ function applyTranslation() {
         }
 
         async function renderTasks(c) {
-            let tasksHtml = '';
+            let activeTasksHtml = '';
+            let completedTasksHtml = '';
             try {
                 const res = await fetch(`${API_BASE_URL}/api/tasks`);
                 const tasksObj = await res.json();
@@ -630,12 +631,12 @@ function applyTranslation() {
                     const badge = t.maxUsers > 0 ? `<div style="font-size:0.7rem; background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:10px; display:inline-block; margin-top:5px;">${t.claims || 0}/${t.maxUsers} Claimed</div>` : '';
                     
                     let btnHtml = '';
-                    if (isClaimed) btnHtml = `<button class="task-pill-btn done"><i class="fa-solid fa-check"></i> Done</button>`;
+                    if (isClaimed) btnHtml = `<button class="task-pill-btn done" disabled><i class="fa-solid fa-check"></i> Done</button>`;
                     else if (isFull) btnHtml = `<button class="task-pill-btn" style="background:#555; color:#ccc;" disabled>FULL</button>`;
                     else btnHtml = `<button id="task-btn-${id}" class="task-pill-btn start" onclick="startTask('${id}', '${t.url}', '${t.type}', '${t.channelId}', ${t.reward})">Start</button>`;
 
-                    tasksHtml += `
-                        <div class="task-row glass" data-name="${t.name.toLowerCase()}">
+                    const html = `
+                        <div class="task-row glass" id="task-row-${id}" data-name="${t.name.toLowerCase()}">
                             <div class="icon-sq">
                                 <i class="fa-brands ${t.icon}" style="color:var(--color-cyan);"></i>
                             </div>
@@ -647,9 +648,12 @@ function applyTranslation() {
                             ${btnHtml}
                         </div>
                     `;
+                    
+                    if (isClaimed) completedTasksHtml += html;
+                    else activeTasksHtml += html;
                 });
             } catch(e) {
-                tasksHtml = '<div style="text-align:center; padding:20px;">Failed to load tasks.</div>';
+                activeTasksHtml = '<div style="text-align:center; padding:20px;">Failed to load tasks.</div>';
             }
 
             const monetagWatchedToday = currentUser.monetagWatchedToday || 0;
@@ -689,7 +693,13 @@ function applyTranslation() {
                     <input type="text" id="taskSearch" placeholder="Search tasks..." oninput="filterTasks(this.value)">
                 </div>
 
-                <div id="tasksContainer">${tasksHtml || '<div style="text-align:center; color:#94A3B8; padding:20px;">No active tasks available.</div>'}</div>
+                <div id="tasksContainer">
+                    <div id="activeTasksContainer">${activeTasksHtml || '<div style="text-align:center; color:#94A3B8; padding:20px;">No active tasks available.</div>'}</div>
+                    <div id="completedTasksContainer" style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
+                        <h3 style="margin-bottom: 15px; color: var(--success-color);">Completed Tasks</h3>
+                        ${completedTasksHtml}
+                    </div>
+                </div>
             `;
         }
         
@@ -728,7 +738,17 @@ function applyTranslation() {
 
         function startTask(taskId, url, type, channelId, reward) {
             const finalUrl = url.startsWith('@') ? 'https://t.me/' + url.substring(1) : url;
-            window.open(finalUrl, '_blank');
+            
+            const btn = document.getElementById('task-btn-' + taskId);
+            
+            if (btn && btn.innerHTML.includes('Start')) {
+                window.open(finalUrl, '_blank');
+                btn.innerHTML = 'Check';
+                btn.style.background = 'var(--gold-color)';
+                btn.style.color = '#000';
+                return;
+            }
+
             if (type === 'manual') {
                 // Show verification upload modal
                 const overlay = document.createElement('div');
@@ -746,9 +766,8 @@ function applyTranslation() {
                 `;
                 document.body.appendChild(overlay);
             } else if (type === 'auto') {
-                const btn = document.getElementById('task-btn-' + taskId);
-                if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Verifying...'; }
-                showToast("Verifying membership in 5 seconds...", "info");
+                if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Checking...'; }
+                showToast("Verifying membership...", "info");
                 setTimeout(async () => {
                     try {
                         const res = await fetch(`${API_BASE_URL}/api/verify-membership`, {
@@ -757,25 +776,54 @@ function applyTranslation() {
                             body: JSON.stringify({ userId, taskId, channelId, reward })
                         });
                         const data = await res.json();
-                        if (data.success) {
-                            if (data.alreadyClaimed) {
-                                showToast("Already claimed this task!", "info");
-                            } else {
-                                currentUser.points = data.points;
-                                updateUI();
-                                triggerConfetti();
-                                showToast("Task Verified! Reward added.", "success");
-                                setTimeout(() => nav('tasks'), 2000); // Reload tasks
+                        if (data.success && !data.alreadyClaimed) {
+                            showToast("Task completed!", "success");
+                            currentUser.points = data.points;
+                            if(!currentUser.claimedBonuses) currentUser.claimedBonuses = [];
+                            currentUser.claimedBonuses.push(taskId);
+                            
+                            // DOM Reparenting on Success
+                            const pageHeaderBal = document.getElementById('pageHeaderBal');
+                            if (pageHeaderBal) {
+                                pageHeaderBal.innerText = currentUser.points;
+                            }
+                            const taskRow = document.getElementById('task-row-' + taskId);
+                            const completedContainer = document.getElementById('completedTasksContainer');
+                            if (taskRow && completedContainer) {
+                                completedContainer.appendChild(taskRow);
+                                if(btn) {
+                                    btn.className = 'task-pill-btn done';
+                                    btn.innerHTML = '<i class="fa-solid fa-check"></i> Done';
+                                    btn.disabled = true;
+                                    btn.style.background = '#555';
+                                    btn.style.color = '#ccc';
+                                }
+                            }
+                            
+                            updateUI();
+                        } else if(data.alreadyClaimed) {
+                            showToast("Already claimed!", "info");
+                            const taskRow = document.getElementById('task-row-' + taskId);
+                            const completedContainer = document.getElementById('completedTasksContainer');
+                            if (taskRow && completedContainer) {
+                                completedContainer.appendChild(taskRow);
+                                if(btn) {
+                                    btn.className = 'task-pill-btn done';
+                                    btn.innerHTML = '<i class="fa-solid fa-check"></i> Done';
+                                    btn.disabled = true;
+                                    btn.style.background = '#555';
+                                    btn.style.color = '#ccc';
+                                }
                             }
                         } else {
-                            showToast(data.error || "Not Joined. Please join and try again!", "error");
+                            showToast(data.error || "Not Joined. Please try again.", "error");
+                            if (btn) { btn.disabled = false; btn.innerHTML = 'Check'; btn.style.background = 'var(--gold-color)'; btn.style.color = '#000'; }
                         }
-                    } catch(e) {
-                        showToast("Verification failed. Try again later.", "error");
-                    } finally {
-                        if (btn) { btn.disabled = false; btn.innerHTML = 'Start'; }
+                    } catch (e) {
+                        showToast("Network Error", "error");
+                        if (btn) { btn.disabled = false; btn.innerHTML = 'Check'; btn.style.background = 'var(--gold-color)'; btn.style.color = '#000'; }
                     }
-                }, 5000);
+                }, 1500);
             }
         }
 
@@ -1896,7 +1944,7 @@ function applyTranslation() {
             // Populate Fake Top Bets
             let html = '';
             for(let i=0; i<10; i++) {
-                html += `<div class="history-item"><span>User${Math.floor(Math.random()*999)}</span><span class="win">+${Math.floor(Math.random()*5000)} Gems</span></div>`;
+                html += `<div class="history-item"><span>${avNames ? avNames[Math.floor(Math.random()*avNames.length)] : 'User' + Math.floor(Math.random()*999)}</span><span class="win">+${Math.floor(Math.random()*5000)} Gems</span></div>`;
             }
             document.getElementById('topBetsList').innerHTML = html;
 
@@ -1990,6 +2038,8 @@ function applyTranslation() {
 
         // 6. Live Chat Simulator
         let chatInterval;
+        var avNames = ['CryptoKing', 'BitcoinBob', 'MoonWalker', 'Satoshi99', 'ETH_Whale', 'DiamondHands', 'PepeFrog', 'DogeLover', 'AviatorPro', 'SkyHigh', 'BullRun', 'BearTear', 'WhaleAlert', 'TxHash', 'BlockBuilder', 'NodeRunner', 'GasFee', 'GweiTracker', 'SolanaSurfer', 'TonMaster', 'NotcoinNinja', 'HamsterBoss', 'TapTapTap', 'Web3Warrior', 'DeFiDegen', 'SmartContract', 'LedgerLive', 'TrezorSafe', 'SeedPhrase', 'MintedNFT', 'FloorPrice', 'PaperHands', 'RektCity', 'FOMO_Buyer', 'HODLer', 'BagHolder', 'MoonShot', 'AlphaSeeker', 'BetaTester', 'GammaRay', 'DeltaForce', 'EpsilonEdge', 'ZetaZero', 'EtaChain', 'ThetaToken', 'IotaInvest', 'KappaKoin', 'LambdaLogic', 'MuMiner', 'NuNetwork', 'XiXchange', 'PavelDurov'];
+
         function simulateChat() {
             const chatBox = document.getElementById('avChat');
             const msgs = ["Wow!", "Cash out now!", "Greedy!", "Boom!", "Nice win", "RIP", "Fly high!"];
@@ -1997,7 +2047,7 @@ function applyTranslation() {
                 if(avGameState !== 'FLYING') return;
                 const div = document.createElement('div');
                 div.className = 'chat-msg';
-                div.innerHTML = `<span class="user">User${Math.floor(Math.random()*999)}:</span> ${msgs[Math.floor(Math.random()*msgs.length)]}`;
+                div.innerHTML = `<span class="user">${avNames[Math.floor(Math.random()*avNames.length)]}:</span> ${msgs[Math.floor(Math.random()*msgs.length)]}`;
                 chatBox.prepend(div);
                 if(chatBox.children.length > 5) chatBox.removeChild(chatBox.lastChild);
             }, 1500);
@@ -2805,8 +2855,14 @@ function applyTranslation() {
                 });
                 const data = await res.json();
                 if(data.success) {
-                    currentUser.points = data.points;
+                    currentUser.points = data.newBal;
+                    
+                    const pageHeaderBal = document.getElementById('pageHeaderBal');
+                    if (pageHeaderBal) {
+                        pageHeaderBal.innerText = currentUser.points;
+                    }
                     updateUI();
+                    triggerConfetti();
                     showToast(`Promo Claimed! +${data.reward} Gems`, "success");
                     codeInput.value = '';
                 } else {
@@ -2821,7 +2877,7 @@ function applyTranslation() {
 
         async function checkGate() {
             const btn = document.getElementById('verifyGateBtn');
-            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Verifying...'; }
+            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Checking...'; }
             showToast("Checking membership...", "info");
             try {
                 const res = await fetch(`${API_BASE_URL}/api/verify-gate`, {
@@ -2832,15 +2888,16 @@ function applyTranslation() {
                 if (data.success) {
                     triggerConfetti();
                     const gate = document.getElementById('gate-overlay');
+                    gate.style.transition = 'opacity 0.5s ease';
                     gate.style.opacity = '0';
                     setTimeout(() => { gate.style.display = 'none'; typeof setupApp === 'function' ? setupApp() : nav('home'); }, 500);
                 } else {
+                    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Try Again'; }
                     showToast(data.message || "You must join all channels to continue!", "error");
                 }
             } catch(e) {
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Try Again'; }
                 showToast("Network error. Try again.", "error");
-            } finally {
-                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check-double"></i> Verify & Enter'; }
             }
         }
     </script>

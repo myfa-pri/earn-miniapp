@@ -96,14 +96,15 @@ async function ensureUserExists(userId, username, refParam) {
                 newUser.referredBy = referrerId;
             } else {
                 const rBonus = config.referralBonusReferrer || 0;
+                const rBonusAmount = parseFloat(rBonus);
                 const newRefList = [...(referrer.referredUsers || []), userId];
                 await dbUpdate(`users/${referrerId}`, { 
-                    points: (referrer.points || 0) + rBonus, 
+                    realBalance: (referrer.realBalance || 0) + rBonusAmount, 
                     referredUsers: newRefList, 
-                    logs: logAction(referrer, `Invited ${username} (+${rBonus} Gems)`) 
+                    logs: logAction(referrer, `Invited ${username} (+$${rBonusAmount} Cash)`) 
                 });
                 newUser.referralAwarded = true;
-                bot.sendMessage(referrerId, `<b>🎉 New Referral!</b>\n${username} joined using your link!\nYou earned +${rBonus} Gems.`, {parse_mode:'HTML'}).catch(() => {});
+                bot.sendMessage(referrerId, `<b>🎉 New Referral!</b>\n${username} joined using your link!\nYou earned +$${rBonusAmount} Cash.`, {parse_mode:'HTML'}).catch(() => {});
             }
         }
     }
@@ -271,7 +272,8 @@ app.get('/api/user/:id', async (req, res) => {
         u.lastLoginDate = now;
         u.monetagWatchedToday = 0;
         u.adsgramWatchedToday = 0;
-        dbUpdate(`users/${userId}`, { streak: u.streak, lastLoginDate: now, activeSessions: u.activeSessions, monetagWatchedToday: 0, adsgramWatchedToday: 0 }).catch(()=>{});
+        u.adsterraWatchedToday = 0;
+        dbUpdate(`users/${userId}`, { streak: u.streak, lastLoginDate: now, activeSessions: u.activeSessions, monetagWatchedToday: 0, adsgramWatchedToday: 0, adsterraWatchedToday: 0 }).catch(()=>{});
     } else if (sessionId) {
         dbUpdate(`users/${userId}`, { activeSessions: u.activeSessions }).catch(()=>{});
     }
@@ -462,13 +464,14 @@ app.post('/api/verify-gate', async (req, res) => {
                 const referrer = await dbGet(`users/${u.referredBy}`);
                 if (referrer) {
                     const rBonus = c.referralBonusReferrer || 0;
+                    const rBonusAmount = parseFloat(rBonus);
                     const newRefList = [...(referrer.referredUsers || []), userId];
                     await dbUpdate(`users/${u.referredBy}`, { 
-                        points: (referrer.points || 0) + rBonus, 
+                        realBalance: (referrer.realBalance || 0) + rBonusAmount, 
                         referredUsers: newRefList, 
-                        logs: logAction(referrer, `Invited user passed channel gate: +${rBonus} Gems`) 
+                        logs: logAction(referrer, `Invited user passed channel gate: +$${rBonusAmount} Cash`) 
                     });
-                    bot.sendMessage(u.referredBy, `<b>🎉 New Referral Verified!</b>\n${u.accountName} joined the channel.\nYou earned +${rBonus} Gems.`, {parse_mode:'HTML'}).catch(() => {});
+                    bot.sendMessage(u.referredBy, `<b>🎉 New Referral Verified!</b>\n${u.accountName} joined the channel.\nYou earned +$${rBonusAmount} Cash.`, {parse_mode:'HTML'}).catch(() => {});
                     updates.referralAwarded = true;
                 }
             }
@@ -571,6 +574,31 @@ app.get('/api/adsgram-reward', async (req, res) => {
         totalAdsWatchedLifetime: (u.totalAdsWatchedLifetime || 0) + 1,
         adsgramWatchedToday: watchedToday + 1,
         logs: logAction(u, `Adsgram S2S Reward (+$${realMoneyAmount})`)
+    };
+    
+    await dbUpdate(`users/${userId}`, updates);
+    res.status(200).json({ success: true });
+});
+
+// TASK 2: ADSTERRA REWARD
+app.post('/api/adsterra-reward', async (req, res) => {
+    const { userId } = req.body;
+    const u = await dbGet(`users/${userId}`);
+    if(!u) return res.status(404).json({ error: "User not found" });
+    
+    const c = (await dbGet('config')) || {};
+    const limit = c.adsterraLimit || 10;
+    const watchedToday = (u.adsterraWatchedToday || 0);
+    
+    if (watchedToday >= limit) return res.status(400).json({ error: "Daily limit reached" });
+    
+    const realMoneyAmount = parseFloat(c.realMoneyPerAd || 0.01);
+    
+    let updates = {
+        realBalance: (u.realBalance || 0) + realMoneyAmount,
+        totalAdsWatchedLifetime: (u.totalAdsWatchedLifetime || 0) + 1,
+        adsterraWatchedToday: watchedToday + 1,
+        logs: logAction(u, `Watched Adsterra Ad (+$${realMoneyAmount} Cash)`)
     };
     
     await dbUpdate(`users/${userId}`, updates);

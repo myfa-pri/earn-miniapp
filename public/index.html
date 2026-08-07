@@ -38,7 +38,7 @@
     
     <!-- AD NETWORKS: ADSGRAM & MONETAG -->
     <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
-    <!-- <script src="//monetag_script_url_here"></script> (Add Monetag URL here) -->
+    <script src="//libtl.com/sdk.js" data-zone="41731" data-sdk="show_41731"></script>
 </head>
 <body class="dark-mode">
 
@@ -673,7 +673,7 @@ function applyTranslation() {
                         <div style="font-size: 0.8rem; color: #94A3B8; margin-bottom: 5px;">${monetagWatchedToday} / ${monetagLimit}</div>
                         ${monetagLimitReached 
                             ? `<div style="color:var(--danger-color); font-weight:700; font-size:0.9rem;">Limit Reached</div>`
-                            : `<div style="color:var(--success-color); font-weight:800; font-size:0.95rem;">+50 Gems</div>`
+                            : `<div style="color:var(--success-color); font-weight:800; font-size:0.95rem;">+$${appConfig.realMoneyPerAd || 0.05} Cash</div>`
                         }
                     </div>
                     <!-- Adsgram Ad -->
@@ -683,7 +683,7 @@ function applyTranslation() {
                         <div style="font-size: 0.8rem; color: #94A3B8; margin-bottom: 5px;">${adsgramWatchedToday} / ${adsgramLimit}</div>
                         ${adsgramLimitReached 
                             ? `<div style="color:var(--danger-color); font-weight:700; font-size:0.9rem;">Limit Reached</div>`
-                            : `<div style="color:var(--success-color); font-weight:800; font-size:0.95rem;">+50 Gems</div>`
+                            : `<div style="color:var(--success-color); font-weight:800; font-size:0.95rem;">+$${appConfig.realMoneyPerAd || 0.05} Cash</div>`
                         }
                     </div>
                 </div>
@@ -720,9 +720,20 @@ function applyTranslation() {
             if(adsWatched >= 10) return showToast("Daily limit reached!", "error");
             
             try {
-                if(typeof show_10024038 === 'function') {
-                    show_10024038().then(() => {
-                        rewardUserForAd('monetag');
+                if(typeof show_41731 === 'function') {
+                    show_41731().then(() => {
+                        fetch(`${API_BASE_URL}/api/watch-ad`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ userId: userId, network: 'monetag' })
+                        }).then(r => r.json()).then(data => {
+                            if (data.success) {
+                                currentUser.realBalance = (currentUser.realBalance || 0) + (appConfig.realMoneyPerAd || 0.05);
+                                currentUser.monetagWatchedToday = (currentUser.monetagWatchedToday || 0) + 1;
+                                updateUI();
+                                showToast(`Earned $${(appConfig.realMoneyPerAd || 0.05).toFixed(2)} Cash from Monetag!`, 'success');
+                            }
+                        });
                     }).catch(() => {
                         showToast("Ad blocked or failed to load. Please disable ad-blocker.", "error");
                     });
@@ -971,45 +982,29 @@ function applyTranslation() {
         let adController = null;
         function initAdsgram() {
             if(window.Adsgram) {
-                adController = window.Adsgram.init({ blockId: "YOUR_ADSGRAM_BLOCK_ID" });
+                adController = window.Adsgram.init({ blockId: "41731" });
             }
         }
 
         function showAdsgram() {
             if(adController) {
                 adController.show().then((result) => {
-                    // Reward user for watching ad
-                    rewardUserForAd('adsgram');
+                    setTimeout(() => {
+                        fetch(`${API_BASE_URL}/api/user/${userId}`)
+                        .then(r => r.json())
+                        .then(data => {
+                            currentUser = data;
+                            updateUI();
+                            if(typeof triggerConfetti === 'function') triggerConfetti();
+                            showToast("Ad Verified! Cash Added.", "success");
+                        });
+                    }, 1500);
                 }).catch((result) => {
                     showToast('Ad skipped or unavailable.', 'error');
                 });
             } else {
                 showToast('Adsgram is not initialized.', 'error');
             }
-        }
-
-        function showMonetag() {
-            // Call Monetag show logic here based on their specific SDK
-            // Example:
-            // if(window.monetag) window.monetag.showAd().then(() => rewardUserForAd('monetag'));
-            showToast('Monetag integration triggered!', 'success');
-            // rewardUserForAd('monetag');
-        }
-
-        function rewardUserForAd(network) {
-            // Give 50 gems as example
-            currentUser.points += 50;
-            if (network === 'monetag') currentUser.monetagWatchedToday = (currentUser.monetagWatchedToday || 0) + 1;
-            else if (network === 'adsgram') currentUser.adsgramWatchedToday = (currentUser.adsgramWatchedToday || 0) + 1;
-            updateUI();
-            showToast(`Earned 50 Gems from ${network}!`, 'success');
-            
-            // Note: In production, send a POST to the backend to securely credit the gems
-            fetch(`${API_BASE_URL}/api/watch-ad`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ userId: userId, network: network })
-            }).catch(e => console.error(e));
         }
 
         function renderGames(c) {

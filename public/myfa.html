@@ -65,6 +65,16 @@
         th, td { padding: 15px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.05); }
         th { color: #94A3B8; font-weight: 700; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px; }
         tr:hover td { background: rgba(255,255,255,0.02); }
+        /* MOBILE RESPONSIVENESS */
+        @media (max-width: 768px) {
+            .grid-2, .grid-3, .stat-grid { grid-template-columns: 1fr !important; }
+            .sidebar { position: fixed; left: -100%; z-index: 1000; transition: 0.3s ease; height: 100vh; }
+            .sidebar.show-sidebar { left: 0; }
+            .mobile-sidebar-close { display: block !important; }
+            .mobile-header { display: flex !important; }
+        }
+        .mobile-sidebar-close { display: none; position: absolute; top: 15px; right: 15px; cursor: pointer; font-size: 24px; z-index: 1001; }
+        .mobile-header { display: none; padding: 15px; background: var(--card); border: 1px solid var(--glass-border); border-radius: 12px; margin-bottom: 20px; align-items: center; font-size: 24px; cursor: pointer; }
     </style>
 
     <script>
@@ -94,6 +104,7 @@
 
     <!-- SIDEBAR -->
     <div class="sidebar">
+        <i class="fa-solid fa-xmark mobile-sidebar-close" onclick="document.querySelector('.sidebar').classList.remove('show-sidebar')"></i>
         <div class="sidebar-brand"><i class="fa-solid fa-bolt"></i> MYFA OS</div>
         <div class="nav-link active" onclick="nav('master')"><i class="fa-solid fa-server"></i> Master Config (32)</div>
         <div class="nav-link" onclick="nav('users')"><i class="fa-solid fa-users-gear"></i> Moderation (8)</div>
@@ -107,7 +118,10 @@
 
     <!-- MAIN CONTENT -->
     <div class="main-content">
-        
+        <div class="mobile-header glass" onclick="document.querySelector('.sidebar').classList.add('show-sidebar')">
+            <i class="fa-solid fa-bars hamburger-menu"></i>
+        </div>
+
         <!-- ==========================================
              CATEGORY A: MASTER SYSTEM CONFIG (32 Features)
              ========================================== -->
@@ -174,7 +188,6 @@
                     <div class="input-group"><label>14. Max Daily Withdrawal ($)</label><input type="number" id="cfg_max_with"></div>
                     
                     <div class="input-group"><label>17. Bot Telegram Link</label><input type="text" id="cfg_tg_link"></div>
-                    <div class="input-group"><label>18. Web App URL (Vercel)</label><input type="text" id="cfg_web_url"></div>
                     <div class="input-group"><label>18b. Mini App Shortname (e.g. earn for t.me/bot/earn)</label><input type="text" id="cfg_miniapp_shortname" placeholder="earn"></div>
                     <div class="input-group"><label>19. Support Channel URL</label><input type="text" id="cfg_support"></div>
                     <div class="input-group"><label>20. Admin Chat ID (Alerts)</label><input type="text" id="cfg_admin_chat"></div>
@@ -475,6 +488,11 @@
             document.querySelector(`.nav-link[onclick="nav('${id}')"]`).classList.add('active');
             document.querySelectorAll('.section').forEach(e => e.classList.remove('active'));
             document.getElementById(id).classList.add('active');
+            
+            const sidebar = document.querySelector('.sidebar');
+            if (sidebar && sidebar.classList.contains('show-sidebar')) {
+                sidebar.classList.remove('show-sidebar');
+            }
         }
 
         async function fetchAdminData() {
@@ -534,7 +552,6 @@
             document.getElementById('cfg_max_with').value = c.maxWithdraw || 50;
             document.getElementById('cfg_tg_link').value = c.telegramBotLink || 'https://t.me/beshbesh_bot';
             document.getElementById('cfg_miniapp_shortname').value = c.miniAppShortname || 'earn';
-            document.getElementById('cfg_web_url').value = c.webAppUrl || 'https://earn-miniapp.vercel.app';
             document.getElementById('cfg_support').value = c.supportChannel || '';
             document.getElementById('cfg_admin_chat').value = c.telegramChatId || '';
             document.getElementById('cfg_admin_telegram_ids').value = c.adminTelegramIds || '';
@@ -561,7 +578,7 @@
                 loginMult: document.getElementById('cfg_login_mult').value,
                 telegramBotLink: document.getElementById('cfg_tg_link').value,
                 miniAppShortname: document.getElementById('cfg_miniapp_shortname').value,
-                webAppUrl: document.getElementById('cfg_web_url').value,
+                webAppUrl: window.location.origin,
                 supportChannel: document.getElementById('cfg_support').value,
                 telegramChatId: document.getElementById('cfg_admin_chat').value,
                 adminTelegramIds: document.getElementById('cfg_admin_telegram_ids').value,

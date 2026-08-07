@@ -91,14 +91,20 @@ async function ensureUserExists(userId, username, refParam) {
         newUser.points = (config.referralBonusReferee || 0);
         const referrer = await dbGet(`users/${referrerId}`);
         if (referrer) {
-            const rBonus = config.referralBonusReferrer || 0;
-            const newRefList = [...(referrer.referredUsers || []), userId];
-            await dbUpdate(`users/${referrerId}`, { 
-                points: (referrer.points || 0) + rBonus, 
-                referredUsers: newRefList, 
-                logs: logAction(referrer, `Invited ${username} (+${rBonus} Gems)`) 
-            });
-            bot.sendMessage(referrerId, `<b>🎉 New Referral!</b>\n${username} joined using your link!\nYou earned +${rBonus} Gems.`, {parse_mode:'HTML'}).catch(() => {});
+            if (config.gateEnabled) {
+                newUser.referralAwarded = false;
+                newUser.referredBy = referrerId;
+            } else {
+                const rBonus = config.referralBonusReferrer || 0;
+                const newRefList = [...(referrer.referredUsers || []), userId];
+                await dbUpdate(`users/${referrerId}`, { 
+                    points: (referrer.points || 0) + rBonus, 
+                    referredUsers: newRefList, 
+                    logs: logAction(referrer, `Invited ${username} (+${rBonus} Gems)`) 
+                });
+                newUser.referralAwarded = true;
+                bot.sendMessage(referrerId, `<b>🎉 New Referral!</b>\n${username} joined using your link!\nYou earned +${rBonus} Gems.`, {parse_mode:'HTML'}).catch(() => {});
+            }
         }
     }
     await dbSet(`users/${userId}`, newUser);
@@ -328,22 +334,80 @@ app.get('/api/tasks', async (req, res) => {
 });
 
 app.post('/api/verify-membership', async (req, res) => {
-    const { userId, taskId } = req.body;
+    const { userId, taskId, channelId, reward } = req.body;
     const u = await dbGet(`users/${userId}`);
     const t = await dbGet(`bonusTasks/${taskId}`);
     const c = await dbGet('config') || {};
     if(!u || !t) return res.status(404).json({error:"Not found"});
     if((u.claimedBonuses||[]).includes(taskId)) return res.json({success:true, alreadyClaimed:true});
     
-    // Auto-verify for simplicity or integrate actual TG bot check
-    const newBonuses = [...(u.claimedBonuses||[]), taskId];
-    const reward = (t.reward || 0) * (c.globalMultiplier || 1);
-    await dbUpdate(`users/${userId}`, {
-        claimedBonuses: newBonuses,
-        points: (u.points||0) + reward,
-        logs: logAction(u, `Completed task ${t.name} (+${reward} Gems)`)
-    });
-    res.json({success:true});
+    try {
+        const member = await bot.getChatMember(channelId, userId);
+        const status = member.status;
+        if (status === 'creator' || status === 'administrator' || status === 'member') {
+            
+            // CHECK TASK LIMITS (TASK 3)
+            if (t.maxUsers && t.maxUsers > 0) {
+                if ((t.claims || 0) >= t.maxUsers) {
+                    return res.json({ success: false, error: "Task is full!" });
+                }
+                await dbUpdate(`bonusTasks/${taskId}`, { claims: (t.claims || 0) + 1 });
+            }
+            
+            const newBonuses = [...(u.claimedBonuses||[]), taskId];
+            const finalReward = (t.reward || reward || 0) * (c.globalMultiplier || 1);
+            const newBal = (u.points||0) + finalReward;
+            await dbUpdate(`users/${userId}`, {
+                claimedBonuses: newBonuses,
+                points: newBal,
+                logs: logAction(u, `Completed task ${t.name} (+${finalReward} Gems)`)
+            });
+            return res.json({ success: true, points: newBal });
+        } else {
+            return res.json({ success: false, error: "Not Joined" });
+        }
+    } catch (e) {
+        console.error("Verification Error:", e.message);
+        return res.json({ success: false, error: "Not Joined" });
+    }
+});
+
+// TASK 5: VERIFY GATE ROUTE
+app.post('/api/verify-gate', async (req, res) => {
+    const { userId } = req.body;
+    const c = await dbGet('config') || {};
+    const u = await dbGet(`users/${userId}`);
+    if(!u) return res.status(404).json({error: "User not found"});
+
+    try {
+        const member = await bot.getChatMember(c.offChannelId, userId);
+        const status = member.status;
+        if (status === 'creator' || status === 'administrator' || status === 'member') {
+            let updates = { isOfficialMember: true };
+            
+            // Referral Logic Validation
+            if (u.referralAwarded === false && u.referredBy) {
+                const referrer = await dbGet(`users/${u.referredBy}`);
+                if (referrer) {
+                    const rBonus = c.referralBonusReferrer || 0;
+                    const newRefList = [...(referrer.referredUsers || []), userId];
+                    await dbUpdate(`users/${u.referredBy}`, { 
+                        points: (referrer.points || 0) + rBonus, 
+                        referredUsers: newRefList, 
+                        logs: logAction(referrer, `Invited ${u.accountName} (+${rBonus} Gems)`) 
+                    });
+                    bot.sendMessage(u.referredBy, `<b>🎉 New Referral Verified!</b>\n${u.accountName} joined the channel.\nYou earned +${rBonus} Gems.`, {parse_mode:'HTML'}).catch(() => {});
+                    updates.referralAwarded = true;
+                }
+            }
+            await dbUpdate(`users/${userId}`, updates);
+            return res.json({ success: true });
+        } else {
+            return res.json({ success: false });
+        }
+    } catch(e) {
+        return res.json({ success: false, error: e.message });
+    }
 });
 
 app.get('/api/referrer/:id', async (req, res) => {

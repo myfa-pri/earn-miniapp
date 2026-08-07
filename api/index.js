@@ -540,19 +540,41 @@ app.post('/api/watch-ad', async (req, res) => {
 
         if (watchedToday >= limit) return res.status(403).json({ error: "Limit reached" });
 
-        const pts = (c.pointsPerAd || 50) * (c.globalMultiplier || 1);
+        const realMoneyAmount = parseFloat(c.realMoneyPerAd || 0.05);
         
         let updates = {
-            points: (u.points || 0) + pts,
+            realBalance: (u.realBalance || 0) + realMoneyAmount,
             totalAdsWatchedLifetime: (u.totalAdsWatchedLifetime || 0) + 1,
-            logs: logAction(u, `Watched ${network} Ad (+${pts} Gems)`)
+            logs: logAction(u, `Watched ${network} Ad (+$${realMoneyAmount})`)
         };
         if (network === 'monetag') updates.monetagWatchedToday = watchedToday + 1;
         else if (network === 'adsgram') updates.adsgramWatchedToday = watchedToday + 1;
 
         await dbUpdate(`users/${userId}`, updates);
-        res.json({success:true});
+        res.json({success:true, added: realMoneyAmount});
     } else res.status(404).send();
+});
+
+// TASK 2: ADSGRAM S2S WEBHOOK
+app.get('/api/adsgram-reward', async (req, res) => {
+    const userId = req.query.userid;
+    if(!userId) return res.status(400).json({ error: "Missing userid" });
+    const u = await dbGet(`users/${userId}`);
+    if(!u) return res.status(404).json({ error: "User not found" });
+    
+    const c = (await dbGet('config')) || {};
+    const realMoneyAmount = parseFloat(c.realMoneyPerAd || 0.05);
+    const watchedToday = (u.adsgramWatchedToday || 0);
+    
+    let updates = {
+        realBalance: (u.realBalance || 0) + realMoneyAmount,
+        totalAdsWatchedLifetime: (u.totalAdsWatchedLifetime || 0) + 1,
+        adsgramWatchedToday: watchedToday + 1,
+        logs: logAction(u, `Adsgram S2S Reward (+$${realMoneyAmount})`)
+    };
+    
+    await dbUpdate(`users/${userId}`, updates);
+    res.status(200).json({ success: true });
 });
 
 // TASK 2: EXCHANGE REPLACEMENT 

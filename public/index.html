@@ -1,8 +1,10 @@
 <!DOCTYPE html>
+<!-- UI Bug Fixes & Quantum Orbit Loader Successfully Applied -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💎</text></svg>">
     <title>Besh Besh</title>
     <style>
         .side-panel {
@@ -65,14 +67,13 @@
 </head>
 <body class="dark-mode">
 
-    <div id="loading-overlay" class="holographic-loader">
-        <div class="hologram-wrapper">
-            <div class="hologram-ring ring1"></div>
-            <div class="hologram-ring ring2"></div>
-            <div class="hologram-ring ring3"></div>
-            <div class="hologram-core"></div>
+    <div id="loading-overlay" class="quantum-orbit-loader">
+        <div class="orbit-center">
+            <i class="fa-solid fa-gem orbit-gem"></i>
+            <div class="orbit-ring ring-outer"></div>
+            <div class="orbit-ring ring-inner"></div>
         </div>
-        <div class="hologram-text">AUTHENTICATING...</div>
+        <div class="orbit-text">ESTABLISHING SECURE CONNECTION...</div>
     </div>
 
     <div id="gate-overlay" style="display:none; background: rgba(50, 0, 0, 0.90); backdrop-filter: blur(25px); z-index: 9999; position: fixed; inset: 0; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:20px; border: 2px solid rgba(255, 0, 0, 0.3);">
@@ -88,9 +89,10 @@
     <div class="app-container" id="app-container">
         <!-- FLOATING PILL (DAY/NIGHT, SOUND & LANG) -->
         <div class="floating-pill cyber-card" style="position: fixed; top: 10px; left: 10px; right: auto; z-index: 2000; display: flex; gap: 10px; padding: 8px 15px; border-radius: 30px;">
+            <div id="themeToggle" style="cursor:pointer;" onclick="toggleTheme()"></div>
+            <div style="width:1px; background:rgba(255,255,255,0.2);"></div>
             <div id="soundToggle" style="cursor:pointer;" onclick="toggleSound()"><i class="fa-solid fa-volume-high"></i></div>
             <div style="width:1px; background:rgba(255,255,255,0.2);"></div>
-            
             <div id="langToggle" style="cursor:pointer; font-weight:700; font-size:0.9rem;" onclick="toggleLang()">EN</div>
         </div>
 
@@ -226,34 +228,37 @@
                 // 2. Forced Language
                 if (appConfig.forcedLang && appConfig.forcedLang.toLowerCase() !== 'auto') {
                     currentLang = appConfig.forcedLang.toUpperCase();
-                    document.getElementById('langToggle').style.display = 'none';
-                    // also hide its separator
-                    document.getElementById('langToggle').previousElementSibling.style.display = 'none';
+                    const langBtn = document.getElementById('langToggle'); if(langBtn) { langBtn.style.display = 'none'; if(langBtn.previousElementSibling) langBtn.previousElementSibling.style.display = 'none'; }
+                    
                 } else if (!currentLang) {
                     currentLang = 'EN';
                 }
                 if(document.getElementById('langToggle')) document.getElementById('langToggle').innerText = currentLang;
 
                 // 3. Default Theme
-                if (!localStorage.getItem('appTheme') && typeof appConfig.defaultNight === 'boolean') {
+                const savedTheme = localStorage.getItem('appTheme');
+                if (!savedTheme && typeof appConfig.defaultNight === 'boolean') {
                     if (!appConfig.defaultNight) {
-                        document.body.classList.remove('dark-mode');
+                        document.body.classList.add('theme-light');
                         localStorage.setItem('appTheme', 'light');
                     }
                 }
-                if (document.body.classList.contains('dark-mode') || localStorage.getItem('appTheme') === 'dark') {
-                    document.body.classList.add('dark-mode');
-                    document.getElementById('themeToggle').innerHTML = '<i class="fa-solid fa-moon"></i>';
-                } else {
+                
+                const themeBtn = document.getElementById('themeToggle');
+                if (localStorage.getItem('appTheme') === 'light' || document.body.classList.contains('theme-light')) {
+                    document.body.classList.add('theme-light');
                     document.body.classList.remove('dark-mode');
-                    document.getElementById('themeToggle').innerHTML = '<i class="fa-solid fa-sun"></i>';
+                    if (themeBtn) themeBtn.innerHTML = '<i class="fa-solid fa-sun" style="color:#FFB347"></i>';
+                } else {
+                    document.body.classList.remove('theme-light');
+                    if (themeBtn) themeBtn.innerHTML = '<i class="fa-solid fa-moon"></i>';
                 }
 
                 // 4. Default Sound
                 if (!localStorage.getItem('appSound') && typeof appConfig.defaultSound === 'boolean') {
                     soundEnabled = appConfig.defaultSound;
                 }
-                document.getElementById('soundToggle').innerHTML = soundEnabled ? '<i class="fa-solid fa-volume-high"></i>' : '<i class="fa-solid fa-volume-xmark"></i>';
+                const soundBtn = document.getElementById('soundToggle'); if(soundBtn) soundBtn.innerHTML = soundEnabled ? '<i class="fa-solid fa-volume-high"></i>' : '<i class="fa-solid fa-volume-xmark"></i>';
 
                 const tg = window.Telegram.WebApp;
                 tg.expand();
@@ -321,7 +326,7 @@
                 // Fade out loading
                 setTimeout(() => {
                     const l = document.getElementById('loading-overlay');
-                    if (l) { l.style.opacity = '0'; setTimeout(()=>l.remove(), 500); }
+                    if (l) { l.style.opacity = '0'; l.style.pointerEvents = 'none'; setTimeout(()=> { l.style.display = 'none'; }, 500); }
                 }, 500);
 
                 // GATE CHECK
@@ -447,15 +452,16 @@
         }
 
         function toggleTheme() {
-            const isDark = document.body.classList.contains('dark-mode');
-            if (isDark) {
-                document.body.classList.remove('dark-mode');
-                localStorage.setItem('appTheme', 'light');
-                document.getElementById('themeToggle').innerHTML = '<i class="fa-solid fa-sun"></i>';
-            } else {
-                document.body.classList.add('dark-mode');
+            const isLight = document.body.classList.contains('theme-light');
+            const themeBtn = document.getElementById('themeToggle');
+            if (isLight) {
+                document.body.classList.remove('theme-light');
                 localStorage.setItem('appTheme', 'dark');
-                document.getElementById('themeToggle').innerHTML = '<i class="fa-solid fa-moon"></i>';
+                if(themeBtn) themeBtn.innerHTML = '<i class="fa-solid fa-moon"></i>';
+            } else {
+                document.body.classList.add('theme-light');
+                localStorage.setItem('appTheme', 'light');
+                if(themeBtn) themeBtn.innerHTML = '<i class="fa-solid fa-sun" style="color:#FFB347"></i>';
             }
         }
 
@@ -533,7 +539,7 @@ function applyTranslation() {
         function toggleSound() {
             soundEnabled = !soundEnabled;
             localStorage.setItem('appSound', soundEnabled);
-            document.getElementById('soundToggle').innerHTML = soundEnabled ? '<i class="fa-solid fa-volume-high"></i>' : '<i class="fa-solid fa-volume-xmark"></i>';
+            const soundBtn = document.getElementById('soundToggle'); if(soundBtn) soundBtn.innerHTML = soundEnabled ? '<i class="fa-solid fa-volume-high"></i>' : '<i class="fa-solid fa-volume-xmark"></i>';
             showToast(soundEnabled ? "Sound Enabled" : "Sound Muted", 'info');
             if (!soundEnabled) {
                 document.querySelectorAll('audio').forEach(a => {

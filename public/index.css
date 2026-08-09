@@ -469,3 +469,8 @@ body {
     0% { transform: scale(0.9); opacity: 0.7; }
     100% { transform: scale(1.1); opacity: 1; }
 }
+
+/* --- TASK TABS --- */
+.task-tab:hover { filter: brightness(1.2); }
+.task-tab:active { transform: scale(0.95); }
+

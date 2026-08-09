@@ -28,6 +28,29 @@
             width: 100vw !important;
             max-width: 100vw !important;
         }
+        
+        .sponsor-overlay {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 70vh;
+            border-radius: 35px 35px 0 0;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(25px);
+            z-index: 5000;
+            transition: transform 0.4s cubic-bezier(0.17, 0.67, 0.12, 1);
+            transform: translateY(100%);
+            display: flex;
+            flex-direction: column;
+            padding: 25px;
+            box-sizing: border-box;
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        .sponsor-overlay.open {
+            transform: translateY(0);
+        }
     </style>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
@@ -42,46 +65,50 @@
 </head>
 <body class="dark-mode">
 
-    <div id="loading-overlay">
-        <i class="fa-solid fa-gem gem-loader"></i>
-        <h3 style="color:var(--text-color); font-weight:700; letter-spacing:1px;">Authenticating...</h3>
-        <div style="width: 150px; height: 4px; background: rgba(255,255,255,0.1); border-radius: 4px; margin-top: 15px; overflow: hidden;">
-            <div style="width: 50%; height: 100%; background: var(--gradient-3in1); animation: loadingBar 1.5s infinite ease-in-out alternate;"></div>
+    <div id="loading-overlay" class="holographic-loader">
+        <div class="hologram-wrapper">
+            <div class="hologram-ring ring1"></div>
+            <div class="hologram-ring ring2"></div>
+            <div class="hologram-ring ring3"></div>
+            <div class="hologram-core"></div>
         </div>
+        <div class="hologram-text">AUTHENTICATING...</div>
     </div>
-    <style>@keyframes loadingBar { from { transform: translateX(-100%); } to { transform: translateX(200%); } }</style>
 
-    <div id="gate-overlay" style="display:none; background: rgba(11, 11, 42, 0.95); backdrop-filter: blur(20px); z-index: 9999; position: fixed; inset: 0; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:20px;">
-        <i class="fa-solid fa-shield-halved" style="font-size:4rem; color:var(--color-cyan); margin-bottom:15px; animation: floatIcon 3s ease-in-out infinite;"></i>
-        <h2 class="shine-text" style="margin-bottom:20px; font-weight:800; font-size:1.8rem;">Complete Tasks to Enter</h2>
+    <div id="gate-overlay" style="display:none; background: rgba(50, 0, 0, 0.90); backdrop-filter: blur(25px); z-index: 9999; position: fixed; inset: 0; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:20px; border: 2px solid rgba(255, 0, 0, 0.3);">
+        <svg width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="#ff3333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 20px #ff0000); margin-bottom: 20px; animation: floatIcon 3s ease-in-out infinite;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        <h2 style="color: #ffcccc; margin-bottom:20px; font-weight:800; font-size:1.8rem; text-shadow: 0 0 10px red;">You left an Official Channel!</h2>
+        <p style="color: #ff9999; margin-bottom: 30px; font-size: 1.1rem;">You must rejoin to access your account.</p>
         <div id="gateChannelList" style="width:100%; max-width:400px; display:flex; flex-direction:column; margin-bottom:30px; max-height: 50vh; overflow-y: auto; padding-right:10px;">
             <!-- Channels dynamically injected here -->
         </div>
-        <button id="verifyGateBtn" onclick="checkGate()" style="width:100%; max-width:400px; padding:18px; font-size:1.2rem; border-radius:12px; background:var(--gradient-3in1); border:none; color:white; font-weight:800; cursor:pointer; box-shadow: 0 0 20px rgba(0, 242, 254, 0.4); transition: transform 0.2s;"><i class="fa-solid fa-check-double"></i> Check</button>
+        <button id="verifyGateBtn" onclick="checkGate()" style="width:100%; max-width:400px; padding:18px; font-size:1.2rem; border-radius:12px; background: linear-gradient(90deg, #ff0000, #cc0000); border:none; color:white; font-weight:800; cursor:pointer; box-shadow: 0 0 30px rgba(255, 0, 0, 0.6); transition: transform 0.2s;"><i class="fa-solid fa-rotate-right"></i> Rejoin & Verify</button>
     </div>
 
     <div class="app-container" id="app-container">
         <!-- FLOATING PILL (DAY/NIGHT, SOUND & LANG) -->
-        <div class="floating-pill glass" style="position: fixed; top: 10px; left: 10px; right: auto; z-index: 2000; display: flex; gap: 10px; padding: 8px 15px; border-radius: 30px;">
+        <div class="floating-pill cyber-card" style="position: fixed; top: 10px; left: 10px; right: auto; z-index: 2000; display: flex; gap: 10px; padding: 8px 15px; border-radius: 30px;">
             <div id="soundToggle" style="cursor:pointer;" onclick="toggleSound()"><i class="fa-solid fa-volume-high"></i></div>
             <div style="width:1px; background:rgba(255,255,255,0.2);"></div>
-            <div id="themeToggle" style="cursor:pointer;" onclick="toggleTheme()"><i class="fa-solid fa-moon"></i></div>
-            <div style="width:1px; background:rgba(255,255,255,0.2);"></div>
+            
             <div id="langToggle" style="cursor:pointer; font-weight:700; font-size:0.9rem;" onclick="toggleLang()">EN</div>
         </div>
 
         <!-- HEADER -->
-        <div id="pageHeader" class="page-header glass">
+        <div id="pageHeader" class="quantum-header">
             <div style="display:flex; align-items:center; gap:12px;">
-                <div class="avatar-ring">
-                    <div class="avatar-inner" id="pageHeaderAvatar"></div>
-                </div>
-                <div style="display:flex; flex-direction:column; justify-content:center;">
+                <div class="hologram-avatar" id="pageHeaderAvatar"></div>
+                <div style="display:flex; flex-direction:column; justify-content:center; z-index: 2;">
                     <div style="font-weight:800; font-size:1.1rem; line-height:1;" id="pageHeaderName">User</div>
                     <div style="font-size:0.75rem; color:#64748B; font-weight:700; margin-top:2px;" id="pageHeaderStatus">Member</div>
                     <div style="font-size:0.65rem; color:var(--success-color); font-weight:bold; margin-top:2px;" id="onlineCounter"><i class="fa-solid fa-circle" style="font-size:0.5rem; animation: pulse 2s infinite;"></i> 0 Online</div>
                 </div>
             </div>
+            <div class="balances" style="z-index: 2;">
+                <div class="bal-gems"><i class="fa-solid fa-gem"></i> <span id="pageHeaderBalance" class="odometer">0</span></div>
+                <div class="bal-real"><i class="fa-solid fa-money-bill-wave"></i> $<span id="pageHeaderRealBalance">0.00</span></div>
+            </div>
+        </div>
             <div class="balances">
                 <div class="bal-gems"><i class="fa-solid fa-gem"></i> <span id="pageHeaderBalance" class="odometer">0</span></div>
                 <div class="bal-real"><i class="fa-solid fa-money-bill-wave"></i> $<span id="pageHeaderRealBalance">0.00</span></div>
@@ -97,16 +124,47 @@
         </div>
 
         <div id="toast" class="toast"><i class="fa-solid fa-circle-info"></i> <span id="toast-msg"></span></div>
-        <div id="leaderboardFooter" class="sticky-footer glass" style="display: none;">Your Rank: 99+</div>
+        <div id="leaderboardFooter" class="sticky-footer cyber-card" style="display: none;">Your Rank: 99+</div>
 
         <!-- NAVIGATION -->
-        <div class="bottom-nav glass" id="bottomNav">
+        <div class="quantum-nav" id="bottomNav">
             <a class="nav-item active" data-page="home" onclick="nav('home')"><i class="fa-solid fa-house"></i><span>Home</span></a>
             <a class="nav-item" data-page="tasks" onclick="nav('tasks')"><i class="fa-solid fa-list-check"></i><span>Tasks</span></a>
             <a class="nav-item" data-page="games" onclick="nav('games')"><i class="fa-solid fa-gamepad"></i><span>Hub</span></a>
             <a class="nav-item" data-page="referrals" onclick="nav('referrals')"><i class="fa-solid fa-user-group"></i><span>Invite</span></a>
             <a class="nav-item" data-page="leaderboard" onclick="nav('leaderboard')"><i class="fa-solid fa-trophy"></i><span>Top</span></a>
-            <a class="nav-item" data-page="withdraw" onclick="nav('withdraw')"><i class="fa-solid fa-wallet"></i><span>Pay</span></a>
+            <a class="nav-item" data-page="settings" onclick="window.location.href='setting.html'"><i class="fa-solid fa-gear"></i><span>Settings</span></a>
+        </div>
+        
+        <!-- SPONSOR TASK OVERLAY -->
+        <div id="sponsorOverlay" class="sponsor-overlay">
+            <div style="position:absolute; top:20px; right:20px; cursor:pointer; font-size:1.5rem; color:#94A3B8; width:40px; height:40px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.1); border-radius:50%;" onclick="closeSponsorTask()">
+                <i class="fa-solid fa-xmark"></i>
+            </div>
+            
+            <div style="text-align:center; margin-top:20px;">
+                <div id="so-icon-box" style="width:90px; height:90px; background:rgba(240, 147, 251, 0.1); border-radius:30px; display:flex; align-items:center; justify-content:center; margin:0 auto 15px; font-size:3rem; color:var(--color-magenta); box-shadow:0 0 30px rgba(240, 147, 251, 0.3);">
+                    <i id="so-icon" class="fa-solid fa-star"></i>
+                </div>
+                <h2 id="so-title" style="font-size:1.6rem; font-weight:800; margin-bottom:5px;">Task Name</h2>
+                <div id="so-reward" style="font-size:1.3rem; color:var(--success-color); font-weight:900; text-shadow:0 0 10px rgba(16, 185, 129, 0.5);">+0 Gems</div>
+            </div>
+            
+            <div style="flex:1; margin-top:25px; overflow-y:auto; padding-right:10px;">
+                <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:15px; padding:15px; font-size:0.95rem; color:#E2E8F0; line-height:1.5;" id="so-desc">
+                    Task description goes here...
+                </div>
+                
+                <div id="so-manual-proof-section" style="display:none; margin-top:15px;">
+                    <label style="font-size:0.8rem; color:#94A3B8; font-weight:700; margin-bottom:5px; display:block;">Upload Screenshot Proof</label>
+                    <input type="file" id="so-proof-file" accept="image/*" style="width:100%; color:#fff; background:rgba(0,0,0,0.3); padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,0.1);">
+                </div>
+            </div>
+            
+            <div style="margin-top:20px; display:flex; flex-direction:column; gap:10px;">
+                <button id="so-start-btn" class="btn quantum-btn" style="font-size:1.2rem; padding:18px; box-shadow:0 0 20px var(--color-cyan); animation:pulse 2s infinite;" onclick="executeSponsorTask()">Start Task</button>
+                <button id="so-verify-btn" class="btn" style="background:var(--gold-color); color:black; font-size:1.2rem; padding:18px; display:none; font-weight:800;" onclick="verifySponsorTask()">Check</button>
+            </div>
         </div>
     </div>
 
@@ -297,7 +355,7 @@
                                     <i class="fa-solid fa-clock-rotate-left" style="font-size:5rem; color:#EF4444; margin-bottom:20px;"></i>
                                     <h1 style="color:white; font-size:2rem; text-align:center;">Session Timeout</h1>
                                     <p style="color:#A7F3D0; margin-top:10px;">You were inactive for too long.</p>
-                                    <button class="btn btn-primary" style="margin-top:20px;" onclick="location.reload()">Reload Application</button>
+                                    <button class="btn quantum-btn" style="margin-top:20px;" onclick="location.reload()">Reload Application</button>
                                 </div>
                             `;
                         }, appConfig.idleTimeout * 60000);
@@ -549,7 +607,7 @@ function applyTranslation() {
             
             c.innerHTML = `
                 <!-- 1. Hero Profile -->
-                <div class="card glass" style="text-align:center; padding: 30px 20px; position:relative; overflow:hidden;">
+                <div class="card cyber-card" style="text-align:center; padding: 30px 20px; position:relative; overflow:hidden;">
                     <div style="position:absolute; top:-50px; left:-50px; width:150px; height:150px; background:var(--color-magenta); filter:blur(60px); opacity:0.3; border-radius:50%;"></div>
                     <div style="position:absolute; bottom:-50px; right:-50px; width:150px; height:150px; background:var(--color-cyan); filter:blur(60px); opacity:0.3; border-radius:50%;"></div>
                     
@@ -572,7 +630,7 @@ function applyTranslation() {
                 
                 <!-- 2. Action Buttons (50/50 Split) -->
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-top:20px;">
-                    <button class="btn btn-primary" onclick="postTelegramStory()">
+                    <button class="btn quantum-btn" onclick="postTelegramStory()">
                         <i class="fa-solid fa-camera-retro"></i> Post Story
                     </button>
                     <button class="btn btn-secondary" onclick="nav('withdraw')">
@@ -582,32 +640,32 @@ function applyTranslation() {
 
                 <!-- 3. 6 Stats Grid (3x2) -->
                 <div class="stat-grid">
-                    <div class="stat-box glass">
+                    <div class="stat-box cyber-card">
                         <div class="stat-icon" style="color:var(--color-cyan); background:rgba(0, 242, 254, 0.1);"><i class="fa-solid fa-users"></i></div>
                         <div style="font-size:1.2rem; font-weight:800;">${currentUser.referredUsers?.length || 0}</div>
                         <div style="font-size:0.7rem; color:#64748B; font-weight:600;">Referrals</div>
                     </div>
-                    <div class="stat-box glass">
+                    <div class="stat-box cyber-card">
                         <div class="stat-icon" style="color:var(--color-magenta); background:rgba(240, 147, 251, 0.1);"><i class="fa-solid fa-trophy"></i></div>
                         <div style="font-size:1.2rem; font-weight:800;">#99+</div>
                         <div style="font-size:0.7rem; color:#64748B; font-weight:600;">Global Rank</div>
                     </div>
-                    <div class="stat-box glass">
+                    <div class="stat-box cyber-card">
                         <div class="stat-icon" style="color:var(--color-purple); background:rgba(79, 172, 254, 0.1);"><i class="fa-solid fa-video"></i></div>
                         <div style="font-size:1.2rem; font-weight:800;">${((appConfig.monetagLimit || 5) - (currentUser.monetagWatchedToday || 0)) + ((appConfig.adsgramLimit || 5) - (currentUser.adsgramWatchedToday || 0))}</div>
                         <div style="font-size:0.7rem; color:#64748B; font-weight:600;">Ads Left</div>
                     </div>
-                    <div class="stat-box glass">
+                    <div class="stat-box cyber-card">
                         <div class="stat-icon" style="color:var(--gold-color); background:rgba(255, 215, 0, 0.1);"><i class="fa-solid fa-eye"></i></div>
                         <div style="font-size:1.2rem; font-weight:800;">${(currentUser.monetagWatchedToday || 0) + (currentUser.adsgramWatchedToday || 0)}</div>
                         <div style="font-size:0.7rem; color:#64748B; font-weight:600;">Ads Watched</div>
                     </div>
-                    <div class="stat-box glass">
+                    <div class="stat-box cyber-card">
                         <div class="stat-icon" style="color:var(--success-color); background:rgba(16, 185, 129, 0.1);"><i class="fa-solid fa-list-check"></i></div>
                         <div style="font-size:1.2rem; font-weight:800;">0</div>
                         <div style="font-size:0.7rem; color:#64748B; font-weight:600;">Tasks Done</div>
                     </div>
-                    <div class="stat-box glass">
+                    <div class="stat-box cyber-card">
                         <div class="stat-icon" style="color:var(--danger-color); background:rgba(239, 68, 68, 0.1);"><i class="fa-solid fa-wallet"></i></div>
                         <div style="font-size:1.2rem; font-weight:800;">$0.00</div>
                         <div style="font-size:0.7rem; color:#64748B; font-weight:600;">Withdrawn</div>
@@ -619,11 +677,18 @@ function applyTranslation() {
         async function renderTasks(c) {
             let activeTasksHtml = '';
             let completedTasksHtml = '';
+            let sponsorTasksHtml = '';
+            
             try {
                 const res = await fetch(`${API_BASE_URL}/api/tasks`);
-                const tasksObj = await res.json();
-                const claimed = currentUser.claimedBonuses || [];
+                const data = await res.json();
                 
+                const tasksObj = data.bonusTasks || data;
+                const sponsorTasks = data.sponsorTasks || [];
+                const claimed = currentUser.claimedBonuses || [];
+                const claimedSponsors = currentUser.claimedSponsorTasks || [];
+                
+                // Admin Bonus Tasks
                 Object.keys(tasksObj).forEach(id => {
                     const t = tasksObj[id];
                     const isClaimed = claimed.includes(id);
@@ -636,7 +701,7 @@ function applyTranslation() {
                     else btnHtml = `<button id="task-btn-${id}" class="task-pill-btn start" onclick="startTask('${id}', '${t.url}', '${t.type}', '${t.channelId}', ${t.reward})">Start</button>`;
 
                     const html = `
-                        <div class="task-row glass" id="task-row-${id}" data-name="${t.name.toLowerCase()}">
+                        <div class="task-row cyber-card" id="task-row-${id}" data-name="${t.name.toLowerCase()}">
                             <div class="icon-sq">
                                 <i class="fa-brands ${t.icon}" style="color:var(--color-cyan);"></i>
                             </div>
@@ -652,22 +717,56 @@ function applyTranslation() {
                     if (isClaimed) completedTasksHtml += html;
                     else activeTasksHtml += html;
                 });
+                
+                // Sponsor Tasks
+                sponsorTasks.forEach(t => {
+                    const isClaimed = claimedSponsors.includes(t.id);
+                    // Safe stringify for onclick
+                    const taskDataStr = JSON.stringify(t).replace(/'/g, "&apos;").replace(/"/g, "&quot;");
+                    
+                    let btnHtml = '';
+                    if (isClaimed) {
+                        btnHtml = `<button class="task-pill-btn done" disabled style="background:#555; color:#ccc;"><i class="fa-solid fa-check"></i> Done</button>`;
+                    } else {
+                        btnHtml = `<button id="sponsor-btn-${t.id}" class="task-pill-btn start" style="background:var(--color-magenta); color:white;" onclick="openSponsorTask(this, '${taskDataStr}')">View</button>`;
+                    }
+                    
+                    const html = `
+                        <div class="task-row cyber-card" id="sponsor-row-${t.id}" data-name="${t.name.toLowerCase()}">
+                            <div class="icon-sq" style="background:rgba(240, 147, 251, 0.1);">
+                                <i class="fa-solid ${t.icon || 'fa-star'}" style="color:var(--color-magenta);"></i>
+                            </div>
+                            <div class="mid">
+                                <h4 style="font-weight:800; font-size:1.1rem; line-height:1.2;">${t.name}</h4>
+                                <div style="color:var(--success-color); font-weight:700; font-size:0.9rem;">+${t.reward} Gems</div>
+                                <div style="font-size:0.7rem; color:#94A3B8; margin-top:2px;">Sponsored</div>
+                            </div>
+                            ${btnHtml}
+                        </div>
+                    `;
+                    
+                    if (!isClaimed) sponsorTasksHtml += html;
+                });
+                
             } catch(e) {
                 activeTasksHtml = '<div style="text-align:center; padding:20px;">Failed to load tasks.</div>';
             }
 
             const monetagWatchedToday = currentUser.monetagWatchedToday || 0;
             const adsgramWatchedToday = currentUser.adsgramWatchedToday || 0;
+            const adsterraWatchedToday = currentUser.adsterraWatchedToday || 0;
             const monetagLimit = appConfig.monetagLimit || 5;
             const adsgramLimit = appConfig.adsgramLimit || 5;
+            const adsterraLimit = appConfig.adsterraLimit || 10;
             const monetagLimitReached = monetagWatchedToday >= monetagLimit;
             const adsgramLimitReached = adsgramWatchedToday >= adsgramLimit;
+            const adsterraLimitReached = adsterraWatchedToday >= adsterraLimit;
 
             c.innerHTML = `
                 <!-- Daily Earning Top Ad Grid -->
-                <div class="ad-grid">
+                <div class="ad-grid" style="grid-template-columns: repeat(3, 1fr);">
                     <!-- Monetag Ad -->
-                    <div class="ad-card glass" ${monetagLimitReached ? '' : 'onclick="triggerMonetagAd()"'} style="${monetagLimitReached ? 'opacity: 0.5; cursor: not-allowed;' : ''}">
+                    <div class="ad-card" ${monetagLimitReached ? '' : 'onclick="triggerMonetagAd()"'} style="${monetagLimitReached ? 'opacity: 0.5; cursor: not-allowed;' : ''}">
                         <i class="fa-brands fa-youtube" style="font-size:3.5rem; color:#EF4444; filter:drop-shadow(0 0 15px rgba(239,68,68,0.6)); margin-bottom:12px; display:inline-block;"></i>
                         <div style="font-weight:800; font-size:1.1rem; margin-bottom:5px;">Watch Ad</div>
                         <div style="font-size: 0.8rem; color: #94A3B8; margin-bottom: 5px;">${monetagWatchedToday} / ${monetagLimit}</div>
@@ -677,7 +776,7 @@ function applyTranslation() {
                         }
                     </div>
                     <!-- Adsgram Ad -->
-                    <div class="ad-card glass" ${adsgramLimitReached ? '' : 'onclick="triggerAdsgramAd()"'} style="${adsgramLimitReached ? 'opacity: 0.5; cursor: not-allowed;' : ''}">
+                    <div class="ad-card" ${adsgramLimitReached ? '' : 'onclick="triggerAdsgramAd()"'} style="${adsgramLimitReached ? 'opacity: 0.5; cursor: not-allowed;' : ''}">
                         <i class="fa-solid fa-fire" style="font-size:3.5rem; color:var(--gold-color); filter:drop-shadow(0 0 15px rgba(255,215,0,0.6)); margin-bottom:12px; display:inline-block;"></i>
                         <div style="font-weight:800; font-size:1.1rem; margin-bottom:5px;">Special Ad</div>
                         <div style="font-size: 0.8rem; color: #94A3B8; margin-bottom: 5px;">${adsgramWatchedToday} / ${adsgramLimit}</div>
@@ -686,15 +785,35 @@ function applyTranslation() {
                             : `<div style="color:var(--success-color); font-weight:800; font-size:0.95rem;">+$${appConfig.realMoneyPerAd || 0.05} Cash</div>`
                         }
                     </div>
+                    <!-- Adsterra Ad -->
+                    <div class="ad-card" id="adsterra-card" ${adsterraLimitReached ? '' : 'onclick="triggerAdsterraAd()"'} style="${adsterraLimitReached ? 'opacity: 0.5; cursor: not-allowed;' : ''}">
+                        <i class="fa-solid fa-star" style="font-size:3.5rem; color:#10B981; filter:drop-shadow(0 0 15px rgba(16,185,129,0.6)); margin-bottom:12px; display:inline-block;"></i>
+                        <div style="font-weight:800; font-size:1.1rem; margin-bottom:5px;">Premium Ad</div>
+                        <div style="font-size: 0.8rem; color: #94A3B8; margin-bottom: 5px;">${adsterraWatchedToday} / ${adsterraLimit}</div>
+                        ${adsterraLimitReached 
+                            ? `<div style="color:var(--danger-color); font-weight:700; font-size:0.9rem;">Limit Reached</div>`
+                            : `<div id="adsterra-reward-text" style="color:var(--success-color); font-weight:800; font-size:0.95rem;">+$${appConfig.realMoneyPerAd || 0.01} Cash</div>`
+                        }
+                    </div>
                 </div>
 
-                <div class="search-bar glass">
-                    <i class="fa-solid fa-magnifying-glass" style="color:var(--color-cyan);"></i>
+                <div class="search-bar">
+                    <i class="fa-solid fa-magnifying-cyber-card" style="color:var(--color-cyan);"></i>
                     <input type="text" id="taskSearch" placeholder="Search tasks..." oninput="filterTasks(this.value)">
                 </div>
 
                 <div id="tasksContainer">
+                    ${sponsorTasksHtml ? `
+                    <div id="sponsorTasksContainer" style="margin-bottom: 20px;">
+                        <h3 style="margin-bottom: 15px; color: var(--color-magenta); display:flex; align-items:center; gap:8px;">
+                            <i class="fa-solid fa-star"></i> Community Sponsors
+                        </h3>
+                        ${sponsorTasksHtml}
+                    </div>` : ''}
+                    
+                    <h3 style="margin-bottom: 15px; color: var(--color-cyan);">Official Tasks</h3>
                     <div id="activeTasksContainer">${activeTasksHtml || '<div style="text-align:center; color:#94A3B8; padding:20px;">No active tasks available.</div>'}</div>
+                    
                     <div id="completedTasksContainer" style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
                         <h3 style="margin-bottom: 15px; color: var(--success-color);">Completed Tasks</h3>
                         ${completedTasksHtml}
@@ -747,6 +866,55 @@ function applyTranslation() {
             showAdsgram();
         }
 
+        let adsterraInterval = null;
+        function triggerAdsterraAd() {
+            if (!appConfig.adsterraLink) return showToast("Adsterra link not configured.", "error");
+            
+            const watchedToday = currentUser.adsterraWatchedToday || 0;
+            const limit = appConfig.adsterraLimit || 10;
+            if(watchedToday >= limit) return showToast("Daily limit reached!", "error");
+            
+            window.open(appConfig.adsterraLink, '_blank');
+            
+            const card = document.getElementById('adsterra-card');
+            const txt = document.getElementById('adsterra-reward-text');
+            if (card) { card.style.pointerEvents = 'none'; card.style.opacity = '0.7'; }
+            
+            let timeLeft = 15;
+            if (txt) txt.innerText = `Watching... ${timeLeft}s`;
+            
+            clearInterval(adsterraInterval);
+            adsterraInterval = setInterval(() => {
+                timeLeft--;
+                if (txt) txt.innerText = `Watching... ${timeLeft}s`;
+                if (timeLeft <= 0) {
+                    clearInterval(adsterraInterval);
+                    if (txt) txt.innerText = "Verifying...";
+                    
+                    fetch(`${API_BASE_URL}/api/adsterra-reward`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ userId: userId })
+                    }).then(r => r.json()).then(data => {
+                        if (data.success) {
+                            currentUser.realBalance = (currentUser.realBalance || 0) + (appConfig.realMoneyPerAd || 0.01);
+                            currentUser.adsterraWatchedToday = watchedToday + 1;
+                            updateUI();
+                            if(typeof triggerConfetti === 'function') triggerConfetti();
+                            showToast(`Earned $${(appConfig.realMoneyPerAd || 0.01).toFixed(2)} Cash from Premium Ad!`, 'success');
+                            nav('tasks'); // Refresh tasks page to update counter
+                        } else {
+                            showToast(data.error || "Verification failed.", "error");
+                            nav('tasks');
+                        }
+                    }).catch(() => {
+                        showToast("Network Error", "error");
+                        nav('tasks');
+                    });
+                }
+            }, 1000);
+        }
+
         function startTask(taskId, url, type, channelId, reward) {
             const finalUrl = url.startsWith('@') ? 'https://t.me/' + url.substring(1) : url;
             
@@ -765,13 +933,13 @@ function applyTranslation() {
                 const overlay = document.createElement('div');
                 overlay.style = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:10000; display:flex; justify-content:center; align-items:center; backdrop-filter:blur(5px);";
                 overlay.innerHTML = `
-                    <div class="card glass" style="width:90%; max-width:400px; padding:20px; text-align:center;">
+                    <div class="card cyber-card" style="width:90%; max-width:400px; padding:20px; text-align:center;">
                         <h3 style="margin-bottom:15px; color:var(--color-cyan);">Submit Task Proof</h3>
                         <p style="font-size:0.9rem; color:#A7F3D0; margin-bottom:20px;">Please upload a screenshot showing you completed the task.</p>
                         <input type="file" id="proofFile" accept="image/*" style="margin-bottom:20px; width:100%; color:#fff;">
                         <div style="display:flex; gap:10px;">
                             <button class="btn btn-secondary" style="flex:1;" onclick="this.parentElement.parentElement.parentElement.remove()">Cancel</button>
-                            <button class="btn btn-primary" style="flex:1;" onclick="submitProof('${taskId}', this)">Submit</button>
+                            <button class="btn quantum-btn" style="flex:1;" onclick="submitProof('${taskId}', this)">Submit</button>
                         </div>
                     </div>
                 `;
@@ -883,13 +1051,147 @@ function applyTranslation() {
             reader.readAsDataURL(file);
         }
 
+        let currentSponsorTask = null;
+
+        function openSponsorTask(btn, taskDataStr) {
+            const task = JSON.parse(taskDataStr.replace(/&apos;/g, "'").replace(/&quot;/g, '"'));
+            currentSponsorTask = task;
+            
+            document.getElementById('so-icon').className = `fa-solid ${task.icon || 'fa-star'}`;
+            document.getElementById('so-title').innerText = task.name;
+            document.getElementById('so-reward').innerText = `+${task.reward} Gems`;
+            document.getElementById('so-desc').innerText = task.desc || "Complete this task to earn your reward!";
+            
+            document.getElementById('so-proof-file').value = '';
+            
+            if (task.type === 'manual') {
+                document.getElementById('so-manual-proof-section').style.display = 'block';
+            } else {
+                document.getElementById('so-manual-proof-section').style.display = 'none';
+            }
+            
+            const startBtn = document.getElementById('so-start-btn');
+            startBtn.style.display = 'block';
+            startBtn.innerText = 'Start Task';
+            startBtn.disabled = false;
+            startBtn.style.background = 'var(--gradient-main)';
+            startBtn.style.color = 'white';
+            
+            document.getElementById('so-verify-btn').style.display = 'none';
+            document.getElementById('so-verify-btn').innerText = 'Check';
+            document.getElementById('so-verify-btn').disabled = false;
+            
+            document.getElementById('sponsorOverlay').classList.add('open');
+        }
+
+        function closeSponsorTask() {
+            document.getElementById('sponsorOverlay').classList.remove('open');
+            currentSponsorTask = null;
+        }
+
+        function executeSponsorTask() {
+            if (!currentSponsorTask) return;
+            
+            const url = currentSponsorTask.url;
+            const finalUrl = url.startsWith('@') ? 'https://t.me/' + url.substring(1) : url;
+            window.open(finalUrl, '_blank');
+            
+            document.getElementById('so-start-btn').style.display = 'none';
+            document.getElementById('so-verify-btn').style.display = 'block';
+        }
+
+        async function verifySponsorTask() {
+            if (!currentSponsorTask) return;
+            const task = currentSponsorTask;
+            const btn = document.getElementById('so-verify-btn');
+            
+            if (task.type === 'manual') {
+                const fileInput = document.getElementById('so-proof-file');
+                if(!fileInput.files || fileInput.files.length === 0) return showToast("Please select a screenshot proof first.", "error");
+                
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading...';
+                btn.disabled = true;
+
+                const file = fileInput.files[0];
+                const reader = new FileReader();
+                reader.onload = async function(e) {
+                    const img = new Image();
+                    img.onload = async function() {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 800;
+                        const scaleSize = MAX_WIDTH / img.width;
+                        canvas.width = MAX_WIDTH;
+                        canvas.height = img.height * scaleSize;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        const base64 = canvas.toDataURL('image/jpeg', 0.5);
+
+                        try {
+                            const res = await fetch(`${API_BASE_URL}/api/sponsor/verify-manual`, {
+                                method: 'POST',
+                                headers:{'Content-Type':'application/json'},
+                                body: JSON.stringify({ userId, taskId: task.id, imageBase64: base64 })
+                            });
+                            const data = await res.json();
+                            if(data.success) {
+                                showToast("Proof submitted! Awaiting sponsor review.", "success");
+                                if(!currentUser.claimedSponsorTasks) currentUser.claimedSponsorTasks = [];
+                                currentUser.claimedSponsorTasks.push(task.id);
+                                closeSponsorTask();
+                                nav('tasks'); // Refresh tasks page
+                            } else {
+                                showToast(data.error || "Failed to submit.", "error");
+                                btn.innerText = "Check"; btn.disabled = false;
+                            }
+                        } catch(err) {
+                            showToast("Network error.", "error");
+                            btn.innerText = "Check"; btn.disabled = false;
+                        }
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+                
+            } else {
+                // Auto Task
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Checking...';
+                btn.disabled = true;
+                
+                try {
+                    const res = await fetch(`${API_BASE_URL}/api/sponsor/verify-auto`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ userId, taskId: task.id, channelId: task.channelId, reward: task.reward })
+                    });
+                    const data = await res.json();
+                    
+                    if (data.success) {
+                        showToast("Task completed!", "success");
+                        currentUser.points = data.points;
+                        if(!currentUser.claimedSponsorTasks) currentUser.claimedSponsorTasks = [];
+                        currentUser.claimedSponsorTasks.push(task.id);
+                        
+                        updateUI();
+                        closeSponsorTask();
+                        nav('tasks'); // Refresh tasks page
+                    } else {
+                        showToast(data.error || "Not Joined. Please try again.", "error");
+                        btn.innerText = 'Check'; btn.disabled = false;
+                    }
+                } catch (e) {
+                    showToast("Network Error", "error");
+                    btn.innerText = 'Check'; btn.disabled = false;
+                }
+            }
+        }
+
         async function renderReferrals(c) {
             const botLink = (typeof appConfig !== 'undefined' && appConfig.telegramBotLink) ? appConfig.telegramBotLink : 'https://t.me/beshbesh_bot';
             const shortname = (typeof appConfig !== 'undefined' && appConfig.miniAppShortname) ? appConfig.miniAppShortname : 'earn';
             const refLink = `${botLink}/${shortname}?startapp=ref${userId}`;
             
             c.innerHTML = `
-                <div class="card glass" style="text-align:center; padding:30px 20px; position:relative; overflow:hidden;">
+                <div class="card cyber-card" style="text-align:center; padding:30px 20px; position:relative; overflow:hidden;">
                     <!-- Ambient Glow -->
                     <div style="position:absolute; top:-50px; left:-50px; width:150px; height:150px; background:var(--color-cyan); filter:blur(60px); opacity:0.3; border-radius:50%;"></div>
                     
@@ -897,7 +1199,7 @@ function applyTranslation() {
                         <i class="fa-solid fa-user-astronaut"></i>
                     </div>
                     <h2 style="font-size:1.8rem; margin-bottom:5px; background:var(--gradient-main); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">Invite & Earn</h2>
-                    <div style="color:#94A3B8; font-size:0.95rem; margin-bottom:25px; font-weight:600;">Earn 100 Gems for every friend you invite!</div>
+                    <div style="color:#94A3B8; font-size:0.95rem; margin-bottom:25px; font-weight:600;">Earn $${appConfig.referralBonusReferrer || 0} Cash for every friend you invite!</div>
                     
                     <div class="qr-glow-box" style="display:flex; justify-content:center; align-items:center; margin:0 auto 20px auto; width:150px; height:150px;">
                         <div id="qrCodeContainer"></div>
@@ -909,11 +1211,11 @@ function applyTranslation() {
 
                     <div style="display:flex; gap:10px;">
                         <button class="btn btn-secondary" style="flex:1;" onclick="copyRefLink('${refLink}')"><i class="fa-solid fa-copy"></i> Copy</button>
-                        <button class="btn btn-primary" style="flex:1;" onclick="shareRefLink('${refLink}')"><i class="fa-solid fa-share-nodes"></i> Share</button>
+                        <button class="btn quantum-btn" style="flex:1;" onclick="shareRefLink('${refLink}')"><i class="fa-solid fa-share-nodes"></i> Share</button>
                     </div>
                 </div>
 
-                <div class="card glass" style="margin-top:20px;">
+                <div class="card cyber-card" style="margin-top:20px;">
                     <h3 style="margin-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px; display:flex; justify-content:space-between;">
                         <span><i class="fa-solid fa-users" style="color:var(--color-purple);"></i> My Network</span>
                         <span style="color:var(--color-cyan); font-weight:900;">${currentUser.referredUsers?.length || 0}</span>
@@ -951,13 +1253,13 @@ function applyTranslation() {
                     `;
                 } else {
                     list.innerHTML = refs.map(r => `
-                        <div class="referral-list-item glass" style="display:flex; align-items:center; padding:15px; border-radius:15px; margin-bottom:10px; gap:15px;">
+                        <div class="referral-list-item cyber-card" style="display:flex; align-items:center; padding:15px; border-radius:15px; margin-bottom:10px; gap:15px;">
                             <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(r.accountName||'U')}&background=random&color=fff" style="width:45px; height:45px; border-radius:50%; border:2px solid var(--color-purple);">
                             <div class="mid" style="flex:1; text-align:left;">
                                 <div style="font-weight:800; font-size:1rem; color:white;">${r.accountName}</div>
                                 <div style="font-size:0.75rem; color:#94A3B8;">${new Date(r.createdAt).toLocaleDateString()}</div>
                             </div>
-                            <div style="color:var(--success-color); font-weight:900; font-size:1rem; text-shadow:0 0 10px var(--success-color);">+100 Gems <i class='fa-solid fa-check'></i></div>
+                            <div style="color:var(--success-color); font-weight:900; font-size:1rem; text-shadow:0 0 10px var(--success-color);">+$${appConfig.referralBonusReferrer || 0} <i class='fa-solid fa-check'></i></div>
                         </div>
                     `).join('');
                 }
@@ -1006,13 +1308,13 @@ function applyTranslation() {
                     });
                 }, 1500);
             }).catch((err) => {
-                const desc = err?.description || '';
-                if (desc === 'No ads available') {
-                    showToast("No ads available", "info");
-                } else if (desc === 'Ad closed' || err?.done === false) {
-                    showToast("You closed the ad early!", "error");
+                const desc = String(err?.description || err?.error || '').toLowerCase();
+                if (desc.includes('ad closed') || err?.done === false) {
+                    showToast("You closed the ad early! No reward.", "error");
+                } else if (desc.includes('no ads available')) {
+                    showToast("No ads available right now. Try again later!", "info");
                 } else {
-                    showToast("Ad failed to load.", "error");
+                    showToast("Ad system is currently pending/inactive.", "error");
                 }
             });
         }
@@ -1021,14 +1323,14 @@ function applyTranslation() {
             c.innerHTML = `
                 <h2 style="margin-bottom: 20px;"><i class="fa-solid fa-gamepad" style="color:var(--color-purple);"></i> Game Hub</h2>
                 
-                <div class="glass" style="margin-bottom:20px; border-radius:15px; padding:15px; display:flex; gap:10px; align-items:center;">
+                <div class="cyber-card" style="margin-bottom:20px; border-radius:15px; padding:15px; display:flex; gap:10px; align-items:center;">
                     <i class="fa-solid fa-gift" style="color:var(--color-magenta); font-size:1.5rem;"></i>
                     <input type="text" id="promoCodeInput" placeholder="Enter Promo Code..." style="flex:1; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:10px; color:white; outline:none; text-transform:uppercase;">
-                    <button class="btn btn-primary" style="width:auto; padding:10px 15px; border-radius:10px;" onclick="redeemPromoCode()">Redeem</button>
+                    <button class="btn quantum-btn" style="width:auto; padding:10px 15px; border-radius:10px;" onclick="redeemPromoCode()">Redeem</button>
                 </div>
 
                 <div class="game-hub-list">
-                    <div class="game-row glass" onclick="openGame('aviator')">
+                    <div class="game-row cyber-card" onclick="openGame('aviator')">
                         <div class="game-icon-box" style="color:var(--danger-color);"><i class="fa-solid fa-plane-up"></i></div>
                         <div class="mid">
                             <h3>Aviator</h3>
@@ -1036,7 +1338,7 @@ function applyTranslation() {
                         </div>
                         <button class="game-play-btn">Play</button>
                     </div>
-                    <div class="game-row glass" onclick="openGame('multiox')">
+                    <div class="game-row cyber-card" onclick="openGame('multiox')">
                         <div class="game-icon-box" style="color:var(--color-cyan);"><i class="fa-solid fa-xmarks-lines"></i></div>
                         <div class="mid">
                             <h3>Multi OX</h3>
@@ -1044,7 +1346,7 @@ function applyTranslation() {
                         </div>
                         <button class="game-play-btn">Play</button>
                     </div>
-                    <div class="game-row glass" onclick="openGame('dailycombo')">
+                    <div class="game-row cyber-card" onclick="openGame('dailycombo')">
                         <div class="game-icon-box" style="color:var(--gold-color);"><i class="fa-solid fa-puzzle-piece"></i></div>
                         <div class="mid">
                             <h3>Daily Combo</h3>
@@ -1052,7 +1354,7 @@ function applyTranslation() {
                         </div>
                         <button class="game-play-btn">Play</button>
                     </div>
-                    <div class="game-row glass" onclick="openGame('prospin')">
+                    <div class="game-row cyber-card" onclick="openGame('prospin')">
                         <div class="game-icon-box" style="color:var(--color-magenta);"><i class="fa-solid fa-dharmachakra"></i></div>
                         <div class="mid">
                             <h3>Pro Spin</h3>
@@ -1060,7 +1362,7 @@ function applyTranslation() {
                         </div>
                         <button class="game-play-btn">Play</button>
                     </div>
-                    <div class="game-row glass" onclick="openGame('scratchcard')">
+                    <div class="game-row cyber-card" onclick="openGame('scratchcard')">
                         <div class="game-icon-box" style="color:var(--success-color);"><i class="fa-solid fa-ticket"></i></div>
                         <div class="mid">
                             <h3>Scratch Card</h3>
@@ -1098,7 +1400,7 @@ function applyTranslation() {
                 </div>
                 
                 <!-- Balances & Exchange Section -->
-                <div class="card glass" style="margin-bottom:20px; padding:25px 20px; position:relative; overflow:hidden;">
+                <div class="card cyber-card" style="margin-bottom:20px; padding:25px 20px; position:relative; overflow:hidden;">
                     <div style="position:absolute; top:-30px; left:-30px; width:100px; height:100px; background:var(--color-cyan); filter:blur(40px); opacity:0.2;"></div>
                     
                     <div style="display:grid; grid-template-columns:1fr 1px 1fr; gap:15px; text-align:center; margin-bottom:25px;">
@@ -1116,7 +1418,7 @@ function applyTranslation() {
                     <h3 style="margin-bottom:10px; font-size:1.1rem;"><i class="fa-solid fa-right-left" style="color:var(--color-magenta);"></i> Quick Exchange</h3>
                     
                     <div style="display:flex; justify-content:space-between; gap:10px; margin-bottom:15px; background:rgba(0,0,0,0.3); padding:5px; border-radius:10px;">
-                        <button id="btnGemsToCash" class="btn btn-primary" style="flex:1; padding:8px; font-size:0.85rem;" onclick="setExchangeMode('gemsToCash')">Gems <i class="fa-solid fa-arrow-right"></i> Cash</button>
+                        <button id="btnGemsToCash" class="btn quantum-btn" style="flex:1; padding:8px; font-size:0.85rem;" onclick="setExchangeMode('gemsToCash')">Gems <i class="fa-solid fa-arrow-right"></i> Cash</button>
                         <button id="btnCashToGems" class="btn" style="flex:1; padding:8px; font-size:0.85rem; background:transparent; border:1px solid rgba(255,255,255,0.1); color:white;" onclick="setExchangeMode('cashToGems')">Cash <i class="fa-solid fa-arrow-right"></i> Gems</button>
                     </div>
 
@@ -1129,12 +1431,12 @@ function applyTranslation() {
                     
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <div style="font-size:0.85rem; color:white; font-weight:700;">You receive: <span style="color:var(--success-color);"><span id="exchangePreview">0.00</span> <span id="exchangeReceiveLabel">${currName}</span></span></div>
-                        <button class="btn btn-primary" style="width:auto; padding:8px 20px;" onclick="processExchange()"><i class="fa-solid fa-coins"></i> Convert</button>
+                        <button class="btn quantum-btn" style="width:auto; padding:8px 20px;" onclick="processExchange()"><i class="fa-solid fa-coins"></i> Convert</button>
                     </div>
                 </div>
 
                 <!-- Withdrawal Requirements Checklist -->
-                <div class="card glass" style="margin-bottom:20px; border-left:4px solid ${allReqsMet ? 'var(--success-color)' : 'var(--danger-color)'};">
+                <div class="card cyber-card" style="margin-bottom:20px; border-left:4px solid ${allReqsMet ? 'var(--success-color)' : 'var(--danger-color)'};">
                     <h3 style="margin-bottom:15px; font-size:1.1rem;"><i class="fa-solid fa-list-check" style="color:var(--color-cyan);"></i> Unlock Withdrawal</h3>
                     
                     <div style="display:flex; flex-direction:column; gap:12px;">
@@ -1154,7 +1456,7 @@ function applyTranslation() {
                 </div>
 
                 <!-- Withdrawal Form -->
-                <div class="card glass" style="position:relative; overflow:hidden;">
+                <div class="card cyber-card" style="position:relative; overflow:hidden;">
                     ${!allReqsMet ? `
                         <div style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.8); backdrop-filter:blur(8px); z-index:10; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;">
                             <i class="fa-solid fa-lock" style="font-size:3rem; color:rgba(255,255,255,0.3); margin-bottom:15px;"></i>
@@ -1188,7 +1490,7 @@ function applyTranslation() {
                         <input type="number" id="wdAmount" class="input-field" placeholder="0.00" max="${realBal}">
                     </div>
 
-                    <button class="btn btn-primary" style="width:100%;" onclick="submitWithdraw()" ${!allReqsMet ? 'disabled' : ''}><i class="fa-solid fa-circle-check"></i> Submit Request</button>
+                    <button class="btn quantum-btn" style="width:100%;" onclick="submitWithdraw()" ${!allReqsMet ? 'disabled' : ''}><i class="fa-solid fa-circle-check"></i> Submit Request</button>
                 </div>
             `;
         }
@@ -1246,7 +1548,7 @@ function applyTranslation() {
             const rate = (typeof appConfig !== 'undefined' && appConfig.exchangeRate) ? appConfig.exchangeRate : 100;
             
             if(mode === 'gemsToCash') {
-                btnG2C.className = 'btn btn-primary';
+                btnG2C.className = 'btn quantum-btn';
                 btnG2C.style.background = '';
                 btnG2C.style.border = 'none';
                 
@@ -1260,7 +1562,7 @@ function applyTranslation() {
                 rateLabel.innerText = `${rate} Gems = 1.00 ${currName}`;
                 recLabel.innerText = currName;
             } else {
-                btnC2G.className = 'btn btn-primary';
+                btnC2G.className = 'btn quantum-btn';
                 btnC2G.style.background = '';
                 btnC2G.style.border = 'none';
                 
@@ -1632,7 +1934,7 @@ function applyTranslation() {
                     <button class="btn btn-secondary" onclick="closeGame()" style="width:auto; padding:5px 15px; font-size:0.9rem;"><i class="fa-solid fa-arrow-left"></i> Back to Hub</button>
                     <div style="font-weight:bold; color:var(--accent-color);"><i class="fa-solid fa-gem"></i> <span id="avHeaderBal">${currentUser.points}</span></div>
                 </div>
-                <div class="card glass" style="padding: 10px; position: relative;">
+                <div class="card cyber-card" style="padding: 10px; position: relative;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                         <div style="display:flex; align-items:center; gap:10px;">
                             <h2 style="color:var(--danger-color); margin:0;"><i class="fa-solid fa-plane-up"></i> Aviator</h2>
@@ -1671,7 +1973,7 @@ function applyTranslation() {
                     </div>
 
                     <!-- Provably Fair Modal -->
-                    <div id="pfModal" class="glass" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); width:90%; max-width:400px; padding:20px; z-index:9999; border-radius:15px; text-align:center;">
+                    <div id="pfModal" class="cyber-card" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); width:90%; max-width:400px; padding:20px; z-index:9999; border-radius:15px; text-align:center;">
                         <h3 style="color:var(--color-cyan); margin-bottom:15px;"><i class="fa-solid fa-shield-halved"></i> Provably Fair</h3>
                         <p style="color:#94A3B8; font-size:0.9rem; line-height:1.5;">This game is secured by Own Myfa Server. The outcome is generated before the round begins and is 100%fair.</p>
                         <button class="btn btn-secondary" onclick="document.getElementById('pfModal').style.display='none'" style="margin-top:20px; width:100%;">Close</button>
@@ -1684,7 +1986,7 @@ function applyTranslation() {
                     </div>
                     <div class="bet-panel-container" style="display:flex; flex-direction:column; gap:15px;">
                         <!-- Panel 1 -->
-                        <div class="bet-panel glass" style="padding:15px; border-radius:15px; border:1px solid rgba(255,255,255,0.1); background:linear-gradient(145deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01));">
+                        <div class="bet-panel cyber-card" style="padding:15px; border-radius:15px; border:1px solid rgba(255,255,255,0.1); background:linear-gradient(145deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01));">
                             <!-- 11. Auto Play Toggle -->
                             <div class="auto-play-row" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; font-size:0.9rem; color:#A0AEC0;">
                                 <span><i class="fa-solid fa-robot"></i> Auto Play</span> 
@@ -1718,7 +2020,7 @@ function applyTranslation() {
                         </div>
                         
                         <!-- Panel 2 -->
-                        <div class="bet-panel glass" style="padding:15px; border-radius:15px; border:1px solid rgba(255,255,255,0.1); background:linear-gradient(145deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01));">
+                        <div class="bet-panel cyber-card" style="padding:15px; border-radius:15px; border:1px solid rgba(255,255,255,0.1); background:linear-gradient(145deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01));">
                             <div class="auto-play-row" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; font-size:0.9rem; color:#A0AEC0;">
                                 <span><i class="fa-solid fa-robot"></i> Auto Play</span> 
                                 <label class="switch"><input type="checkbox" id="avAutoPlay2"><span class="slider"></span></label>
@@ -1751,7 +2053,7 @@ function applyTranslation() {
                     </div>
 
                     <!-- 9. My Bet History Panel -->
-                    <div id="myBetsSide" class="side-panel left glass" style="padding:20px; box-shadow:5px 0 30px rgba(0,0,0,0.5);">
+                    <div id="myBetsSide" class="side-panel left cyber-card" style="padding:20px; box-shadow:5px 0 30px rgba(0,0,0,0.5);">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; font-weight:bold; font-size:1.2rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px;">
                             <span><i class="fa-solid fa-clock-rotate-left"></i> My Flights</span> 
                             <button class="panel-toggle-btn" style="background:transparent; border:none; color:white; font-size:1.5rem; cursor:pointer;" onclick="document.getElementById('myBetsSide').classList.remove('open')"><i class="fa-solid fa-xmark"></i></button>
@@ -1760,7 +2062,7 @@ function applyTranslation() {
                     </div>
 
                     <!-- 8. Top Bets Panel -->
-                    <div id="topBetsSide" class="side-panel right glass" style="padding:20px; box-shadow:-5px 0 30px rgba(0,0,0,0.5);">
+                    <div id="topBetsSide" class="side-panel right cyber-card" style="padding:20px; box-shadow:-5px 0 30px rgba(0,0,0,0.5);">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; font-weight:bold; font-size:1.2rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px;">
                             <span><i class="fa-solid fa-trophy"></i> Top Bets</span> 
                             <button class="panel-toggle-btn" style="background:transparent; border:none; color:white; font-size:1.5rem; cursor:pointer;" onclick="document.getElementById('topBetsSide').classList.remove('open')"><i class="fa-solid fa-xmark"></i></button>
@@ -2255,7 +2557,7 @@ function applyTranslation() {
                     <button class="btn btn-secondary" onclick="closeGame()" style="width:auto; padding:5px 15px; font-size:0.9rem;"><i class="fa-solid fa-arrow-left"></i> Back to Hub</button>
                     <div style="font-weight:bold; color:var(--accent-color);"><i class="fa-solid fa-gem"></i> <span id="gameHeaderBal">${currentUser.points}</span></div>
                 </div>
-                <div class="card glass" style="padding:20px; text-align:center;">
+                <div class="card cyber-card" style="padding:20px; text-align:center;">
                     <h2 style="color:#3B82F6;"><i class="fa-solid fa-xmarks-lines"></i> Multi OX (Minimax)</h2>
                     <p style="color:#94a3b8; font-size:0.9rem;">Wager Gems and try to beat the unbeatable Bot!</p>
                     
@@ -2269,7 +2571,7 @@ function applyTranslation() {
                             <option value="100">100 Gems</option>
                             <option value="200">200 Gems</option>
                         </select>
-                        <button class="btn btn-primary" id="oxBtnBot" onclick="startOxBot()">Play Bot</button>
+                        <button class="btn quantum-btn" id="oxBtnBot" onclick="startOxBot()">Play Bot</button>
                         <button class="btn btn-secondary" id="oxBtnOnline" onclick="showToast('Searching for players... (Simulated Timeout)', 'info')">Play Online</button>
                     </div>
 
@@ -2432,7 +2734,7 @@ function applyTranslation() {
                     <button class="btn btn-secondary" onclick="closeGame()" style="width:auto; padding:5px 15px; font-size:0.9rem;"><i class="fa-solid fa-arrow-left"></i> Back to Hub</button>
                     <div style="font-weight:bold; color:var(--accent-color);"><i class="fa-solid fa-gem"></i> <span id="gameHeaderBal2">${currentUser.points}</span></div>
                 </div>
-                <div class="card glass" style="padding:20px; text-align:center;">
+                <div class="card cyber-card" style="padding:20px; text-align:center;">
                     <h2 style="color:var(--gold-color);"><i class="fa-solid fa-puzzle-piece"></i> Ethiopian Daily Combo</h2>
                     <p style="color:#94a3b8; font-size:0.9rem;">Drag the icons into the correct sequence. 3 tries/day!</p>
                     <p id="comboTriesTxt" style="color:var(--danger-color); font-weight:bold; margin-top:5px;"></p>
@@ -2445,7 +2747,7 @@ function applyTranslation() {
                         ${[0,1,2,3,4,5,6,7,8].map(i => `<div class="combo-slot" id="slot-${i}" ondrop="comboDrop(event, 'slot-${i}')" ondragover="comboAllowDrop(event)" style="width:80px; height:80px; background:var(--glass-bg); border:1px dashed var(--glass-border); border-radius:15px; display:flex; justify-content:center; align-items:center;"></div>`).join('')}
                     </div>
                     
-                    <button class="btn btn-primary" onclick="checkComboPattern()">Check Pattern</button>
+                    <button class="btn quantum-btn" onclick="checkComboPattern()">Check Pattern</button>
                 </div>
             `;
             
@@ -2540,7 +2842,7 @@ function applyTranslation() {
                     <button class="btn btn-secondary" onclick="closeGame()" style="width:auto; padding:5px 15px; font-size:0.9rem;"><i class="fa-solid fa-arrow-left"></i> Back to Hub</button>
                     <div style="font-weight:bold; color:var(--accent-color);"><i class="fa-solid fa-gem"></i> <span id="gameHeaderBal3">${currentUser.points}</span></div>
                 </div>
-                <div class="card glass" style="padding:20px; text-align:center;">
+                <div class="card cyber-card" style="padding:20px; text-align:center;">
                     <h2 style="color:var(--accent-color);"><i class="fa-solid fa-dharmachakra"></i> Pro Spin</h2>
                     <p style="color:#94a3b8; font-size:0.9rem;">Spin the wheel. 10 Gems per spin.</p>
                     <div style="position:relative; width:250px; height:250px; margin:30px auto;">
@@ -2557,7 +2859,7 @@ function applyTranslation() {
                             <div style="width:60px; height:60px; border-radius:50%; background:#1E293B; z-index:2; display:flex; justify-content:center; align-items:center; border:3px solid rgba(255,255,255,0.2);"><i class="fa-solid fa-gem" style="color:var(--color-cyan); font-size:1.5rem;"></i></div>
                         </div>
                     </div>
-                    <button class="btn btn-primary" onclick="spinWheelAction()">Spin (10 Gems)</button>
+                    <button class="btn quantum-btn" onclick="spinWheelAction()">Spin (10 Gems)</button>
                 </div>
             `;
             window.spinAngle = 0;
@@ -2632,7 +2934,7 @@ function applyTranslation() {
                     <button class="btn btn-secondary" onclick="closeGame()" style="width:auto; padding:5px 15px; font-size:0.9rem;"><i class="fa-solid fa-arrow-left"></i> Back to Hub</button>
                     <div style="font-weight:bold; color:var(--accent-color);"><i class="fa-solid fa-gem"></i> <span id="gameHeaderBal4">${currentUser.points}</span></div>
                 </div>
-                <div class="card glass" style="padding:20px; text-align:center;">
+                <div class="card cyber-card" style="padding:20px; text-align:center;">
                     <h2 style="color:var(--success-color);"><i class="fa-solid fa-ticket"></i> Scratch Card</h2>
                     <p style="color:#94a3b8; font-size:0.9rem;">Cost: 50 Gems. Scrub to reveal your prize!</p>
                     
@@ -2775,7 +3077,7 @@ function applyTranslation() {
     </script>
 
     <!-- Official Channel Overlay -->
-    <div id="channelOverlay" class="side-panel left glass" style="padding: 20px; display: flex; flex-direction: column;">
+    <div id="channelOverlay" class="side-panel left cyber-card" style="padding: 20px; display: flex; flex-direction: column;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
             <h2 style="margin:0;"><i class="fa-solid fa-bullhorn" style="color:var(--color-magenta);"></i> Official Channel</h2>
             <button class="panel-toggle-btn" style="background:transparent; border:none; color:white; font-size:1.5rem; cursor:pointer;" onclick="document.getElementById('channelOverlay').classList.remove('open')"><i class="fa-solid fa-xmark"></i></button>
@@ -2814,7 +3116,7 @@ function applyTranslation() {
                     `).join('');
 
                     return `
-                    <div class="glass" style="border-radius: 15px; padding: 18px; margin-bottom: 20px; border-top: 1px solid rgba(255,255,255,0.2); border-left: 4px solid var(--color-magenta); box-shadow: 0 8px 32px rgba(0,0,0,0.3); backdrop-filter: blur(16px); position: relative; overflow: hidden;">
+                    <div class="cyber-card" style="border-radius: 15px; padding: 18px; margin-bottom: 20px; border-top: 1px solid rgba(255,255,255,0.2); border-left: 4px solid var(--color-magenta); box-shadow: 0 8px 32px rgba(0,0,0,0.3); backdrop-filter: blur(16px); position: relative; overflow: hidden;">
                         <div style="position:absolute; top:-50px; right:-50px; width:100px; height:100px; background:var(--color-magenta); filter:blur(50px); opacity:0.2; border-radius:50%;"></div>
                         <div style="display:flex; justify-content:space-between; margin-bottom: 12px; align-items:center;">
                             <span style="font-weight: 900; color: white; font-size: 1.1rem; display:flex; align-items:center; gap:5px;"><i class="fa-solid fa-certificate" style="color:var(--color-magenta); font-size:1.2rem;"></i> Official</span>

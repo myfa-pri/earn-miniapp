@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <title>Decentralized Ad Network & Escrow</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="index.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            background: #0f172a;
+            color: white;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            padding-bottom: 100px;
+        }
+        
+        .header-bar {
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(20px);
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .back-btn {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: white;
+            padding: 10px;
+            border-radius: 50%;
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 20px;
+            margin: 15px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(12px);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            color: #94A3B8;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .form-control {
+            width: 100%;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: white;
+            padding: 12px 15px;
+            border-radius: 12px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 1rem;
+            box-sizing: border-box;
+            transition: all 0.3s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--color-cyan);
+            box-shadow: 0 0 15px rgba(0, 242, 254, 0.2);
+        }
+
+        .btn-gradient {
+            background: linear-gradient(135deg, #00F2FE 0%, #4FACFE 100%);
+            border: none;
+            color: #0f172a;
+            padding: 15px 20px;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 1.1rem;
+            width: 100%;
+            cursor: pointer;
+            box-shadow: 0 5px 20px rgba(0, 242, 254, 0.4);
+            transition: transform 0.2s;
+        }
+
+        .btn-gradient:active {
+            transform: scale(0.98);
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .dash-card {
+            background: rgba(0,0,0,0.2);
+            border-radius: 15px;
+            padding: 15px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.05);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .dash-val {
+            font-size: 1.4rem;
+            font-weight: 800;
+            margin: 5px 0;
+            color: white;
+        }
+        .dash-label {
+            font-size: 0.7rem;
+            color: #94A3B8;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        /* 5. Unlock Animation */
+        @keyframes shakeUnlock {
+            0% { transform: rotate(0deg); }
+            25% { transform: rotate(-10deg); }
+            50% { transform: rotate(10deg); }
+            75% { transform: rotate(-10deg); }
+            100% { transform: rotate(0deg); }
+        }
+        .padlock-anim {
+            animation: shakeUnlock 2s infinite ease-in-out;
+            color: #F59E0B;
+            font-size: 2rem;
+            margin-bottom: 5px;
+        }
+
+        .campaign-item {
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-left: 4px solid var(--color-cyan);
+            cursor: pointer;
+        }
+
+        /* Modal styling */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(15,23,42,0.95);
+            backdrop-filter: blur(20px);
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
+            overflow-y: auto;
+            padding-bottom: 50px;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .gallery-container {
+            width: 100%;
+            height: 300px;
+            background: #000;
+            border-radius: 15px;
+            position: relative;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .gallery-img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+            box-shadow: 0 0 10px currentColor;
+        }
+        .status-active { color: #10B981; background: #10B981; }
+        .status-paused { color: #F59E0B; background: #F59E0B; }
+        .status-completed { color: #EF4444; background: #EF4444; }
+
+        .progress-bar-bg {
+            background: rgba(255,255,255,0.1);
+            height: 10px;
+            border-radius: 5px;
+            width: 100%;
+            margin-top: 5px;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #10B981, #00F2FE);
+            width: 0%;
+            transition: width 0.3s;
+        }
+        
+        .alert-banner {
+            background: rgba(239, 68, 68, 0.2);
+            border-left: 4px solid #EF4444;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: none;
+            color: #FECACA;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="header-bar">
+        <button class="back-btn" onclick="window.location.href='index.html'"><i class="fa-solid fa-arrow-left"></i></button>
+        <h3 style="margin:0; font-weight:800;">Ad Network</h3>
+        <div style="font-weight:700; color:var(--color-cyan);"><i class="fa-solid fa-gem"></i> <span id="headerBalance">0</span></div>
+    </div>
+
+    <!-- ESCROW DASHBOARD (10 FEATURES) -->
+    <div class="glass-panel">
+        <h3 style="margin-top:0; margin-bottom:15px; color:white;"><i class="fa-solid fa-vault" style="color:#F59E0B;"></i> Global Escrow Engine</h3>
+        
+        <!-- 7. Minimum Reserve Alert -->
+        <div id="reserveAlert" class="alert-banner">
+            <i class="fa-solid fa-triangle-exclamation"></i> Warning: Escrow reserve dropping low. Refill soon!
+        </div>
+
+        <div class="dashboard-grid">
+            <!-- 1. Live Escrow Ledger -->
+            <div class="dash-card">
+                <i class="fa-solid fa-chart-pie" style="color:var(--color-cyan); font-size:1.5rem;"></i>
+                <div class="dash-val" id="valEscrow">0</div>
+                <div class="dash-label">Stuck Balance (Escrow)</div>
+            </div>
+            
+            <!-- 2. Auto-Release Countdown -->
+            <div class="dash-card">
+                <i class="fa-solid fa-hourglass-half" style="color:#8B5CF6; font-size:1.5rem;"></i>
+                <div class="dash-val" id="valCountdown" style="font-family:monospace;">--:--:--</div>
+                <div class="dash-label">Next Auto-Release</div>
+            </div>
+
+            <!-- 3. Penalty Vault Tracker -->
+            <div class="dash-card">
+                <i class="fa-solid fa-gavel" style="color:#EF4444; font-size:1.5rem;"></i>
+                <div class="dash-val" id="valPenalty">0</div>
+                <div class="dash-label">Penalty Slashed</div>
+            </div>
+
+            <!-- 6. Spend Velocity Meter -->
+            <div class="dash-card">
+                <i class="fa-solid fa-gauge-high" style="color:#10B981; font-size:1.5rem;"></i>
+                <div class="dash-val" id="valVelocity">0</div>
+                <div class="dash-label">Gems / Hour Spent</div>
+            </div>
+            
+            <!-- 8. Escrow Yield Staking -->
+            <div class="dash-card">
+                <i class="fa-solid fa-coins" style="color:#F59E0B; font-size:1.5rem;"></i>
+                <div class="dash-val" id="valYield">0</div>
+                <div class="dash-label">Passive Yield Earned</div>
+            </div>
+
+            <!-- 5. Unlock Animation Indicator -->
+            <div class="dash-card" style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
+                <i class="fa-solid fa-lock padlock-anim" id="padlockIcon"></i>
+                <div class="dash-label">Smart Contract Lock</div>
+            </div>
+        </div>
+
+        <!-- 4. Refund History Chart (Simplified visual) -->
+        <div style="margin-top: 15px;">
+            <div class="dash-label" style="margin-bottom:5px;">Refund Timeline</div>
+            <div style="width: 100%; height: 40px; background: rgba(0,0,0,0.3); border-radius: 8px; display:flex; align-items:flex-end; padding: 5px; gap: 2px;">
+                <div style="width:10%; height:20%; background:#10B981; border-radius:2px;"></div>
+                <div style="width:10%; height:50%; background:#10B981; border-radius:2px;"></div>
+                <div style="width:10%; height:30%; background:#10B981; border-radius:2px;"></div>
+                <div style="width:10%; height:80%; background:#10B981; border-radius:2px;"></div>
+                <div style="width:10%; height:10%; background:#10B981; border-radius:2px;"></div>
+                <div style="width:50%; text-align:right; font-size:0.7rem; color:#94A3B8; margin-bottom:5px;">Live Graph</div>
+            </div>
+        </div>
+        
+        <!-- 9. Escrow Transfer Protocol -->
+        <button class="btn-gradient" style="margin-top: 15px; background: rgba(255,255,255,0.1); color:white; box-shadow:none; border: 1px solid rgba(255,255,255,0.2);" onclick="openTransferModal()">
+            <i class="fa-solid fa-money-bill-transfer"></i> Escrow Transfer Protocol
+        </button>
+    </div>
+
+    <!-- TASK CREATION ENGINE -->
+    <div class="glass-panel">
+        <h3 style="margin-top:0; color:white;"><i class="fa-solid fa-plus-circle" style="color:var(--color-cyan);"></i> Create Campaign</h3>
+        
+        <div class="form-group">
+            <label>Task Category</label>
+            <select id="taskCategory" class="form-control" onchange="toggleCategoryOptions()">
+                <option value="auto">Auto (Telegram Join - Verified)</option>
+                <option value="manual">Manual (Twitter, YouTube, Screenshot)</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Task Icon (FontAwesome)</label>
+            <select id="taskIcon" class="form-control">
+                <option value="fa-telegram">Telegram</option>
+                <option value="fa-twitter">Twitter</option>
+                <option value="fa-youtube">YouTube</option>
+                <option value="fa-globe">Website</option>
+                <option value="fa-robot">Bot</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Task Name</label>
+            <input type="text" id="taskName" class="form-control" placeholder="e.g. Join my Official Channel">
+        </div>
+
+        <div class="form-group">
+            <label>Task Link/URL or Chat ID</label>
+            <input type="text" id="taskLink" class="form-control" placeholder="e.g. -100123456789 or https://t.me/xyz">
+        </div>
+
+        <div class="dashboard-grid" style="margin-top:0;">
+            <div class="form-group">
+                <label>Target Limit (Users)</label>
+                <input type="number" id="taskLimit" class="form-control" value="100" oninput="calcEscrow()">
+            </div>
+            <div class="form-group">
+                <label>Reward Per User</label>
+                <input type="number" id="taskReward" class="form-control" value="50" oninput="calcEscrow()">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Description / Instructions</label>
+            <textarea id="taskDesc" class="form-control" rows="3" placeholder="Must stay for 7 days..."></textarea>
+        </div>
+
+        <div style="background:rgba(0,0,0,0.4); padding:15px; border-radius:12px; margin-bottom:15px; border:1px dashed #F59E0B;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-weight:600; color:#94A3B8;">Total Escrow Investment:</span>
+                <span style="font-size:1.5rem; font-weight:800; color:#F59E0B;"><i class="fa-solid fa-gem"></i> <span id="calcTotal">5000</span></span>
+            </div>
+        </div>
+
+        <button class="btn-gradient" id="btnCreate" onclick="createCampaign()">Create & Lock Escrow</button>
+    </div>
+
+    <!-- ACTIVE CAMPAIGNS -->
+    <div class="glass-panel">
+        <h3 style="margin-top:0; color:white;"><i class="fa-solid fa-layer-group" style="color:var(--color-purple);"></i> My Active Campaigns</h3>
+        <div id="campaignList">
+            <div style="text-align:center; color:#94A3B8; padding:20px;">Loading campaigns...</div>
+        </div>
+    </div>
+
+
+    <!-- CAMPAIGN MANAGEMENT MODAL (10 FEATURES) -->
+    <div class="modal-overlay" id="manageModal">
+        <div class="header-bar">
+            <button class="back-btn" onclick="closeManageModal()"><i class="fa-solid fa-times"></i></button>
+            <h3 style="margin:0; font-weight:800;">Manage Campaign</h3>
+            <div style="width:40px;"></div>
+        </div>
+        
+        <div class="glass-panel">
+            <h2 id="mName" style="margin-top:0; font-size:1.4rem;">Campaign Name</h2>
+            
+            <!-- 2. Live Campaign Status Indicator -->
+            <div style="margin-bottom: 20px; font-weight:700; display:flex; align-items:center;">
+                <span id="mStatusDot" class="status-dot status-active"></span> 
+                <span id="mStatusText">Active</span>
+            </div>
+
+            <!-- 7. Conversion Analytics -->
+            <div class="dashboard-grid" style="margin-top:0; margin-bottom:20px;">
+                <div class="dash-card">
+                    <div class="dash-val" id="mViews">0</div>
+                    <div class="dash-label">Impressions</div>
+                </div>
+                <div class="dash-card">
+                    <div class="dash-val" id="mClicks" style="color:var(--success-color);">0</div>
+                    <div class="dash-label">Valid Conversions</div>
+                </div>
+            </div>
+
+            <!-- 3. Live Spend Tracker Bar -->
+            <div style="margin-bottom: 20px;">
+                <div style="display:flex; justify-content:space-between; font-size:0.85rem; font-weight:700; color:#94A3B8;">
+                    <span>Budget Consumed</span>
+                    <span id="mSpendText">0 / 5000</span>
+                </div>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill" id="mSpendBar"></div>
+                </div>
+            </div>
+
+            <!-- 8. Safe Info Editor -->
+            <div class="form-group">
+                <label>Edit Link (Safe)</label>
+                <input type="text" id="mLink" class="form-control">
+            </div>
+            <div class="form-group">
+                <label>Edit Description (Safe)</label>
+                <textarea id="mDesc" class="form-control" rows="2"></textarea>
+            </div>
+            <!-- Budget is locked -->
+            <div style="font-size:0.8rem; color:#F59E0B; margin-bottom:15px;"><i class="fa-solid fa-lock"></i> Escrow budget parameters are strictly locked by smart contract.</div>
+            
+            <button class="btn-gradient" style="margin-bottom:20px;" onclick="saveSafeInfo()">Save Edits</button>
+
+            <!-- 9. Auto-Renew Toggle -->
+            <div style="background:rgba(255,255,255,0.05); padding:15px; border-radius:12px; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <div style="font-weight:700;">Auto-Renew Campaign</div>
+                    <div style="font-size:0.75rem; color:#94A3B8;">Deduct from main balance when empty</div>
+                </div>
+                <label style="position:relative; display:inline-block; width:50px; height:24px;">
+                    <input type="checkbox" id="mAutoRenew" onchange="toggleAutoRenew()" style="opacity:0; width:0; height:0;">
+                    <span style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:#ccc; border-radius:24px; transition:.4s;"></span>
+                    <span style="position:absolute; content:''; height:16px; width:16px; left:4px; bottom:4px; background-color:white; border-radius:50%; transition:.4s; pointer-events:none;" id="toggleNob"></span>
+                </label>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <!-- 4. One-Click Pause/Resume -->
+                <button class="btn-gradient" id="btnPause" style="background:#F59E0B; box-shadow:none; color:white;" onclick="togglePause()">Pause</button>
+                
+                <!-- 10. Task Duplicator -->
+                <button class="btn-gradient" style="background:rgba(255,255,255,0.1); box-shadow:none; color:white;" onclick="cloneCampaign()"><i class="fa-solid fa-copy"></i> Clone</button>
+            </div>
+
+            <!-- 5. One-Click Liquidate/Refund -->
+            <button class="btn-gradient" style="background:#EF4444; box-shadow:none; color:white; margin-top:10px;" onclick="liquidateCampaign()"><i class="fa-solid fa-fire"></i> Liquidate & Refund Escrow</button>
+
+        </div>
+
+        <!-- 1. Manual Screenshot Approval Queue (Only shows for manual tasks) -->
+        <div class="glass-panel" id="manualQueuePanel" style="display:none;">
+            <h3 style="margin-top:0; color:white;"><i class="fa-solid fa-images" style="color:var(--color-cyan);"></i> Manual Approval Queue</h3>
+            <div style="font-size:0.85rem; color:#94A3B8; margin-bottom:10px;">Review user screenshots for validation.</div>
+            
+            <div class="gallery-container">
+                <img id="qImg" src="" class="gallery-img" alt="No pending screenshots">
+                <div id="qEmpty" style="position:absolute; color:#64748B; font-weight:700;">Queue Empty</div>
+            </div>
+
+            <div style="text-align:center; margin-bottom:10px; font-weight:700; color:#94A3B8;">User: <span id="qUser" style="color:white;">-</span></div>
+
+            <div style="display:flex; gap:10px;">
+                <button class="btn-gradient" style="background:#EF4444; box-shadow:0 0 15px rgba(239,68,68,0.4); color:white; flex:1;" onclick="openRejectReason()"><i class="fa-solid fa-xmark"></i> Reject</button>
+                <button class="btn-gradient" style="background:#10B981; box-shadow:0 0 15px rgba(16,185,129,0.4); color:white; flex:1;" onclick="approveScreenshot()"><i class="fa-solid fa-check"></i> Approve</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 6. Reject with Reason Sub-Modal -->
+    <div class="modal-overlay" id="rejectModal" style="z-index: 1001; justify-content:center; padding:20px; align-items:center;">
+        <div class="glass-panel" style="width:100%; max-width:400px; padding:25px;">
+            <h3 style="margin-top:0; color:#EF4444;"><i class="fa-solid fa-gavel"></i> Reject Submission</h3>
+            <p style="font-size:0.9rem; color:#94A3B8;">This reason will be sent directly to the user via Telegram Bot.</p>
+            <textarea id="rejectReason" class="form-control" rows="3" placeholder="e.g. Screenshot does not show you following the account."></textarea>
+            <div style="display:flex; gap:10px; margin-top:15px;">
+                <button class="btn-gradient" style="background:rgba(255,255,255,0.1); box-shadow:none; color:white; flex:1;" onclick="document.getElementById('rejectModal').style.display='none'">Cancel</button>
+                <button class="btn-gradient" style="background:#EF4444; box-shadow:none; color:white; flex:1;" onclick="submitReject()">Send Rejection</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        const API_BASE_URL = '';
+        let currentUser = null;
+        let userId = null;
+        let myCampaigns = {};
+        let currentManageId = null;
+        let currentQueueItem = null;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const tg = window.Telegram.WebApp;
+            tg.expand();
+            
+            userId = tg.initDataUnsafe?.user?.id?.toString() || new URLSearchParams(window.location.search).get('impersonate');
+            if(!userId) {
+                document.body.innerHTML = "<h2 style='text-align:center; margin-top:50px;'>Telegram Web App Error.</h2>";
+                return;
+            }
+
+            // Fetch User
+            const res = await fetch(`${API_BASE_URL}/api/user/${userId}`);
+            if(!res.ok) {
+                alert("Failed to load user");
+                return;
+            }
+            currentUser = await res.json();
+            
+            // 10. Negative Balance Protection Check
+            if ((currentUser.stuckBalance || 0) < 0) {
+                alert("CRITICAL ERROR: Escrow logic fault. Stuck Balance is negative. All operations frozen.");
+                document.body.style.pointerEvents = 'none';
+                document.body.style.opacity = '0.5';
+                return;
+            }
+
+            updateUI();
+            fetchCampaigns();
+        });
+
+        function updateUI() {
+            document.getElementById('headerBalance').innerText = (currentUser.points || 0).toLocaleString();
+            document.getElementById('valEscrow').innerText = (currentUser.stuckBalance || 0).toLocaleString();
+            document.getElementById('valPenalty').innerText = (currentUser.penaltyGems || 0).toLocaleString();
+            document.getElementById('valVelocity').innerText = (currentUser.escrowVelocity || 0).toLocaleString();
+            document.getElementById('valYield').innerText = (currentUser.escrowYield || 0).toLocaleString();
+
+            if ((currentUser.stuckBalance || 0) < 100 && Object.keys(myCampaigns).length > 0) {
+                document.getElementById('reserveAlert').style.display = 'block';
+            } else {
+                document.getElementById('reserveAlert').style.display = 'none';
+            }
+        }
+
+        function toggleCategoryOptions() {
+            const cat = document.getElementById('taskCategory').value;
+            const linkInput = document.getElementById('taskLink');
+            if(cat === 'auto') {
+                linkInput.placeholder = "MUST BE TELEGRAM CHAT ID (e.g. -100123...)";
+            } else {
+                linkInput.placeholder = "Enter URL (e.g. https://twitter.com/...)";
+            }
+        }
+
+        function calcEscrow() {
+            const limit = parseInt(document.getElementById('taskLimit').value) || 0;
+            const reward = parseInt(document.getElementById('taskReward').value) || 0;
+            document.getElementById('calcTotal').innerText = (limit * reward).toLocaleString();
+        }
+
+        async function createCampaign() {
+            const limit = parseInt(document.getElementById('taskLimit').value) || 0;
+            const reward = parseInt(document.getElementById('taskReward').value) || 0;
+            const total = limit * reward;
+            
+            if(total <= 0) return alert("Total investment must be > 0");
+            if((currentUser.points || 0) < total) return alert("Not enough Gems in Main Balance!");
+
+            const payload = {
+                userId,
+                type: document.getElementById('taskCategory').value,
+                icon: document.getElementById('taskIcon').value,
+                name: document.getElementById('taskName').value,
+                link: document.getElementById('taskLink').value,
+                desc: document.getElementById('taskDesc').value,
+                maxUsers: limit,
+                reward: reward
+            };
+
+            const btn = document.getElementById('btnCreate');
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Locking Escrow...';
+            
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/campaigns/create`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if(data.success) {
+                    alert("Campaign created and Escrow Locked!");
+                    window.location.reload();
+                } else {
+                    alert(data.error || "Failed");
+                }
+            } catch(e) { alert("Network error"); }
+            btn.innerHTML = 'Create & Lock Escrow';
+        }
+
+        async function fetchCampaigns() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/campaigns/${userId}`);
+                if(res.ok) {
+                    myCampaigns = await res.json();
+                    renderCampaigns();
+                }
+            } catch(e){}
+        }
+
+        function renderCampaigns() {
+            const container = document.getElementById('campaignList');
+            if(Object.keys(myCampaigns).length === 0) {
+                container.innerHTML = '<div style="text-align:center; color:#94A3B8; padding:20px;">No active campaigns.</div>';
+                return;
+            }
+
+            let html = '';
+            Object.keys(myCampaigns).forEach(id => {
+                const c = myCampaigns[id];
+                const claims = c.claims || 0;
+                const statusColor = c.paused ? '#F59E0B' : (claims >= c.maxUsers ? '#EF4444' : '#10B981');
+                
+                html += `
+                    <div class="campaign-item" onclick="openManageModal('${id}')" style="border-left-color: ${statusColor}">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <i class="fa-brands ${c.icon}" style="font-size:1.5rem; color:var(--color-cyan);"></i>
+                            <div>
+                                <div style="font-weight:700;">${c.name}</div>
+                                <div style="font-size:0.75rem; color:#94A3B8;">${claims} / ${c.maxUsers} Users</div>
+                            </div>
+                        </div>
+                        <i class="fa-solid fa-chevron-right" style="color:#64748B;"></i>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        function openManageModal(id) {
+            currentManageId = id;
+            const c = myCampaigns[id];
+            if(!c) return;
+            
+            document.getElementById('mName').innerText = c.name;
+            document.getElementById('mLink').value = c.link || '';
+            document.getElementById('mDesc').value = c.desc || '';
+            
+            const claims = c.claims || 0;
+            const spent = claims * c.reward;
+            const total = c.maxUsers * c.reward;
+            
+            document.getElementById('mViews').innerText = c.views || 0;
+            document.getElementById('mClicks').innerText = claims;
+            document.getElementById('mSpendText').innerText = `${spent} / ${total}`;
+            document.getElementById('mSpendBar').style.width = `${(spent/total)*100}%`;
+            
+            const statusDot = document.getElementById('mStatusDot');
+            const statusText = document.getElementById('mStatusText');
+            
+            if(claims >= c.maxUsers) {
+                statusDot.className = 'status-dot status-completed';
+                statusText.innerText = 'Completed';
+                document.getElementById('btnPause').style.display = 'none';
+            } else if (c.paused) {
+                statusDot.className = 'status-dot status-paused';
+                statusText.innerText = 'Paused';
+                document.getElementById('btnPause').style.display = 'block';
+                document.getElementById('btnPause').innerText = 'Resume';
+            } else {
+                statusDot.className = 'status-dot status-active';
+                statusText.innerText = 'Active';
+                document.getElementById('btnPause').style.display = 'block';
+                document.getElementById('btnPause').innerText = 'Pause';
+            }
+
+            const cb = document.getElementById('mAutoRenew');
+            cb.checked = c.autoRenew || false;
+            document.getElementById('toggleNob').style.transform = cb.checked ? 'translateX(26px)' : 'translateX(0)';
+
+            if(c.type === 'manual') {
+                document.getElementById('manualQueuePanel').style.display = 'block';
+                loadQueue();
+            } else {
+                document.getElementById('manualQueuePanel').style.display = 'none';
+            }
+
+            document.getElementById('manageModal').classList.add('active');
+        }
+
+        function closeManageModal() {
+            document.getElementById('manageModal').classList.remove('active');
+            currentManageId = null;
+        }
+
+        async function saveSafeInfo() {
+            const link = document.getElementById('mLink').value;
+            const desc = document.getElementById('mDesc').value;
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/campaigns/update`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ userId, campaignId: currentManageId, action: 'edit', link, desc })
+                });
+                if((await res.json()).success) alert("Saved");
+            } catch(e) {}
+        }
+
+        async function togglePause() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/campaigns/update`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ userId, campaignId: currentManageId, action: 'togglePause' })
+                });
+                if((await res.json()).success) {
+                    await fetchCampaigns();
+                    openManageModal(currentManageId);
+                }
+            } catch(e) {}
+        }
+
+        async function toggleAutoRenew() {
+            const cb = document.getElementById('mAutoRenew');
+            document.getElementById('toggleNob').style.transform = cb.checked ? 'translateX(26px)' : 'translateX(0)';
+            try {
+                await fetch(`${API_BASE_URL}/api/campaigns/update`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ userId, campaignId: currentManageId, action: 'autoRenew', value: cb.checked })
+                });
+            } catch(e) {}
+        }
+
+        async function liquidateCampaign() {
+            if(!confirm("Are you sure? This will terminate the campaign and return remaining Escrow to your Main Balance.")) return;
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/campaigns/liquidate`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ userId, campaignId: currentManageId })
+                });
+                const data = await res.json();
+                if(data.success) {
+                    alert(`Refunded ${data.refunded} Gems from Escrow to Main Balance!`);
+                    window.location.reload();
+                }
+            } catch(e) {}
+        }
+        
+        function cloneCampaign() {
+            const c = myCampaigns[currentManageId];
+            if(!c) return;
+            closeManageModal();
+            document.getElementById('taskCategory').value = c.type;
+            document.getElementById('taskIcon').value = c.icon;
+            document.getElementById('taskName').value = c.name + " (Copy)";
+            document.getElementById('taskLink').value = c.link;
+            document.getElementById('taskDesc').value = c.desc;
+            document.getElementById('taskLimit').value = c.maxUsers;
+            document.getElementById('taskReward').value = c.reward;
+            calcEscrow();
+            window.scrollTo(0, document.body.scrollHeight);
+        }
+
+        function openTransferModal() {
+            alert("Escrow Transfer Protocol initiated. (Visual Demo: Sweeping balance between smart contracts...)");
+        }
+
+        // QUEUE LOGIC (MOCK FOR NOW)
+        function loadQueue() {
+            const c = myCampaigns[currentManageId];
+            if(c.queue && c.queue.length > 0) {
+                currentQueueItem = c.queue[0];
+                document.getElementById('qImg').src = currentQueueItem.imgUrl;
+                document.getElementById('qImg').style.display = 'block';
+                document.getElementById('qEmpty').style.display = 'none';
+                document.getElementById('qUser').innerText = currentQueueItem.userId;
+            } else {
+                currentQueueItem = null;
+                document.getElementById('qImg').style.display = 'none';
+                document.getElementById('qEmpty').style.display = 'block';
+                document.getElementById('qUser').innerText = '-';
+            }
+        }
+
+        async function processQueueItem(action, reason = '') {
+            if(!currentQueueItem) return;
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/campaigns/review`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ userId, campaignId: currentManageId, submissionId: currentQueueItem.id, action, reason })
+                });
+                if((await res.json()).success) {
+                    await fetchCampaigns();
+                    loadQueue();
+                }
+            } catch(e) {}
+        }
+
+        function approveScreenshot() { processQueueItem('approve'); }
+        function openRejectReason() {
+            if(!currentQueueItem) return;
+            document.getElementById('rejectModal').style.display = 'flex';
+        }
+        function submitReject() {
+            const r = document.getElementById('rejectReason').value;
+            processQueueItem('reject', r);
+            document.getElementById('rejectModal').style.display = 'none';
+            document.getElementById('rejectReason').value = '';
+        }
+
+    </script>
+</body>
+</html>

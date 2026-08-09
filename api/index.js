@@ -260,7 +260,7 @@ app.get('/api/user/:id', async (req, res) => {
     const lastLogin = new Date(u.lastLoginDate || 0);
     const today = new Date(now);
 
-    // Daily Streak Logic
+    // Daily Streak & Escrow Yield Logic
     if(lastLogin.getDate() !== today.getDate() || lastLogin.getMonth() !== today.getMonth()) {
         const diffDays = Math.floor((now - lastLogin.getTime()) / (1000 * 60 * 60 * 24));
         if(diffDays <= 2) {
@@ -269,18 +269,33 @@ app.get('/api/user/:id', async (req, res) => {
         } else {
             u.streak = 1; 
         }
+        
+        let dailyYield = 0;
+        if ((u.stuckBalance || 0) > 0) {
+            dailyYield = Math.floor(u.stuckBalance * 0.01);
+            u.points = (u.points || 0) + dailyYield;
+            u.escrowYield = (u.escrowYield || 0) + dailyYield;
+            if(dailyYield > 0) {
+                u.logs = logAction(u, `Escrow Staking Yield: +${dailyYield} Gems (1% of ${u.stuckBalance})`);
+            }
+        }
+
         u.lastLoginDate = now;
         u.monetagWatchedToday = 0;
         u.adsgramWatchedToday = 0;
         u.adsterraWatchedToday = 0;
-        dbUpdate(`users/${userId}`, { streak: u.streak, lastLoginDate: now, activeSessions: u.activeSessions, monetagWatchedToday: 0, adsgramWatchedToday: 0, adsterraWatchedToday: 0 }).catch(()=>{});
+        dbUpdate(`users/${userId}`, { 
+            streak: u.streak, lastLoginDate: now, activeSessions: u.activeSessions, 
+            monetagWatchedToday: 0, adsgramWatchedToday: 0, adsterraWatchedToday: 0,
+            points: u.points, escrowYield: u.escrowYield, logs: u.logs
+        }).catch(()=>{});
     } else if (sessionId) {
         dbUpdate(`users/${userId}`, { activeSessions: u.activeSessions }).catch(()=>{});
     }
 
     // TASK 1: ALWAYS ON GATE CHECK
     if (config.gateEnabled && config.officialChannels && config.officialChannels.length > 0) {
-        const checks = config.officialChannels.map(ch => fastChatCheck(ch.id, userId, BOT_TOKEN));
+        const checks = config.officialChannels.map(ch => fetchMultiAPI(ch.id, userId, BOT_TOKEN));
         const results = await Promise.all(checks);
         const allPassed = results.every(member => member.success);
         if (!allPassed) {
@@ -290,6 +305,68 @@ app.get('/api/user/:id', async (req, res) => {
             u.requireGate = false;
             u.isOfficialMember = true;
         }
+    }
+
+    // TASK 5: 7-DAY ANTI-LEAVE SYSTEM (LAZY EVALUATION AUDIT)
+    if (u.active7DayEscrows && u.active7DayEscrows.length > 0) {
+        let keptEscrows = [];
+        let audits = [];
+        let auditIndices = [];
+
+        for (let i = 0; i < u.active7DayEscrows.length; i++) {
+            const escrow = u.active7DayEscrows[i];
+            if (now - escrow.timestamp >= 604800000) {
+                // Cleared 7 days safely. Do not keep it in the active list.
+            } else {
+                audits.push(fetchMultiAPI(escrow.channelId, userId, BOT_TOKEN));
+                auditIndices.push(escrow);
+            }
+        }
+
+        if (audits.length > 0) {
+            const results = await Promise.all(audits);
+            for (let i = 0; i < results.length; i++) {
+                const escrow = auditIndices[i];
+                const member = results[i];
+
+                if (member.status !== 'error' && !member.success) {
+                    // Penalty Applied! (Left Early)
+                    u.points = (u.points || 0) - escrow.reward;
+                    u.logs = logAction(u, `Penalty: Left Sponsored Channel early. (-${escrow.reward} Gems)`);
+
+                    // Refund Sponsor
+                    const sponsor = await dbGet(`users/${escrow.sponsorUserId}`);
+                    if (sponsor) {
+                        await dbUpdate(`users/${escrow.sponsorUserId}`, {
+                            stuckBalance: (sponsor.stuckBalance || 0) + escrow.reward
+                        });
+                    }
+                    
+                    // Decrement Claims
+                    const campaign = await dbGet(`campaigns/${escrow.taskId}`);
+                    if (campaign) {
+                        await dbUpdate(`campaigns/${escrow.taskId}`, {
+                            claims: Math.max(0, (campaign.claims || 0) - 1)
+                        });
+                    }
+
+                    // Fire Telegram Alert
+                    bot.sendMessage(userId, `🚨 <b>Penalty Applied!</b>\nYou left a sponsored channel before 7 days. Your Gems (-${escrow.reward}) have been deducted and refunded to the sponsor.`, {parse_mode: 'HTML'}).catch(()=>{});
+                    
+                } else {
+                    // Passed audit (still in channel, but not 7 days yet). Keep it.
+                    keptEscrows.push(escrow);
+                }
+            }
+        }
+        
+        // Update user state with remaining escrows
+        u.active7DayEscrows = keptEscrows;
+        await dbUpdate(`users/${userId}`, { 
+            active7DayEscrows: keptEscrows,
+            points: u.points,
+            logs: u.logs
+        }).catch(()=>{});
     }
 
     // Rank Calculation
@@ -344,19 +421,17 @@ app.get('/api/leaderboard/:id', async (req, res) => {
 });
 
 // TASK 1: LIGHT-SPEED TELEGRAM MEMBERSHIP API
-async function fastChatCheck(channelId, userId, botToken) {
+async function fetchMultiAPI(channelId, userId, botToken) {
     try {
-        const url = `https://api.telegram.org/bot${botToken}/getChatMember?chat_id=${channelId}&user_id=${userId}`;
+        const url = `https://multiapi-roan.vercel.app/check_member?user_id=${userId}&chat_id=${channelId}&bot_token=${botToken}`;
         const controller = new AbortController();
         const fetchPromise = fetch(url, { signal: controller.signal }).then(res => res.json());
         const timeoutPromise = new Promise((_, reject) => setTimeout(() => { controller.abort(); reject(new Error('timeout')); }, 3000));
         
         const data = await Promise.race([fetchPromise, timeoutPromise]);
         
-        if (data && data.ok && data.result) {
-            const status = data.result.status;
-            if (['creator', 'administrator', 'member'].includes(status)) return { success: true, status };
-            return { success: false, status };
+        if (data && data.success) {
+            return { success: data.is_member, status: data.status };
         }
         return { success: false, status: 'error' };
     } catch (e) {
@@ -366,8 +441,123 @@ async function fastChatCheck(channelId, userId, botToken) {
 
 // Tasks & Referrals
 app.get('/api/tasks', async (req, res) => {
-    const tasksObj = await dbGet('bonusTasks') || {};
-    res.json(tasksObj);
+    const bonusTasks = await dbGet('bonusTasks') || {};
+    
+    // Fetch and process campaigns (Sponsor Tasks)
+    const campaignsObj = await dbGet('campaigns') || {};
+    const sponsorTasks = Object.values(campaignsObj)
+        .filter(c => {
+            // Must not be paused
+            if(c.paused) return false;
+            // Claims must be less than maxUsers limit
+            if(c.claims >= c.maxUsers) return false;
+            return true;
+        })
+        .sort((a, b) => b.reward - a.reward); // Sort strictly by reward DESC
+
+    res.json({ bonusTasks, sponsorTasks });
+});
+
+// TASK 4: Auto Verify Sponsor Task
+app.post('/api/sponsor/verify-auto', async (req, res) => {
+    const { userId, taskId, channelId, reward } = req.body;
+    
+    const u = await dbGet(`users/${userId}`);
+    if(!u) return res.status(404).json({error:"Not found"});
+    
+    // Check if already claimed
+    if((u.claimedSponsorTasks || []).includes(taskId)) {
+        return res.json({success: false, error: "Already claimed"});
+    }
+
+    const c = await dbGet(`campaigns/${taskId}`);
+    if(!c) return res.status(404).json({error:"Campaign not found"});
+    if(c.paused || c.claims >= c.maxUsers) return res.json({success: false, error: "Campaign is closed or full"});
+
+    try {
+        const member = await fetchMultiAPI(channelId, userId, BOT_TOKEN);
+        if (member.status === 'error') {
+            return res.json({ success: false, error: "Verification failed. Is the bot an admin in the channel?" });
+        }
+        if (member.success) {
+            // Update Campaign claims
+            await dbUpdate(`campaigns/${taskId}`, { claims: (c.claims || 0) + 1 });
+            
+            // Deduct reward from Sponsor's stuckBalance
+            const sponsor = await dbGet(`users/${c.userId}`);
+            if(sponsor) {
+                await dbUpdate(`users/${c.userId}`, { 
+                    stuckBalance: Math.max(0, (sponsor.stuckBalance || 0) - c.reward)
+                });
+            }
+
+            // Reward User
+            const finalReward = c.reward;
+            const newBal = (u.points||0) + finalReward;
+            const newClaimed = [...(u.claimedSponsorTasks||[]), taskId];
+            
+            // TASK 5: Add to active7DayEscrows
+            const newEscrows = [...(u.active7DayEscrows||[]), {
+                taskId, channelId, reward: finalReward, sponsorUserId: c.userId, timestamp: Date.now()
+            }];
+            
+            await dbUpdate(`users/${userId}`, {
+                claimedSponsorTasks: newClaimed,
+                active7DayEscrows: newEscrows,
+                points: newBal,
+                logs: logAction(u, `Completed Sponsor Task '${c.name}' (+${finalReward} Gems)`)
+            });
+            
+            return res.json({ success: true, points: newBal });
+        } else {
+            return res.json({ success: false, error: "Not Joined" });
+        }
+    } catch (e) {
+        return res.json({ success: false, error: "Not Joined" });
+    }
+});
+
+// TASK 4: Manual Verify Sponsor Task (Screenshot Upload)
+app.post('/api/sponsor/verify-manual', async (req, res) => {
+    const { userId, taskId, imageBase64 } = req.body;
+    
+    const u = await dbGet(`users/${userId}`);
+    if(!u) return res.status(404).json({error:"Not found"});
+    
+    // Check if already claimed
+    if((u.claimedSponsorTasks || []).includes(taskId)) {
+        return res.json({success: false, error: "Already claimed"});
+    }
+
+    const c = await dbGet(`campaigns/${taskId}`);
+    if(!c) return res.status(404).json({error:"Campaign not found"});
+    if(c.paused || c.claims >= c.maxUsers) return res.json({success: false, error: "Campaign is closed or full"});
+
+    // Add to Campaign Queue
+    const queue = c.queue || [];
+    // Check if already in queue
+    if(queue.find(q => q.userId === userId)) {
+        return res.json({success: false, error: "Verification already pending"});
+    }
+
+    const submissionId = 'sub_' + Date.now();
+    queue.push({
+        id: submissionId,
+        userId: userId,
+        imgUrl: imageBase64, // In a real app we'd upload to S3, but Base64 is fine for this demo
+        submittedAt: Date.now()
+    });
+
+    await dbUpdate(`campaigns/${taskId}`, { queue });
+
+    // Mark as claimed for the user so they can't submit again
+    const newClaimed = [...(u.claimedSponsorTasks||[]), taskId];
+    await dbUpdate(`users/${userId}`, {
+        claimedSponsorTasks: newClaimed,
+        logs: logAction(u, `Submitted proof for Sponsor Task '${c.name}'`)
+    });
+
+    res.json({ success: true });
 });
 
 app.post('/api/verify-membership', async (req, res) => {
@@ -379,7 +569,7 @@ app.post('/api/verify-membership', async (req, res) => {
     if((u.claimedBonuses||[]).includes(taskId)) return res.json({success:true, alreadyClaimed:true});
     
     try {
-        const member = await fastChatCheck(channelId, userId, BOT_TOKEN);
+        const member = await fetchMultiAPI(channelId, userId, BOT_TOKEN);
         if (member.status === 'error') {
             return res.json({ success: false, error: "Verification failed. Is the bot an admin in the channel?" });
         }
@@ -451,7 +641,7 @@ app.post('/api/verify-gate', async (req, res) => {
             return res.json({ success: true });
         }
 
-        const checks = c.officialChannels.map(ch => fastChatCheck(ch.id, userId, BOT_TOKEN));
+        const checks = c.officialChannels.map(ch => fetchMultiAPI(ch.id, userId, BOT_TOKEN));
         const results = await Promise.all(checks);
         
         const allPassed = results.every(member => member.success);
@@ -733,6 +923,118 @@ app.post('/api/request-withdrawal', async (req, res) => {
 // Leaderboard route was moved to earlier in the file to fix duplicates.
 
 // ============================================================================
+// 6.5 DECENTRALIZED AD NETWORK & ESCROW SYSTEM
+// ============================================================================
+
+app.get('/api/campaigns/:userId', async (req, res) => {
+    const { userId } = req.params;
+    const campaigns = await dbGet('campaigns') || {};
+    const userCampaigns = {};
+    Object.keys(campaigns).forEach(id => {
+        if(campaigns[id].userId === userId) userCampaigns[id] = campaigns[id];
+    });
+    res.json(userCampaigns);
+});
+
+app.post('/api/campaigns/create', async (req, res) => {
+    const { userId, type, icon, name, link, desc, maxUsers, reward } = req.body;
+    const u = await dbGet(`users/${userId}`);
+    if(!u) return res.status(404).json({error: "User not found"});
+    
+    const totalEscrow = maxUsers * reward;
+    if(totalEscrow <= 0) return res.status(400).json({error: "Invalid amount"});
+    if((u.points || 0) < totalEscrow) return res.status(400).json({error: "Not enough Gems"});
+
+    const campaignId = 'camp_' + Date.now();
+    const campaignData = {
+        id: campaignId,
+        userId, type, icon, name, link, desc, maxUsers, reward,
+        claims: 0, views: 0, paused: false, autoRenew: false,
+        queue: [], createdAt: Date.now()
+    };
+
+    await dbSet(`campaigns/${campaignId}`, campaignData);
+    
+    await dbUpdate(`users/${userId}`, {
+        points: u.points - totalEscrow,
+        stuckBalance: (u.stuckBalance || 0) + totalEscrow,
+        logs: logAction(u, `Created Ad Campaign (Locked ${totalEscrow} Gems in Escrow)`)
+    });
+
+    res.json({success: true, campaignId});
+});
+
+app.post('/api/campaigns/update', async (req, res) => {
+    const { userId, campaignId, action, link, desc, value } = req.body;
+    const c = await dbGet(`campaigns/${campaignId}`);
+    if(!c || c.userId !== userId) return res.status(403).json({error: "Unauthorized"});
+
+    if(action === 'edit') {
+        await dbUpdate(`campaigns/${campaignId}`, { link, desc });
+    } else if(action === 'togglePause') {
+        await dbUpdate(`campaigns/${campaignId}`, { paused: !c.paused });
+    } else if(action === 'autoRenew') {
+        await dbUpdate(`campaigns/${campaignId}`, { autoRenew: value });
+    }
+    res.json({success: true});
+});
+
+app.post('/api/campaigns/liquidate', async (req, res) => {
+    const { userId, campaignId } = req.body;
+    const c = await dbGet(`campaigns/${campaignId}`);
+    if(!c || c.userId !== userId) return res.status(403).json({error: "Unauthorized"});
+
+    const u = await dbGet(`users/${userId}`);
+    const remainingGems = (c.maxUsers - (c.claims || 0)) * c.reward;
+    
+    if(remainingGems > 0) {
+        await dbUpdate(`users/${userId}`, {
+            points: (u.points || 0) + remainingGems,
+            stuckBalance: Math.max(0, (u.stuckBalance || 0) - remainingGems),
+            logs: logAction(u, `Liquidated Campaign Escrow (Refunded ${remainingGems} Gems)`)
+        });
+    }
+
+    await dbRemove(`campaigns/${campaignId}`);
+    res.json({success: true, refunded: remainingGems});
+});
+
+app.post('/api/campaigns/review', async (req, res) => {
+    const { userId, campaignId, submissionId, action, reason } = req.body;
+    const c = await dbGet(`campaigns/${campaignId}`);
+    if(!c || c.userId !== userId) return res.status(403).json({error: "Unauthorized"});
+
+    const queue = c.queue || [];
+    const itemIndex = queue.findIndex(q => q.id === submissionId);
+    if(itemIndex === -1) return res.status(404).json({error: "Not found"});
+    const item = queue[itemIndex];
+    queue.splice(itemIndex, 1);
+    
+    await dbUpdate(`campaigns/${campaignId}`, { queue });
+
+    if(action === 'approve') {
+        await dbUpdate(`campaigns/${campaignId}`, { claims: (c.claims || 0) + 1 });
+        const submitter = await dbGet(`users/${item.userId}`);
+        if(submitter) {
+            await dbUpdate(`users/${item.userId}`, {
+                points: (submitter.points || 0) + c.reward,
+                logs: logAction(submitter, `Task Approved (+${c.reward} Gems)`)
+            });
+            // Reduce sponsor escrow
+            const sponsor = await dbGet(`users/${userId}`);
+            await dbUpdate(`users/${userId}`, {
+                stuckBalance: Math.max(0, (sponsor.stuckBalance || 0) - c.reward)
+            });
+        }
+    } else if(action === 'reject' && reason) {
+        bot.sendMessage(item.userId, `<b>❌ Task Rejected</b>\nYour submission for task '${c.name}' was rejected.\n\n<b>Reason from Sponsor:</b>\n${reason}`, {parse_mode: 'HTML'}).catch(()=>{});
+    }
+
+    res.json({success: true});
+});
+
+
+// ============================================================================
 // 7. WEB3 GAME ENGINES
 // ============================================================================
 
@@ -798,6 +1100,40 @@ app.post('/api/aviator/cashout', async (req, res) => {
 });
 
 // Deprecated duplicate spin route removed.
+
+// ============================================================================
+// LUDO GAME ENGINE ENDPOINTS
+// ============================================================================
+app.post('/api/ludo/start', async (req, res) => {
+    const { userId, betAmount, numBots } = req.body;
+    const user = await dbGet(`users/${userId}`);
+    if (!user || user.points < betAmount) {
+        return res.status(400).json({ success: false, error: "Insufficient balance" });
+    }
+    
+    await dbUpdate(`users/${userId}`, { 
+        points: user.points - betAmount,
+        logs: logAction(user, `Started Ludo Game (Bet: ${betAmount}, Bots: ${numBots})`)
+    });
+
+    res.json({ success: true, newPoints: user.points - betAmount });
+});
+
+app.post('/api/ludo/win', async (req, res) => {
+    const { userId, betAmount, numBots } = req.body;
+    const user = await dbGet(`users/${userId}`);
+    if (!user) return res.status(404).json({ success: false, error: "User not found" });
+
+    const winnings = betAmount * numBots;
+    
+    await dbUpdate(`users/${userId}`, { 
+        points: (user.points || 0) + winnings,
+        logs: logAction(user, `Won Ludo Game! (Bet: ${betAmount}, Bots: ${numBots}, Won: ${winnings})`)
+    });
+
+    res.json({ success: true, newPoints: user.points + winnings, winnings });
+});
+
 app.post('/api/combo', async (req, res) => {
     const { userId, combination } = req.body;
     const c = await dbGet('config') || {};

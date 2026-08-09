@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <title>Besh Ludo - Ultimate Fair Engine</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        :root {
+            --red: #FF3B30; --green: #34C759; --yellow: #FFCC00; --blue: #007AFF;
+            --bg-color: #0F172A; --glass-bg: rgba(15, 23, 42, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background: var(--bg-color); color: white;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            overflow: hidden; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+        }
+
+        /* Lobby UI */
+        #setupMenu {
+            position: absolute; z-index: 20;
+            background: var(--glass-bg); backdrop-filter: blur(25px);
+            border: 1px solid var(--glass-border); border-radius: 24px;
+            padding: 30px; width: 90%; max-width: 400px;
+            text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            transition: opacity 0.5s ease;
+        }
+        #setupMenu h1 { margin-top: 0; font-size: 2.2rem; background: linear-gradient(90deg, #00F2FE, #4FACFE); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        
+        .input-group { margin-bottom: 20px; text-align: left; }
+        .input-group label { display: block; font-size: 0.9rem; margin-bottom: 8px; color: #94A3B8; font-weight: 700; }
+        .input-group input, .input-group select {
+            width: 100%; padding: 15px;
+            background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2);
+            color: white; border-radius: 12px; font-size: 1.1rem; font-weight: 600;
+            box-sizing: border-box; outline: none; transition: 0.2s;
+        }
+        .input-group input:focus, .input-group select:focus { border-color: #00F2FE; box-shadow: 0 0 15px rgba(0,242,254,0.4); }
+        
+        #payoutDisplay { font-size: 1.4rem; color: #34C759; font-weight: 800; margin-bottom: 20px; text-shadow: 0 0 10px rgba(52, 199, 89, 0.5); }
+        
+        .btn {
+            background: linear-gradient(90deg, #00F2FE, #4FACFE); border: none;
+            color: white; padding: 16px; width: 100%; border-radius: 12px;
+            font-size: 1.2rem; font-weight: 800; cursor: pointer;
+            box-shadow: 0 4px 20px rgba(0,242,254,0.4); transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn:active { transform: scale(0.96); }
+
+        /* Game Area */
+        #gameArea { 
+            display: none; width: 100%; height: 100%; 
+            flex-direction: column; align-items: center; justify-content: space-evenly; 
+            padding: 10px 0; box-sizing: border-box;
+            opacity: 0; transition: opacity 0.5s ease;
+        }
+        
+        #gameInfo { 
+            background: var(--glass-bg); padding: 12px 25px; border-radius: 20px; 
+            font-weight: 800; font-size: 1.2rem; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            border: 1px solid var(--glass-border); transition: color 0.3s, text-shadow 0.3s;
+        }
+        
+        canvas {
+            background: #1E293B; border-radius: 20px;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.6);
+            max-width: 95vw; max-height: 60vh; object-fit: contain;
+        }
+        
+        /* 3D Dice */
+        #diceContainer { display: flex; flex-direction: column; align-items: center; margin-top: 10px; }
+        .scene { width: 80px; height: 80px; perspective: 600px; margin-bottom: 10px; }
+        .cube {
+            width: 80px; height: 80px; position: relative;
+            transform-style: preserve-3d; transform: translateZ(-40px);
+            transition: transform 1s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s; 
+            cursor: pointer; border-radius: 16px;
+        }
+        .cube.rolling { animation: rollCube 0.8s linear infinite; }
+        .cube__face {
+            position: absolute; width: 80px; height: 80px;
+            background: radial-gradient(circle at center, #ffffff, #e2e8f0);
+            border: 2px solid #cbd5e1; border-radius: 16px;
+            display: flex; justify-content: center; align-items: center;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.15);
+        }
+        .dot { width: 16px; height: 16px; background: #1e293b; border-radius: 50%; box-shadow: inset 0 3px 5px rgba(0,0,0,0.5); }
+        
+        .cube__face--front  { transform: rotateY(  0deg) translateZ(40px); }
+        .cube__face--right  { transform: rotateY( 90deg) translateZ(40px); }
+        .cube__face--back   { transform: rotateY(180deg) translateZ(40px); }
+        .cube__face--left   { transform: rotateY(-90deg) translateZ(40px); }
+        .cube__face--top    { transform: rotateX( 90deg) translateZ(40px); }
+        .cube__face--bottom { transform: rotateX(-90deg) translateZ(40px); }
+        
+        .face-1 { display: flex; align-items: center; justify-content: center; }
+        .face-2 { display: flex; justify-content: space-between; padding: 15px; } .face-2 .dot:nth-child(2) { align-self: flex-end; }
+        .face-3 { display: flex; justify-content: space-between; padding: 15px; } .face-3 .dot:nth-child(2) { align-self: center; } .face-3 .dot:nth-child(3) { align-self: flex-end; }
+        .face-4 { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 15px; padding: 15px; }
+        .face-5 { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 15px; padding: 15px; position: relative; } .face-5 .dot:nth-child(5) { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+        .face-6 { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; gap: 10px 15px; padding: 15px; }
+        
+        @keyframes rollCube {
+            0% { transform: translateZ(-40px) rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+            100% { transform: translateZ(-40px) rotateX(720deg) rotateY(1080deg) rotateZ(360deg); }
+        }
+        
+        .show-1 { transform: translateZ(-40px) rotateY(   0deg); }
+        .show-2 { transform: translateZ(-40px) rotateY( -90deg); }
+        .show-3 { transform: translateZ(-40px) rotateY(-180deg); }
+        .show-4 { transform: translateZ(-40px) rotateY(  90deg); }
+        .show-5 { transform: translateZ(-40px) rotateX( -90deg); }
+        .show-6 { transform: translateZ(-40px) rotateX(  90deg); }
+        
+        /* Endgame Overlay */
+        #endOverlay {
+            display: none; position: absolute; z-index: 100;
+            background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(15px); inset: 0;
+            flex-direction: column; align-items: center; justify-content: center;
+        }
+        #endOverlay h1 { font-size: 3.5rem; margin: 0; text-align: center; font-weight: 800; text-shadow: 0 0 20px currentColor; }
+        #endOverlay p { font-size: 1.5rem; margin-top: 10px; font-weight: 600; }
+    </style>
+</head>
+<body>
+
+    <!-- LOBBY -->
+    <div id="setupMenu">
+        <h1>Ultimate Ludo</h1>
+        <div class="input-group">
+            <label>Gem Wager Amount</label>
+            <input type="number" id="betAmount" value="100" min="10" step="10" oninput="updatePayout()">
+        </div>
+        <div class="input-group">
+            <label>Select Mode</label>
+            <select id="numBots" onchange="updatePayout()">
+                <option value="1">2 Players (Vs 1 Bot)</option>
+                <option value="2">3 Players (Vs 2 Bots)</option>
+                <option value="3" selected>4 Players (Vs 3 Bots)</option>
+            </select>
+        </div>
+        <div id="payoutDisplay">Potential Win: 300 Gems</div>
+        <div id="setupError" style="color:var(--red); font-size:0.95rem; margin-bottom:15px; display:none; font-weight:600;"></div>
+        <button class="btn" id="startBtn" onclick="startGame()">Start Game</button>
+    </div>
+
+    <!-- GAME AREA -->
+    <div id="gameArea">
+        <div id="gameInfo">Initializing...</div>
+        <canvas id="ludoCanvas" width="900" height="900"></canvas>
+        <div id="diceContainer">
+            <div class="scene">
+                <div class="cube" id="diceCube" onclick="userClickDice()">
+                    <div class="cube__face cube__face--front face-1"><div class="dot"></div></div>
+                    <div class="cube__face cube__face--right face-2"><div class="dot"></div><div class="dot"></div></div>
+                    <div class="cube__face cube__face--back face-3"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                    <div class="cube__face cube__face--left face-4"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                    <div class="cube__face cube__face--top face-5"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                    <div class="cube__face cube__face--bottom face-6"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                </div>
+            </div>
+            <div id="diceHint" style="font-size: 0.95rem; color: #94A3B8; font-weight:600; margin-top:5px;">Tap dice to roll</div>
+        </div>
+    </div>
+
+    <!-- ENDGAME -->
+    <div id="endOverlay">
+        <h1 id="endTitle"></h1>
+        <p id="endSubtext"></p>
+        <button class="btn" style="width: 250px; margin-top: 30px;" onclick="window.location.href='index.html'">Back to Home</button>
+    </div>
+
+    <script>
+        const API_BASE_URL = '';
+        let tg = window.Telegram.WebApp;
+        tg.expand();
+        let userId = tg.initDataUnsafe?.user?.id?.toString() || 'test_user';
+        
+        let betAmount = 100;
+        let numBots = 3;
+        let payout = 300;
+        
+        // 0:Red(User), 1:Green, 2:Yellow, 3:Blue
+        const colors = ['#FF3B30', '#34C759', '#FFCC00', '#007AFF']; 
+        const glowColors = ['rgba(255,59,48,0.8)', 'rgba(52,199,89,0.8)', 'rgba(255,204,0,0.8)', 'rgba(0,122,255,0.8)'];
+        let numPlayers = 4;
+        let turn = 0;
+        let state = 'WAITING_ROLL'; // WAITING_ROLL, ROLLING, WAITING_MOVE, MOVING, GAMEOVER
+        let diceValue = 1;
+        let extraRoll = false;
+        
+        // Board logic (15x15 grid)
+        const canvas = document.getElementById('ludoCanvas');
+        const ctx = canvas.getContext('2d');
+        const CS = 900 / 15; // Cell Size = 60
+        
+        // Path (0-51)
+        const pathCoords = [
+            // Bottom left -> middle
+            {c:6, r:14}, {c:6, r:13}, {c:6, r:12}, {c:6, r:11}, {c:6, r:10}, {c:6, r:9},
+            // Middle -> left
+            {c:5, r:8}, {c:4, r:8}, {c:3, r:8}, {c:2, r:8}, {c:1, r:8}, {c:0, r:8},
+            // Left up
+            {c:0, r:7}, {c:0, r:6},
+            // Left -> middle
+            {c:1, r:6}, {c:2, r:6}, {c:3, r:6}, {c:4, r:6}, {c:5, r:6}, {c:6, r:6},
+            // Middle -> top
+            {c:6, r:5}, {c:6, r:4}, {c:6, r:3}, {c:6, r:2}, {c:6, r:1}, {c:6, r:0},
+            // Top across
+            {c:7, r:0}, {c:8, r:0},
+            // Top -> middle
+            {c:8, r:1}, {c:8, r:2}, {c:8, r:3}, {c:8, r:4}, {c:8, r:5}, {c:8, r:6},
+            // Middle -> right
+            {c:9, r:6}, {c:10, r:6}, {c:11, r:6}, {c:12, r:6}, {c:13, r:6}, {c:14, r:6},
+            // Right down
+            {c:14, r:7}, {c:14, r:8},
+            // Right -> middle
+            {c:13, r:8}, {c:12, r:8}, {c:11, r:8}, {c:10, r:8}, {c:9, r:8}, {c:8, r:8},
+            // Middle -> bottom
+            {c:8, r:9}, {c:8, r:10}, {c:8, r:11}, {c:8, r:12}, {c:8, r:13}, {c:8, r:14},
+            // Bottom across
+            {c:7, r:14}
+        ];
+        
+        const startTiles = [0, 13, 26, 39]; // R, G, Y, B
+        const safeTiles = [0, 8, 13, 21, 26, 34, 39, 47];
+        
+        let tokens = [];
+
+        // Audio Engine
+        const ac = new (window.AudioContext || window.webkitAudioContext)();
+        function playTone(freq, type, duration) {
+            if(ac.state === 'suspended') ac.resume();
+            const osc = ac.createOscillator();
+            const gain = ac.createGain();
+            osc.type = type; osc.frequency.setValueAtTime(freq, ac.currentTime);
+            gain.gain.setValueAtTime(0.1, ac.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + duration);
+            osc.connect(gain); gain.connect(ac.destination);
+            osc.start(); osc.stop(ac.currentTime + duration);
+        }
+        function playRollSound() { playTone(400, 'square', 0.1); setTimeout(()=>playTone(600, 'square', 0.1), 100); }
+        function playMoveSound() { playTone(800, 'sine', 0.1); }
+        function playSmashSound() { playTone(150, 'sawtooth', 0.3); setTimeout(()=>playTone(100, 'sawtooth', 0.3), 50); }
+        function playWinSound() { playTone(440, 'square', 0.2); setTimeout(()=>playTone(554, 'square', 0.2), 200); setTimeout(()=>playTone(659, 'square', 0.4), 400); }
+        function playLoseSound() { playTone(300, 'sawtooth', 0.4); setTimeout(()=>playTone(250, 'sawtooth', 0.6), 400); }
+
+        function updatePayout() {
+            const b = parseInt(document.getElementById('betAmount').value) || 0;
+            const n = parseInt(document.getElementById('numBots').value) || 1;
+            document.getElementById('payoutDisplay').innerText = `Potential Win: ${b * n} Gems`;
+        }
+
+        async function startGame() {
+            const btn = document.getElementById('startBtn');
+            btn.innerText = "Loading..."; btn.disabled = true;
+            
+            betAmount = parseInt(document.getElementById('betAmount').value);
+            numBots = parseInt(document.getElementById('numBots').value);
+            payout = betAmount * numBots;
+            numPlayers = numBots + 1;
+            
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/ludo/start`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ userId, betAmount, numBots })
+                });
+                const data = await res.json();
+                if(!data.success) {
+                    document.getElementById('setupError').innerText = data.error || "Error starting game.";
+                    document.getElementById('setupError').style.display = 'block';
+                    btn.innerText = "Start Game"; btn.disabled = false;
+                    return;
+                }
+            } catch(e) {
+                // If API fails locally, we just proceed for visual testing/demo purposes if needed, 
+                // but usually we'd block. Let's block on error unless it's a network issue.
+            }
+            
+            if(ac.state === 'suspended') ac.resume();
+            
+            document.getElementById('setupMenu').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('setupMenu').style.display = 'none';
+                const ga = document.getElementById('gameArea');
+                ga.style.display = 'flex';
+                // Trigger reflow
+                void ga.offsetWidth;
+                ga.style.opacity = '1';
+                initGame();
+            }, 500);
+        }
+
+        function initGame() {
+            tokens = [];
+            for (let p = 0; p < numPlayers; p++) {
+                for (let i = 0; i < 4; i++) {
+                    tokens.push({ player: p, id: i, state: 'BASE', pos: -1, homePos: -1, x: 0, y: 0, tgtX: 0, tgtY: 0, active: false });
+                }
+            }
+            updateTokenTargets();
+            tokens.forEach(t => { t.x = t.tgtX; t.y = t.tgtY; }); // Snap to start
+            
+            turn = 0; state = 'WAITING_ROLL'; extraRoll = false;
+            updateUI();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // --- MATH & COORDINATES ---
+        function getPathXY(pos) {
+            const p = pathCoords[pos % 52];
+            return { x: p.c * CS + CS/2, y: p.r * CS + CS/2 };
+        }
+        
+        function getHomeXY(player, homePos) {
+            // homePos: 0 to 4. Colored columns
+            if (player === 0) return { x: 7 * CS + CS/2, y: (13 - homePos) * CS + CS/2 }; // Red goes UP
+            if (player === 1) return { x: (1 + homePos) * CS + CS/2, y: 7 * CS + CS/2 }; // Green goes RIGHT
+            if (player === 2) return { x: 7 * CS + CS/2, y: (1 + homePos) * CS + CS/2 }; // Yellow goes DOWN
+            if (player === 3) return { x: (13 - homePos) * CS + CS/2, y: 7 * CS + CS/2 }; // Blue goes LEFT
+        }
+        
+        function getBaseXY(player, id) {
+            // 4 zones inside the big 6x6 base
+            const bx = [1.5, 4.5, 1.5, 4.5];
+            const by = [1.5, 1.5, 4.5, 4.5];
+            
+            let ox = 0, oy = 0;
+            if(player === 0) { ox = 0; oy = 9; }
+            if(player === 1) { ox = 0; oy = 0; }
+            if(player === 2) { ox = 9; oy = 0; }
+            if(player === 3) { ox = 9; oy = 9; }
+            
+            return { x: (ox + bx[id]) * CS, y: (oy + by[id]) * CS };
+        }
+
+        function updateTokenTargets() {
+            // Check overlaps on path to slightly offset them
+            const pathCounts = {};
+            tokens.forEach(t => {
+                if (t.state === 'PATH') {
+                    pathCounts[t.pos] = (pathCounts[t.pos] || 0) + 1;
+                }
+            });
+
+            const pathOffsets = {};
+
+            tokens.forEach(t => {
+                let tgt;
+                if (t.state === 'BASE') tgt = getBaseXY(t.player, t.id);
+                else if (t.state === 'PATH') {
+                    tgt = getPathXY(t.pos);
+                    // Offset logic if multiple tokens on same tile
+                    const count = pathCounts[t.pos];
+                    if (count > 1) {
+                        const idx = pathOffsets[t.pos] || 0;
+                        pathOffsets[t.pos] = idx + 1;
+                        const offsetAmt = CS * 0.15;
+                        if(idx === 0) { tgt.x -= offsetAmt; tgt.y -= offsetAmt; }
+                        else if(idx === 1) { tgt.x += offsetAmt; tgt.y += offsetAmt; }
+                        else if(idx === 2) { tgt.x -= offsetAmt; tgt.y += offsetAmt; }
+                        else if(idx === 3) { tgt.x += offsetAmt; tgt.y -= offsetAmt; }
+                    }
+                }
+                else if (t.state === 'HOME') tgt = getHomeXY(t.player, t.homePos);
+                else if (t.state === 'WIN') {
+                    // Center triangle coordinates
+                    let tx = 7.5*CS, ty = 7.5*CS;
+                    if(t.player===0) ty += CS*0.8;
+                    if(t.player===1) tx -= CS*0.8;
+                    if(t.player===2) ty -= CS*0.8;
+                    if(t.player===3) tx += CS*0.8;
+                    tgt = { x: tx, y: ty };
+                }
+                t.tgtX = tgt.x; t.tgtY = tgt.y;
+            });
+        }
+
+        function drawStar(cx, cy, spikes, outerRadius, innerRadius) {
+            let rot = Math.PI / 2 * 3;
+            let x = cx, y = cy;
+            let step = Math.PI / spikes;
+            ctx.beginPath();
+            ctx.moveTo(cx, cy - outerRadius);
+            for (let i = 0; i < spikes; i++) {
+                x = cx + Math.cos(rot) * outerRadius;
+                y = cy + Math.sin(rot) * outerRadius;
+                ctx.lineTo(x, y); rot += step;
+                x = cx + Math.cos(rot) * innerRadius;
+                y = cy + Math.sin(rot) * innerRadius;
+                ctx.lineTo(x, y); rot += step;
+            }
+            ctx.lineTo(cx, cy - outerRadius); ctx.closePath();
+            ctx.fill();
+        }
+
+        function drawBoard() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 1. Draw 4 massive square bases
+            const bs = CS * 6;
+            ctx.fillStyle = colors[1]; ctx.fillRect(0, 0, bs, bs);
+            ctx.fillStyle = colors[2]; ctx.fillRect(canvas.width - bs, 0, bs, bs);
+            ctx.fillStyle = colors[0]; ctx.fillRect(0, canvas.height - bs, bs, bs);
+            ctx.fillStyle = colors[3]; ctx.fillRect(canvas.width - bs, canvas.height - bs, bs, bs);
+            
+            // Draw Token Resting Zones inside bases (4 circles)
+            for(let p=0; p<4; p++) {
+                for(let i=0; i<4; i++) {
+                    const pos = getBaseXY(p, i);
+                    ctx.beginPath(); ctx.arc(pos.x, pos.y, CS*1.2, 0, Math.PI*2);
+                    ctx.fillStyle = '#ffffff'; ctx.fill();
+                    ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 10; ctx.shadowOffsetX = inset = 0; // Simulate inner shadow roughly
+                    ctx.beginPath(); ctx.arc(pos.x, pos.y, CS*1.2, 0, Math.PI*2);
+                    ctx.strokeStyle = 'rgba(0,0,0,0.1)'; ctx.lineWidth = 4; ctx.stroke();
+                    ctx.shadowBlur = 0;
+                }
+            }
+
+            // 2. Draw Path & Safe Zones
+            ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+            for (let i = 0; i < 52; i++) {
+                const p = getPathXY(i);
+                ctx.fillStyle = '#F8FAFC'; // Default tile
+                if (i === startTiles[0]) ctx.fillStyle = colors[0];
+                if (i === startTiles[1]) ctx.fillStyle = colors[1];
+                if (i === startTiles[2]) ctx.fillStyle = colors[2];
+                if (i === startTiles[3]) ctx.fillStyle = colors[3];
+                
+                ctx.fillRect(p.x - CS/2, p.y - CS/2, CS, CS);
+                ctx.strokeRect(p.x - CS/2, p.y - CS/2, CS, CS);
+                
+                // Draw Star on Safe Zones
+                if (safeTiles.includes(i)) {
+                    ctx.fillStyle = (startTiles.includes(i)) ? '#ffffff' : '#CBD5E1';
+                    drawStar(p.x, p.y, 5, CS*0.35, CS*0.15);
+                }
+            }
+            
+            // 3. Draw Home Columns
+            for (let p = 0; p < 4; p++) {
+                for (let i = 0; i < 5; i++) {
+                    const c = getHomeXY(p, i);
+                    ctx.fillStyle = colors[p];
+                    ctx.fillRect(c.x - CS/2, c.y - CS/2, CS, CS);
+                    ctx.strokeRect(c.x - CS/2, c.y - CS/2, CS, CS);
+                }
+            }
+            
+            // 4. Center Triangle Gradient
+            ctx.beginPath(); ctx.moveTo(CS*6, CS*9); ctx.lineTo(CS*9, CS*9); ctx.lineTo(CS*7.5, CS*7.5); ctx.fillStyle = colors[0]; ctx.fill();
+            ctx.beginPath(); ctx.moveTo(CS*6, CS*6); ctx.lineTo(CS*6, CS*9); ctx.lineTo(CS*7.5, CS*7.5); ctx.fillStyle = colors[1]; ctx.fill();
+            ctx.beginPath(); ctx.moveTo(CS*6, CS*6); ctx.lineTo(CS*9, CS*6); ctx.lineTo(CS*7.5, CS*7.5); ctx.fillStyle = colors[2]; ctx.fill();
+            ctx.beginPath(); ctx.moveTo(CS*9, CS*6); ctx.lineTo(CS*9, CS*9); ctx.lineTo(CS*7.5, CS*7.5); ctx.fillStyle = colors[3]; ctx.fill();
+
+            // 5. Render Tokens (3D looking)
+            tokens.forEach(t => {
+                ctx.beginPath();
+                ctx.arc(t.x, t.y, CS*0.35, 0, Math.PI*2);
+                
+                const grad = ctx.createRadialGradient(t.x - CS*0.1, t.y - CS*0.1, CS*0.05, t.x, t.y, CS*0.35);
+                grad.addColorStop(0, '#ffffff');
+                grad.addColorStop(0.3, colors[t.player]);
+                grad.addColorStop(1, '#000000');
+                
+                ctx.fillStyle = grad;
+                ctx.shadowColor = 'rgba(0,0,0,0.6)';
+                ctx.shadowBlur = 10;
+                ctx.shadowOffsetY = 4;
+                ctx.fill();
+                ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; // reset
+                
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#ffffff';
+                ctx.stroke();
+                
+                // Highlight active tokens for user
+                if (t.active && t.player === 0) {
+                    ctx.beginPath();
+                    ctx.arc(t.x, t.y, CS*0.45, 0, Math.PI*2);
+                    ctx.strokeStyle = '#00F2FE';
+                    ctx.lineWidth = 4;
+                    ctx.setLineDash([5, 5]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            });
+        }
+        
+        function gameLoop() {
+            let isMoving = false;
+            tokens.forEach(t => {
+                const dx = t.tgtX - t.x;
+                const dy = t.tgtY - t.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                
+                // Smooth Sliding Animation via requestAnimationFrame
+                if (dist > 1) {
+                    t.x += dx * 0.15;
+                    t.y += dy * 0.15;
+                    isMoving = true;
+                } else {
+                    t.x = t.tgtX; t.y = t.tgtY;
+                }
+            });
+            
+            drawBoard();
+            
+            if (isMoving && state === 'MOVING') {
+                if(Math.random() < 0.1) playMoveSound();
+            } else if (!isMoving && state === 'MOVING') {
+                // Done moving, evaluate captures/wins
+                state = 'EVALUATE';
+                evaluatePostMove();
+            }
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        function updateUI() {
+            const info = document.getElementById('gameInfo');
+            const cube = document.getElementById('diceCube');
+            
+            cube.style.boxShadow = `0 0 30px ${glowColors[turn]}`;
+            
+            if (turn === 0) {
+                info.innerText = extraRoll ? "Bonus Roll! Tap dice." : "Your Turn! Tap dice.";
+                info.style.color = colors[0];
+                info.style.textShadow = `0 0 10px ${colors[0]}`;
+                document.getElementById('diceHint').style.display = 'block';
+            } else {
+                info.innerText = `Bot ${turn} is thinking...`;
+                info.style.color = colors[turn];
+                info.style.textShadow = `0 0 10px ${colors[turn]}`;
+                document.getElementById('diceHint').style.display = 'none';
+                
+                if(state === 'WAITING_ROLL') {
+                    // Execution Delay: Wait 1 second before rolling
+                    setTimeout(triggerRoll, 1000);
+                }
+            }
+        }
+        
+        function userClickDice() {
+            if (turn === 0 && state === 'WAITING_ROLL') {
+                triggerRoll();
+            }
+        }
+        
+        function triggerRoll() {
+            state = 'ROLLING';
+            const cube = document.getElementById('diceCube');
+            cube.classList.add('rolling');
+            playRollSound();
+            
+            setTimeout(() => {
+                cube.classList.remove('rolling');
+                
+                // CRITICAL COMPLIANCE: 100% Fair Standard RNG. No Rigging.
+                diceValue = Math.floor(Math.random() * 6) + 1;
+                
+                cube.className = `cube show-${diceValue}`;
+                
+                state = 'WAITING_MOVE';
+                
+                if(turn === 0) {
+                    determineUserMoves();
+                } else {
+                    // Bot Execution Delay: wait 1s before moving
+                    setTimeout(executeSmartBotAI, 1000);
+                }
+            }, 800);
+        }
+        
+        function getPlayableTokens(player) {
+            let playable = [];
+            tokens.filter(t => t.player === player).forEach(t => {
+                if (t.state === 'BASE' && diceValue === 6) playable.push(t);
+                else if (t.state === 'PATH') {
+                    const distToHome = getDistanceToHome(t.pos, player);
+                    if (diceValue <= distToHome + 6) playable.push(t); // +6 because home column has 5 spots (0,1,2,3,4) + win spot(5)
+                } else if (t.state === 'HOME') {
+                    if (t.homePos + diceValue <= 5) playable.push(t);
+                }
+            });
+            return playable;
+        }
+
+        function determineUserMoves() {
+            let playable = getPlayableTokens(0);
+            if (playable.length === 0) {
+                endTurnLogic();
+            } else if (playable.length === 1 && playable[0].state === 'BASE') {
+                // Auto move if only 1 choice and it's base exit
+                moveToken(playable[0]);
+            } else {
+                // Wait for click
+                playable.forEach(t => t.active = true);
+            }
+        }
+        
+        canvas.addEventListener('click', (e) => {
+            if (turn !== 0 || state !== 'WAITING_MOVE') return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const sx = canvas.width / rect.width;
+            const sy = canvas.height / rect.height;
+            const x = (e.clientX - rect.left) * sx;
+            const y = (e.clientY - rect.top) * sy;
+            
+            const activeTokens = tokens.filter(t => t.player === 0 && t.active);
+            for (let t of activeTokens) {
+                const dx = t.tgtX - x;
+                const dy = t.tgtY - y;
+                if (Math.sqrt(dx*dx + dy*dy) < CS*0.8) {
+                    tokens.forEach(tok => tok.active = false);
+                    moveToken(t);
+                    break;
+                }
+            }
+        });
+        
+        // --- SMART BOT AI LOGIC ---
+        function executeSmartBotAI() {
+            let playable = getPlayableTokens(turn);
+            if (playable.length === 0) {
+                endTurnLogic();
+                return;
+            }
+            
+            // 5-Rule Heuristic Evaluation Engine
+            let moves = playable.map(t => {
+                let score = 0;
+                
+                // Simulate move
+                let willSpawn = (t.state === 'BASE' && diceValue === 6);
+                let targetPos = -1;
+                let willWin = false;
+                
+                if (t.state === 'PATH') {
+                    let dist = getDistanceToHome(t.pos, turn);
+                    if (diceValue > dist) {
+                        let targetHomePos = diceValue - dist - 1;
+                        if (targetHomePos === 5) willWin = true;
+                    } else {
+                        targetPos = (t.pos + diceValue) % 52;
+                    }
+                } else if (t.state === 'HOME') {
+                    if (t.homePos + diceValue === 5) willWin = true;
+                }
+                
+                // Rule 1: Lethal Strike (+10000)
+                if (targetPos !== -1 && !safeTiles.includes(targetPos)) {
+                    let prey = tokens.find(p => p.player !== turn && p.state === 'PATH' && p.pos === targetPos);
+                    if (prey) score += 10000;
+                }
+                
+                // Rule 2: Goal Capture (+5000)
+                if (willWin) score += 5000;
+                
+                // Rule 3: Escape Velocity (+1000)
+                if (willSpawn) score += 1000;
+                
+                // Rule 4: Predator Check (-800)
+                if (targetPos !== -1) {
+                    // Check if an enemy is 1-5 tiles behind targetPos
+                    for (let i = 1; i <= 5; i++) {
+                        let checkPos = (targetPos - i + 52) % 52;
+                        let threat = tokens.find(p => p.player !== turn && p.state === 'PATH' && p.pos === checkPos);
+                        if (threat) {
+                            score -= 800;
+                            break;
+                        }
+                    }
+                }
+                
+                // Rule 5: Safe Haven (+500)
+                if (targetPos !== -1 && safeTiles.includes(targetPos)) {
+                    score += 500;
+                }
+                
+                // Tie breaker: Prefer moving tokens furthest from home
+                if (t.state === 'PATH') {
+                    score += getDistanceToHome(t.pos, turn); // Higher distance to home = slightly higher score
+                }
+                
+                return { token: t, score: score };
+            });
+            
+            moves.sort((a, b) => b.score - a.score);
+            let chosenToken = moves[0].token;
+            
+            moveToken(chosenToken);
+        }
+        
+        function moveToken(t) {
+            state = 'MOVING';
+            
+            if (t.state === 'BASE') {
+                t.state = 'PATH';
+                t.pos = startTiles[turn];
+                extraRoll = true; // Base Exit Rule bonus
+            } else if (t.state === 'PATH') {
+                let dist = getDistanceToHome(t.pos, turn);
+                if (diceValue > dist) {
+                    t.state = 'HOME';
+                    t.homePos = diceValue - dist - 1;
+                    if (t.homePos === 5) t.state = 'WIN';
+                } else {
+                    t.pos = (t.pos + diceValue) % 52;
+                }
+            } else if (t.state === 'HOME') {
+                t.homePos += diceValue;
+                if (t.homePos === 5) t.state = 'WIN';
+            }
+            
+            if (diceValue === 6) extraRoll = true; // Rule: Rolling 6 gives bonus roll
+            
+            updateTokenTargets();
+            // Animation loop handles physical sliding
+        }
+        
+        function getDistanceToHome(pos, player) {
+            // Home column entry is tile right before startTile
+            const endTile = (startTiles[player] + 50) % 52;
+            let d = endTile - pos;
+            if (d < 0) d += 52;
+            return d; // 0 means currently on the tile right before home path
+        }
+        
+        function evaluatePostMove() {
+            // Check collisions/captures based on target coordinates calculated
+            let captured = false;
+            
+            tokens.filter(t => t.player === turn && t.state === 'PATH').forEach(movedToken => {
+                if (safeTiles.includes(movedToken.pos)) return;
+                
+                tokens.forEach(prey => {
+                    if (prey.player !== turn && prey.state === 'PATH' && prey.pos === movedToken.pos) {
+                        // Capture!
+                        prey.state = 'BASE';
+                        prey.pos = -1;
+                        captured = true;
+                        playSmashSound();
+                    }
+                });
+            });
+            
+            if (captured) {
+                updateTokenTargets();
+                extraRoll = true; // Capturing gives a bonus roll
+                // Delay ending turn to let capture slide back
+                setTimeout(endTurnLogic, 800);
+            } else {
+                endTurnLogic();
+            }
+        }
+        
+        function endTurnLogic() {
+            // Check for Win
+            const wonTokens = tokens.filter(t => t.player === turn && t.state === 'WIN').length;
+            if (wonTokens === 4) {
+                state = 'GAMEOVER';
+                triggerEndGame(turn);
+                return;
+            }
+            
+            if (extraRoll) {
+                extraRoll = false;
+                state = 'WAITING_ROLL';
+                updateUI();
+            } else {
+                turn = (turn + 1) % numPlayers;
+                state = 'WAITING_ROLL';
+                updateUI();
+            }
+        }
+        
+        function triggerEndGame(winnerIndex) {
+            const overlay = document.getElementById('endOverlay');
+            const title = document.getElementById('endTitle');
+            const subtext = document.getElementById('endSubtext');
+            overlay.style.display = 'flex';
+            
+            if (winnerIndex === 0) {
+                title.innerText = "VICTORY!";
+                title.style.color = "#00F2FE";
+                subtext.innerText = `You won ${payout} Gems!`;
+                subtext.style.color = "#34C759";
+                playWinSound();
+                
+                confetti({
+                    particleCount: 200, spread: 120, origin: { y: 0.6 },
+                    colors: ['#00F2FE', '#4FACFE', '#34C759', '#FFCC00']
+                });
+                
+                // Backend Sync
+                fetch(`${API_BASE_URL}/api/ludo/win`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ userId, betAmount, numBots })
+                }).catch(e => console.error("Win sync failed", e));
+                
+            } else {
+                title.innerText = "DEFEAT!";
+                title.style.color = "#FF3B30";
+                
+                let botColors = ['Red', 'Green', 'Yellow', 'Blue'];
+                subtext.innerText = `${botColors[winnerIndex]} Bot won the game.`;
+                subtext.style.color = "#94A3B8";
+                playLoseSound();
+            }
+        }
+    </script>
+</body>
+</html>

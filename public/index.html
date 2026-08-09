@@ -111,11 +111,6 @@
                 <div class="bal-real"><i class="fa-solid fa-money-bill-wave"></i> $<span id="pageHeaderRealBalance">0.00</span></div>
             </div>
         </div>
-            <div class="balances">
-                <div class="bal-gems"><i class="fa-solid fa-gem"></i> <span id="pageHeaderBalance" class="odometer">0</span></div>
-                <div class="bal-real"><i class="fa-solid fa-money-bill-wave"></i> $<span id="pageHeaderRealBalance">0.00</span></div>
-            </div>
-        </div>
 
         <!-- CONTENT AREA -->
         <div id="mainContent" class="content-section"></div>
@@ -135,6 +130,7 @@
             <a class="nav-item" data-page="games" onclick="nav('games')"><i class="fa-solid fa-gamepad"></i><span>Hub</span></a>
             <a class="nav-item" data-page="referrals" onclick="nav('referrals')"><i class="fa-solid fa-user-group"></i><span>Invite</span></a>
             <a class="nav-item" data-page="leaderboard" onclick="nav('leaderboard')"><i class="fa-solid fa-trophy"></i><span>Top</span></a>
+            <a class="nav-item" data-page="withdraw" onclick="nav('withdraw')"><i class="fa-solid fa-money-bill-transfer"></i><span>Withdraw</span></a>
             <a class="nav-item" data-page="settings" onclick="window.location.href='setting.html'"><i class="fa-solid fa-gear"></i><span>Settings</span></a>
         </div>
         
@@ -769,7 +765,18 @@ function applyTranslation() {
             const adsterraLimitReached = adsterraWatchedToday >= adsterraLimit;
 
             c.innerHTML = `
-                <!-- Daily Earning Top Ad Grid -->
+                <!-- TASK TABS -->
+                <div style="position: sticky; top: 75px; z-index: 10; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(15px); padding: 15px 20px; border-bottom: 1px solid rgba(0,168,255,0.2);">
+                    <div style="display: flex; background: rgba(0,0,0,0.5); border-radius: 30px; padding: 5px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);">
+                        <div id="tabOfficial" class="task-tab active" onclick="switchTaskTab('official')" style="flex: 1; text-align: center; padding: 10px; border-radius: 25px; cursor: pointer; transition: 0.3s; font-weight: 700; color: white; background: var(--brand-blue); box-shadow: 0 0 15px rgba(0, 168, 255, 0.5);">Official Tasks</div>
+                        <div id="tabSponsor" class="task-tab" onclick="switchTaskTab('sponsor')" style="flex: 1; text-align: center; padding: 10px; border-radius: 25px; cursor: pointer; transition: 0.3s; font-weight: 700; color: #94A3B8;">Sponsor Tasks</div>
+                    </div>
+                </div>
+
+                <div id="tasksSwipeContainer" style="overflow-x: hidden; position: relative;">
+                    <div id="taskSwipeArea" style="display: flex; width: 200%; transition: transform 0.3s ease;">
+                        <div id="officialTasksList" style="width: 50%; padding: 0 15px;">
+                            <!-- Daily Earning Top Ad Grid -->
                 <div class="ad-grid" style="grid-template-columns: repeat(3, 1fr);">
                     <!-- Monetag Ad -->
                     <div class="ad-card" ${monetagLimitReached ? '' : 'onclick="triggerMonetagAd()"'} style="${monetagLimitReached ? 'opacity: 0.5; cursor: not-allowed;' : ''}">
@@ -804,30 +811,71 @@ function applyTranslation() {
                 </div>
 
                 <div class="search-bar">
-                    <i class="fa-solid fa-magnifying-cyber-card" style="color:var(--color-cyan);"></i>
-                    <input type="text" id="taskSearch" placeholder="Search tasks..." oninput="filterTasks(this.value)">
-                </div>
-
-                <div id="tasksContainer">
-                    ${sponsorTasksHtml ? `
-                    <div id="sponsorTasksContainer" style="margin-bottom: 20px;">
-                        <h3 style="margin-bottom: 15px; color: var(--color-magenta); display:flex; align-items:center; gap:8px;">
-                            <i class="fa-solid fa-star"></i> Community Sponsors
-                        </h3>
-                        ${sponsorTasksHtml}
-                    </div>` : ''}
-                    
-                    <h3 style="margin-bottom: 15px; color: var(--color-cyan);">Official Tasks</h3>
-                    <div id="activeTasksContainer">${activeTasksHtml || '<div style="text-align:center; color:#94A3B8; padding:20px;">No active tasks available.</div>'}</div>
-                    
-                    <div id="completedTasksContainer" style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
-                        <h3 style="margin-bottom: 15px; color: var(--success-color);">Completed Tasks</h3>
-                        ${completedTasksHtml}
+                                <i class="fa-solid fa-magnifying-cyber-card" style="color:var(--color-cyan);"></i>
+                                <input type="text" id="taskSearch" placeholder="Search tasks..." oninput="filterTasks(this.value)">
+                            </div>
+                            
+                            <h3 style="margin-bottom: 15px; color: var(--color-cyan);">Official Tasks</h3>
+                            <div id="activeTasksContainer">${activeTasksHtml || '<div style="text-align:center; color:#94A3B8; padding:20px;">No active tasks available.</div>'}</div>
+                            
+                            <div id="completedTasksContainer" style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
+                                <h3 style="margin-bottom: 15px; color: var(--success-color);">Completed Tasks</h3>
+                                ${completedTasksHtml}
+                            </div>
+                        </div>
+                        <div id="sponsorTasksList" style="width: 50%; padding: 0 15px;">
+                            ${sponsorTasksHtml ? `
+                            <div id="sponsorTasksContainer" style="margin-top:20px; margin-bottom: 20px;">
+                                <h3 style="margin-bottom: 15px; color: var(--color-magenta); display:flex; align-items:center; gap:8px;">
+                                    <i class="fa-solid fa-star"></i> Community Sponsors
+                                </h3>
+                                ${sponsorTasksHtml}
+                            </div>` : '<div style="text-align:center; color:#94A3B8; padding:50px 20px;">No sponsor tasks available.</div>'}
+                        </div>
                     </div>
                 </div>
             `;
+        
+            // Swipe setup
+            setTimeout(() => {
+                let startX = 0;
+                const swipeArea = document.getElementById('taskSwipeArea');
+                if (swipeArea) {
+                    swipeArea.addEventListener('touchstart', e => startX = e.touches[0].clientX);
+                    swipeArea.addEventListener('touchend', e => {
+                        const endX = e.changedTouches[0].clientX;
+                        if (startX - endX > 50) switchTaskTab('sponsor'); // Swipe left
+                        if (endX - startX > 50) switchTaskTab('official'); // Swipe right
+                    });
+                }
+            }, 100);
         }
         
+        window.switchTaskTab = function(tab) {
+            const area = document.getElementById('taskSwipeArea');
+            const btnOff = document.getElementById('tabOfficial');
+            const btnSpon = document.getElementById('tabSponsor');
+            if(!area || !btnOff || !btnSpon) return;
+            
+            if(tab === 'official') {
+                area.style.transform = 'translateX(0)';
+                btnOff.style.background = 'var(--brand-blue)';
+                btnOff.style.color = 'white';
+                btnOff.style.boxShadow = '0 0 15px rgba(0, 168, 255, 0.5)';
+                btnSpon.style.background = 'transparent';
+                btnSpon.style.color = '#94A3B8';
+                btnSpon.style.boxShadow = 'none';
+            } else {
+                area.style.transform = 'translateX(-50%)';
+                btnSpon.style.background = 'var(--brand-blue)';
+                btnSpon.style.color = 'white';
+                btnSpon.style.boxShadow = '0 0 15px rgba(0, 168, 255, 0.5)';
+                btnOff.style.background = 'transparent';
+                btnOff.style.color = '#94A3B8';
+                btnOff.style.boxShadow = 'none';
+            }
+        };
+
         function filterTasks(query) {
             const rows = document.querySelectorAll('.task-row');
             const q = query.toLowerCase();
@@ -1325,6 +1373,17 @@ function applyTranslation() {
             });
         }
 
+        function renderLudoGame(c) {
+            c.innerHTML = `
+                <div style="text-align:center; padding: 50px 20px;">
+                    <i class="fa-solid fa-dice" style="font-size:4rem; color:var(--brand-blue); filter: drop-shadow(0 0 20px var(--brand-blue)); margin-bottom:20px;"></i>
+                    <h2 style="margin-bottom:15px; font-family:'Orbitron', sans-serif; font-size:1.8rem; color:white;">Ludo Game</h2>
+                    <p style="color:#94A3B8; margin-bottom:30px;">Multiplayer Ludo is launching soon!</p>
+                    <button class="btn quantum-btn" onclick="closeGame()" style="max-width:200px; margin:0 auto;">Back to Hub</button>
+                </div>
+            `;
+        }
+
         function renderGames(c) {
             c.innerHTML = `
                 <h2 style="margin-bottom: 20px;"><i class="fa-solid fa-gamepad" style="color:var(--color-purple);"></i> Game Hub</h2>
@@ -1399,10 +1458,15 @@ function applyTranslation() {
             
             const currName = appConfig.currencyName || 'Cash';
 
+            const avatarUrl = currentUser.avatarUrl || 'https://ui-avatars.com/api/?name=User&background=B026FF&color=fff';
+            const safeName = currentUser.accountName || currentUser.username || 'User';
             c.innerHTML = `
                 <div style="text-align:center; padding: 20px 0;">
-                    <h2><i class="fa-solid fa-money-bill-transfer" style="color:var(--success-color); font-size: 2rem; margin-bottom: 10px; filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.5));"></i><br>Pay & Exchange</h2>
-                    <p style="font-size:0.85rem; color:#94A3B8;">Convert Gems to Real Cash</p>
+                    <div style="width: 90px; height: 90px; border-radius: 50%; margin: 0 auto 15px; background: url('${avatarUrl}') center/cover; border: 3px solid var(--brand-blue); box-shadow: 0 0 25px rgba(0, 168, 255, 0.6); position: relative;">
+                        <div style="position: absolute; inset: 0; border-radius: 50%; box-shadow: inset 0 0 15px rgba(0, 168, 255, 0.8);"></div>
+                    </div>
+                    <h2 style="font-family:'Orbitron', sans-serif; font-size:1.5rem; text-shadow: 0 0 10px rgba(0, 168, 255, 0.5); margin-bottom:5px;">${safeName}</h2>
+                    <p style="font-size:0.85rem; color:#94A3B8;">Secure Withdrawal Gateway</p>
                 </div>
                 
                 <!-- Balances & Exchange Section -->

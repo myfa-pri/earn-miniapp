@@ -439,6 +439,20 @@ async function fetchMultiAPI(channelId, userId, botToken) {
     }
 }
 
+async function nativeTelegramCheck(channelId, userId) {
+    try {
+        const url = `https://api.telegram.org/bot${BOT_TOKEN}/getChatMember?chat_id=${channelId}&user_id=${userId}`;
+        const response = await fetch(url);
+        const data = await response.json();
+        if (data.ok && ['creator', 'administrator', 'member'].includes(data.result.status)) {
+            return { success: true, status: data.result.status };
+        }
+        return { success: false, status: data.ok ? data.result.status : 'error' };
+    } catch (e) {
+        return { success: false, status: 'error' };
+    }
+}
+
 // Tasks & Referrals
 app.get('/api/tasks', async (req, res) => {
     const bonusTasks = await dbGet('bonusTasks') || {};
@@ -641,7 +655,7 @@ app.post('/api/verify-gate', async (req, res) => {
             return res.json({ success: true });
         }
 
-        const checks = c.officialChannels.map(ch => fetchMultiAPI(ch.id, userId, BOT_TOKEN));
+        const checks = c.officialChannels.map(ch => nativeTelegramCheck(ch.id, userId));
         const results = await Promise.all(checks);
         
         const allPassed = results.every(member => member.success);

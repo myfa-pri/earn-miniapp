@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ludo - MYFA BIRR</title>
+    <title>Ludo 3D - MYFA BIRR</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         :root {
-            --bg-main: #0B0F19;
+            --bg-main: #0B0B2A;
             --color-cyan: #00F2FE;
+            --color-magenta: #FF007A;
         }
         body {
             margin: 0; padding: 0; background: var(--bg-main); color: white;
@@ -28,49 +29,51 @@
             flex: 1; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
         canvas {
-            background: #f0f0f0; max-width: 100vw; max-height: 100vw; box-shadow: 0 0 20px rgba(0,0,0,0.5);
-            border-radius: 10px;
+            background: #0B0B2A; max-width: 100vw; max-height: 100vw; box-shadow: 0 0 30px rgba(0,242,254,0.3);
+            border-radius: 10px; border: 2px solid var(--color-cyan);
         }
         .quantum-btn {
             background: linear-gradient(45deg, #00F2FE, #4FACFE); border: none; color: black; font-weight: bold;
-            padding: 10px 20px; border-radius: 10px; cursor: pointer;
+            padding: 10px 20px; border-radius: 10px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px;
         }
-        .cyber-card { background: #1E293B; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); }
+        .cyber-card { background: rgba(30,41,59,0.9); backdrop-filter: blur(10px); border-radius: 15px; border: 1px solid rgba(255,255,255,0.2); }
         
         /* 3D Tumbling Dice */
-        .dice-scene {
-            width: 50px; height: 50px;
-            perspective: 400px;
+        .dice-container {
+            width: 60px; height: 60px;
+            perspective: 600px;
             margin-right: 15px;
             cursor: pointer;
         }
-        .dice {
+        .dice-cube {
             width: 100%; height: 100%;
             position: relative;
             transform-style: preserve-3d;
-            transition: transform 0.5s ease-out;
+            transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             transform: rotateY(0deg) rotateX(0deg);
         }
-        .dice.rolling {
-            animation: roll 0.6s linear infinite;
+        .dice-cube.tumble {
+            animation: tumbleAnim 0.8s ease-out forwards;
         }
-        @keyframes roll {
-            0% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
-            100% { transform: rotateX(360deg) rotateY(720deg) rotateZ(360deg); }
+        @keyframes tumbleAnim {
+            0% { transform: rotateX(0deg) rotateY(0deg) scale(1); }
+            50% { transform: rotateX(360deg) rotateY(540deg) scale(1.5); }
+            100% { transform: var(--final-transform) scale(1); }
         }
-        .face {
-            position: absolute; width: 50px; height: 50px;
-            background: white; border: 2px solid #ccc; border-radius: 8px;
+        .dice-face {
+            position: absolute; width: 60px; height: 60px;
+            background: rgba(255,255,255,0.9); border: 2px solid #fff; border-radius: 12px;
             display: flex; justify-content: center; align-items: center;
-            font-size: 24px; font-weight: bold; color: black;
+            font-size: 30px; font-weight: 900; color: #111;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.2), 0 0 10px rgba(0,242,254,0.5);
             box-sizing: border-box;
         }
-        .front  { transform: rotateY(  0deg) translateZ(25px); }
-        .back   { transform: rotateY(180deg) translateZ(25px); }
-        .right  { transform: rotateY( 90deg) translateZ(25px); }
-        .left   { transform: rotateY(-90deg) translateZ(25px); }
-        .top    { transform: rotateX( 90deg) translateZ(25px); }
-        .bottom { transform: rotateX(-90deg) translateZ(25px); }
+        .face-1 { transform: rotateY(0deg) translateZ(30px); }
+        .face-2 { transform: rotateY(90deg) translateZ(30px); }
+        .face-3 { transform: rotateY(180deg) translateZ(30px); }
+        .face-4 { transform: rotateY(-90deg) translateZ(30px); }
+        .face-5 { transform: rotateX(90deg) translateZ(30px); }
+        .face-6 { transform: rotateX(-90deg) translateZ(30px); }
 
         #wager-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -86,37 +89,37 @@
     <div id="game-container">
         <!-- Wager Overlay -->
         <div id="wager-overlay">
-            <div class="cyber-card" style="padding: 20px; text-align:center; max-width:90%;">
-                <h2 style="color:var(--color-cyan);"><i class="fa-solid fa-dice"></i> Ludo Wager</h2>
+            <div class="cyber-card" style="padding: 30px; text-align:center; max-width:90%; box-shadow: 0 0 30px rgba(0,242,254,0.3);">
+                <h2 style="color:var(--color-cyan); margin-top:0;"><i class="fa-solid fa-dice-d20"></i> Ludo 3D</h2>
                 <p style="color:#94A3B8; font-size:0.9rem;">Win to multiply your wager!</p>
                 <div style="margin: 20px 0;">
-                    <label style="display:block; margin-bottom:5px;">Wager Amount:</label>
-                    <input type="number" id="wagerAmount" value="50" style="width:120px; text-align:center; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); color:white; padding:10px; border-radius:8px;">
+                    <label style="display:block; margin-bottom:5px; font-weight:bold;">Wager Amount:</label>
+                    <input type="number" id="wagerAmount" value="50" style="width:150px; font-size:1.2rem; text-align:center; background:rgba(0,0,0,0.5); border:2px solid var(--color-cyan); color:white; padding:10px; border-radius:8px;">
                 </div>
                 <div style="margin: 20px 0;">
-                    <label style="display:block; margin-bottom:5px;">Opponents:</label>
-                    <select id="botCount" style="width:120px; text-align:center; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); color:white; padding:10px; border-radius:8px;">
+                    <label style="display:block; margin-bottom:5px; font-weight:bold;">Opponents:</label>
+                    <select id="botCount" style="width:150px; font-size:1.1rem; text-align:center; background:rgba(0,0,0,0.5); border:2px solid var(--color-cyan); color:white; padding:10px; border-radius:8px;">
                         <option value="1">1 Bot (2x)</option>
                         <option value="2">2 Bots (3x)</option>
                         <option value="3">3 Bots (4x)</option>
                     </select>
                 </div>
-                <button class="btn quantum-btn" onclick="startGame()" style="width:100%;">Start Match</button>
+                <button class="btn quantum-btn" onclick="startGame()" style="width:100%; font-size:1.1rem; padding:12px;">Start Match</button>
             </div>
         </div>
         
         <canvas id="ludoCanvas" width="600" height="600"></canvas>
         
         <div id="ui-bar" style="width:100%; max-width:600px; display:flex; justify-content:space-between; align-items:center; padding:15px; box-sizing:border-box;">
-            <div id="turn-indicator" style="font-size:1.2rem; font-weight:bold;">Initializing...</div>
-            <div class="dice-scene" onclick="rollDiceAction()">
-                <div class="dice" id="dice">
-                    <div class="face front">1</div>
-                    <div class="face top">2</div>
-                    <div class="face right">3</div>
-                    <div class="face left">4</div>
-                    <div class="face bottom">5</div>
-                    <div class="face back">6</div>
+            <div id="turn-indicator" style="font-size:1.4rem; font-weight:bold; text-shadow: 0 0 10px rgba(255,255,255,0.5);">Initializing...</div>
+            <div class="dice-container" onclick="rollDiceAction()">
+                <div class="dice-cube" id="dice">
+                    <div class="dice-face face-1">1</div>
+                    <div class="dice-face face-2">2</div>
+                    <div class="dice-face face-3">3</div>
+                    <div class="dice-face face-4">4</div>
+                    <div class="dice-face face-5">5</div>
+                    <div class="dice-face face-6">6</div>
                 </div>
             </div>
         </div>
@@ -128,6 +131,59 @@
 
         function goBack() {
             window.location.href = '/?userId=' + (userId || '');
+        }
+
+        // Web Audio API
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            
+            if (type === 'clack') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.05);
+                gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.05);
+            } else if (type === 'dice') {
+                for(let i=0; i<8; i++) {
+                    let o = audioCtx.createOscillator();
+                    let g = audioCtx.createGain();
+                    o.connect(g); g.connect(audioCtx.destination);
+                    o.type = 'triangle'; o.frequency.value = 400 + Math.random()*400;
+                    g.gain.setValueAtTime(0, audioCtx.currentTime + i*0.1);
+                    g.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + i*0.1 + 0.02);
+                    g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + i*0.1 + 0.08);
+                    o.start(audioCtx.currentTime + i*0.1); o.stop(audioCtx.currentTime + i*0.1 + 0.08);
+                }
+            } else if (type === 'smash') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(20, audioCtx.currentTime + 0.3);
+                gain.gain.setValueAtTime(1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+            } else if (type === 'chime') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+                osc.frequency.linearRampToValueAtTime(1760, audioCtx.currentTime + 0.5);
+                gain.gain.setValueAtTime(0, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.8, audioCtx.currentTime + 0.1);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1.5);
+                
+                let osc2 = audioCtx.createOscillator();
+                osc2.type = 'sine'; osc2.frequency.value = 1320;
+                let g2 = audioCtx.createGain();
+                g2.gain.setValueAtTime(0, audioCtx.currentTime);
+                g2.gain.linearRampToValueAtTime(0.5, audioCtx.currentTime + 0.2);
+                g2.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1.5);
+                osc2.connect(g2); g2.connect(audioCtx.destination);
+                osc2.start(); osc2.stop(audioCtx.currentTime + 1.5);
+                osc.start(); osc.stop(audioCtx.currentTime + 1.5);
+            }
         }
 
         const canvas = document.getElementById('ludoCanvas');
@@ -177,10 +233,8 @@
             for (let i = 0; i <= 50; i++) {
                 p.push(pathList[(startIdx + i) % 52]);
             }
-            homeStretches[color].forEach(hs => {
-                p.push({x: hs.x, y: hs.y, safe: true});
-            });
-            p.push({x: 7, y: 7, safe: true}); // Finished center
+            homeStretches[color].forEach(hs => { p.push({x: hs.x, y: hs.y, safe: true}); });
+            p.push({x: 7.5, y: 7.5, safe: true}); // Finished center
             return p;
         }
 
@@ -191,7 +245,7 @@
             blue: buildPlayerPath('blue')
         };
 
-        const hexColors = { red: '#FF3366', green: '#00CC66', yellow: '#FFCC00', blue: '#3399FF' };
+        const hexColors = { red: '#FF3366', green: '#00E676', yellow: '#FFD700', blue: '#00A8FF' };
         
         let tokens = [];
         let players = [];
@@ -201,11 +255,17 @@
         let currentRoll = 0;
         let wager = 0;
         let numBots = 0;
+        
+        let animations = [];
+        let particles = [];
 
         function startGame() {
             wager = parseInt(document.getElementById('wagerAmount').value);
             numBots = parseInt(document.getElementById('botCount').value);
             if(isNaN(wager) || wager < 10) return alert("Min wager is 10");
+            
+            // Unsuspend audio
+            if (audioCtx.state === 'suspended') audioCtx.resume();
             
             document.getElementById('wager-overlay').style.display = 'none';
             players = ['red', 'green', 'yellow', 'blue'].slice(0, numBots + 1);
@@ -220,64 +280,117 @@
             uiState = 'WAITING_ROLL';
             
             updateTurnUI();
-            renderBoard();
+            requestAnimationFrame(renderLoop);
         }
 
-        function renderBoard() {
+        function drawStar(cx, cy, r, color) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.translate(cx, cy);
+            for(let i = 0; i < 5; i++) {
+                ctx.lineTo(0, -r);
+                ctx.translate(0, -r);
+                ctx.rotate((Math.PI*2)/10);
+                ctx.lineTo(0, r);
+                ctx.translate(0, r);
+                ctx.rotate((Math.PI*2)/10);
+            }
+            ctx.closePath();
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = color;
+            ctx.fillStyle = color;
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function renderLoop() {
             ctx.clearRect(0,0, canvas.width, canvas.height);
             
-            // Draw bases
-            ctx.fillStyle = hexColors['red']; ctx.fillRect(0, 0, 6*cellSize, 6*cellSize);
-            ctx.fillStyle = hexColors['green']; ctx.fillRect(9*cellSize, 0, 6*cellSize, 6*cellSize);
-            ctx.fillStyle = hexColors['yellow']; ctx.fillRect(9*cellSize, 9*cellSize, 6*cellSize, 6*cellSize);
-            ctx.fillStyle = hexColors['blue']; ctx.fillRect(0, 9*cellSize, 6*cellSize, 6*cellSize);
+            // Draw Bases (Metallic Gradients)
+            const drawBase = (x, y, w, h, c) => {
+                let grad = ctx.createLinearGradient(x, y, x+w, y+h);
+                grad.addColorStop(0, '#ffffff');
+                grad.addColorStop(0.5, hexColors[c]);
+                grad.addColorStop(1, '#111');
+                ctx.fillStyle = grad;
+                ctx.fillRect(x, y, w, h);
+                
+                // Inner crater white
+                ctx.fillStyle = 'rgba(255,255,255,0.8)';
+                ctx.fillRect(x + cellSize, y + cellSize, w - 2*cellSize, h - 2*cellSize);
+                
+                // Craters
+                basePositions[c].forEach(bp => {
+                    ctx.beginPath();
+                    ctx.arc(bp.x * cellSize + cellSize/2, bp.y * cellSize + cellSize/2, cellSize*0.4, 0, Math.PI*2);
+                    ctx.shadowBlur = 10; ctx.shadowColor = 'rgba(0,0,0,0.8)';
+                    ctx.fillStyle = 'rgba(0,0,0,0.1)';
+                    ctx.fill();
+                    ctx.shadowBlur = 0; // reset
+                });
+            };
             
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(1*cellSize, 1*cellSize, 4*cellSize, 4*cellSize);
-            ctx.fillRect(10*cellSize, 1*cellSize, 4*cellSize, 4*cellSize);
-            ctx.fillRect(10*cellSize, 10*cellSize, 4*cellSize, 4*cellSize);
-            ctx.fillRect(1*cellSize, 10*cellSize, 4*cellSize, 4*cellSize);
+            drawBase(0, 0, 6*cellSize, 6*cellSize, 'red');
+            drawBase(9*cellSize, 0, 6*cellSize, 6*cellSize, 'green');
+            drawBase(9*cellSize, 9*cellSize, 6*cellSize, 6*cellSize, 'yellow');
+            drawBase(0, 9*cellSize, 6*cellSize, 6*cellSize, 'blue');
 
-            // Draw paths
+            // Draw Paths (Neon Glass)
             pathList.forEach((p, i) => {
-                ctx.strokeStyle = '#ccc';
+                ctx.strokeStyle = 'rgba(0, 242, 254, 0.3)';
                 ctx.strokeRect(p.x*cellSize, p.y*cellSize, cellSize, cellSize);
-                ctx.fillStyle = p.safe ? '#e2e8f0' : '#ffffff';
+                ctx.fillStyle = 'rgba(255,255,255,0.05)';
                 ctx.fillRect(p.x*cellSize, p.y*cellSize, cellSize, cellSize);
                 
-                if (i===0) { ctx.fillStyle=hexColors['red']; ctx.fillRect(p.x*cellSize, p.y*cellSize, cellSize, cellSize); }
-                if (i===13) { ctx.fillStyle=hexColors['green']; ctx.fillRect(p.x*cellSize, p.y*cellSize, cellSize, cellSize); }
-                if (i===26) { ctx.fillStyle=hexColors['yellow']; ctx.fillRect(p.x*cellSize, p.y*cellSize, cellSize, cellSize); }
-                if (i===39) { ctx.fillStyle=hexColors['blue']; ctx.fillRect(p.x*cellSize, p.y*cellSize, cellSize, cellSize); }
+                if (p.safe) {
+                    drawStar(p.x*cellSize + cellSize/2, p.y*cellSize + cellSize/2, cellSize*0.3, '#00F2FE');
+                }
+                
+                if (i===0) { ctx.fillStyle=hexColors['red']; ctx.globalAlpha=0.5; ctx.fillRect(p.x*cellSize, p.y*cellSize, cellSize, cellSize); ctx.globalAlpha=1; }
+                if (i===13) { ctx.fillStyle=hexColors['green']; ctx.globalAlpha=0.5; ctx.fillRect(p.x*cellSize, p.y*cellSize, cellSize, cellSize); ctx.globalAlpha=1; }
+                if (i===26) { ctx.fillStyle=hexColors['yellow']; ctx.globalAlpha=0.5; ctx.fillRect(p.x*cellSize, p.y*cellSize, cellSize, cellSize); ctx.globalAlpha=1; }
+                if (i===39) { ctx.fillStyle=hexColors['blue']; ctx.globalAlpha=0.5; ctx.fillRect(p.x*cellSize, p.y*cellSize, cellSize, cellSize); ctx.globalAlpha=1; }
             });
 
             // Draw home stretches
             for(let c in homeStretches) {
                 homeStretches[c].forEach(p => {
-                    ctx.fillStyle = hexColors[c];
+                    ctx.fillStyle = hexColors[c]; ctx.globalAlpha = 0.6;
                     ctx.fillRect(p.x*cellSize, p.y*cellSize, cellSize, cellSize);
-                    ctx.strokeStyle = '#333';
+                    ctx.globalAlpha = 1;
+                    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
                     ctx.strokeRect(p.x*cellSize, p.y*cellSize, cellSize, cellSize);
                 });
             }
 
-            // Center Home Triangles
-            ctx.beginPath(); ctx.moveTo(6*cellSize, 6*cellSize); ctx.lineTo(9*cellSize, 6*cellSize); ctx.lineTo(7.5*cellSize, 7.5*cellSize); ctx.fillStyle = hexColors['green']; ctx.fill();
-            ctx.beginPath(); ctx.moveTo(9*cellSize, 6*cellSize); ctx.lineTo(9*cellSize, 9*cellSize); ctx.lineTo(7.5*cellSize, 7.5*cellSize); ctx.fillStyle = hexColors['yellow']; ctx.fill();
-            ctx.beginPath(); ctx.moveTo(9*cellSize, 9*cellSize); ctx.lineTo(6*cellSize, 9*cellSize); ctx.lineTo(7.5*cellSize, 7.5*cellSize); ctx.fillStyle = hexColors['blue']; ctx.fill();
-            ctx.beginPath(); ctx.moveTo(6*cellSize, 9*cellSize); ctx.lineTo(6*cellSize, 6*cellSize); ctx.lineTo(7.5*cellSize, 7.5*cellSize); ctx.fillStyle = hexColors['red']; ctx.fill();
+            // Center Home Vortex
+            let cxV = 7.5 * cellSize; let cyV = 7.5 * cellSize;
+            let vGrad = ctx.createRadialGradient(cxV, cyV, 0, cxV, cyV, 1.5*cellSize);
+            vGrad.addColorStop(0, '#ffffff');
+            vGrad.addColorStop(0.25, hexColors['red']);
+            vGrad.addColorStop(0.5, hexColors['blue']);
+            vGrad.addColorStop(0.75, hexColors['yellow']);
+            vGrad.addColorStop(1, hexColors['green']);
+            ctx.beginPath();
+            ctx.moveTo(6*cellSize, 6*cellSize); ctx.lineTo(9*cellSize, 6*cellSize);
+            ctx.lineTo(9*cellSize, 9*cellSize); ctx.lineTo(6*cellSize, 9*cellSize);
+            ctx.closePath();
+            ctx.fillStyle = vGrad; ctx.fill();
 
-            // Count map for staggering
+            // Handle Staggering Count
             let countMap = {};
             tokens.forEach(t => {
+                if (animations.find(a => a.token === t)) return; // Skip animating tokens
                 let abs = t.pos === -1 ? basePositions[t.color][t.idx] : playerPaths[t.color][t.pos];
                 let key = `${abs.x},${abs.y}`;
                 if (!countMap[key]) countMap[key] = [];
                 countMap[key].push(t);
             });
 
-            // Draw Tokens
+            // Draw Static Tokens
             tokens.forEach(t => {
+                if (animations.find(a => a.token === t)) return;
+                
                 let abs = t.pos === -1 ? basePositions[t.color][t.idx] : playerPaths[t.color][t.pos];
                 let list = countMap[`${abs.x},${abs.y}`];
                 let idx = list.indexOf(t);
@@ -285,7 +398,7 @@
                 let cx = abs.x * cellSize + cellSize/2;
                 let cy = abs.y * cellSize + cellSize/2;
                 
-                if (list.length > 1 && t.pos !== -1) {
+                if (list.length > 1 && t.pos !== -1 && t.pos < 56) {
                     let offset = cellSize * 0.2;
                     if (idx === 0) { cx -= offset; cy -= offset; }
                     else if (idx === 1) { cx += offset; cy -= offset; }
@@ -293,28 +406,82 @@
                     else if (idx === 3) { cx += offset; cy += offset; }
                 }
 
-                ctx.beginPath();
-                ctx.arc(cx, cy, cellSize*0.35, 0, Math.PI*2);
-                ctx.fillStyle = hexColors[t.color];
-                ctx.fill();
-                ctx.lineWidth = 2;
-                ctx.strokeStyle = '#fff';
-                ctx.stroke();
+                drawRawToken(t.color, cx, cy, 1);
 
                 // Highlight human valid moves
                 if (currentPlayer === 'red' && uiState === 'WAITING_MOVE' && t.color === 'red') {
                     if (evaluateMove(t, currentRoll) >= 0) {
-                        ctx.beginPath();
-                        ctx.arc(cx, cy, cellSize*0.4, 0, Math.PI*2);
-                        ctx.strokeStyle = '#00F2FE';
-                        ctx.lineWidth = 3;
-                        ctx.setLineDash([5, 5]);
-                        ctx.stroke();
-                        ctx.setLineDash([]);
+                        ctx.beginPath(); ctx.arc(cx, cy, cellSize*0.45, 0, Math.PI*2);
+                        ctx.strokeStyle = '#00F2FE'; ctx.lineWidth = 3; ctx.setLineDash([5, 5]);
+                        ctx.stroke(); ctx.setLineDash([]);
                     }
                 }
             });
+            
+            let now = Date.now();
+            let animating = false;
+
+            // Draw Animations (Parabolic Hop)
+            animations = animations.filter(anim => {
+                animating = true;
+                let elapsed = now - anim.startTime;
+                let progress = elapsed / anim.duration;
+                if (progress > 1) progress = 1;
+                
+                let curX = anim.startX + (anim.endX - anim.startX) * progress;
+                let curY = anim.startY + (anim.endY - anim.startY) * progress;
+                
+                // Parabolic Hop Math!
+                let heightOffset = Math.sin(progress * Math.PI) * (cellSize * 1.5); 
+                
+                drawRawToken(anim.token.color, curX, curY - heightOffset, anim.scale || 1);
+                
+                if (progress === 1) {
+                    if (anim.onComplete) anim.onComplete();
+                    return false;
+                }
+                return true;
+            });
+
+            // Draw VFX Particles
+            particles = particles.filter(p => {
+                animating = true;
+                let elapsed = now - p.startTime;
+                let progress = elapsed / p.duration;
+                if (progress > 1) return false;
+                
+                ctx.beginPath();
+                ctx.arc(p.x + p.vx*elapsed, p.y + p.vy*elapsed, p.radius * (1-progress), 0, Math.PI*2);
+                ctx.fillStyle = `rgba(${p.r},${p.g},${p.b},${1-progress})`;
+                ctx.fill();
+                return true;
+            });
+            
+            requestAnimationFrame(renderLoop);
         }
+
+        function drawRawToken(color, cx, cy, scale) {
+            ctx.shadowOffsetX = 3; ctx.shadowOffsetY = 5; ctx.shadowColor = "rgba(0,0,0,0.6)";
+            
+            let grad = ctx.createRadialGradient(cx - cellSize*0.1, cy - cellSize*0.1, cellSize*0.05, cx, cy, cellSize*0.35 * scale);
+            grad.addColorStop(0, '#ffffff');
+            grad.addColorStop(1, hexColors[color]);
+            
+            ctx.beginPath();
+            ctx.arc(cx, cy, cellSize*0.35 * scale, 0, Math.PI*2);
+            ctx.fillStyle = grad; ctx.fill();
+            ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.stroke();
+            ctx.shadowColor = "transparent"; // reset
+        }
+
+        const diceRotations = {
+            1: 'rotateY(0deg)',
+            2: 'rotateY(-90deg)',
+            3: 'rotateY(180deg)',
+            4: 'rotateY(90deg)',
+            5: 'rotateX(-90deg)',
+            6: 'rotateX(90deg)'
+        };
 
         function rollDiceAction() {
             if (currentPlayer !== 'red' || uiState !== 'WAITING_ROLL') return;
@@ -323,23 +490,23 @@
 
         function executeRoll() {
             uiState = 'ROLLING';
+            playSound('dice');
             const d = document.getElementById('dice');
-            d.classList.add('rolling');
+            currentRoll = Math.floor(Math.random() * 6) + 1;
+            
+            // Inject dynamic keyframe end state
+            d.style.setProperty('--final-transform', diceRotations[currentRoll]);
+            
+            // Re-trigger animation
+            d.classList.remove('tumble');
+            void d.offsetWidth; 
+            d.classList.add('tumble');
             
             setTimeout(() => {
-                d.classList.remove('rolling');
-                currentRoll = Math.floor(Math.random() * 6) + 1;
-                
-                // Snap to face
-                if (currentRoll === 1) d.style.transform = "rotateY(0deg)";
-                if (currentRoll === 6) d.style.transform = "rotateY(-180deg)";
-                if (currentRoll === 3) d.style.transform = "rotateY(-90deg)";
-                if (currentRoll === 4) d.style.transform = "rotateY(90deg)";
-                if (currentRoll === 2) d.style.transform = "rotateX(-90deg)";
-                if (currentRoll === 5) d.style.transform = "rotateX(90deg)";
-                
+                d.style.transform = diceRotations[currentRoll];
+                d.classList.remove('tumble');
                 handleRollResult();
-            }, 600);
+            }, 800);
         }
 
         function handleRollResult() {
@@ -352,13 +519,20 @@
                 setTimeout(nextTurn, 1000);
             } else {
                 uiState = 'WAITING_MOVE';
-                renderBoard();
-                if (currentPlayer !== 'red') {
-                    setTimeout(botPlay, 1000);
-                }
+                if (currentPlayer !== 'red') setTimeout(botPlay, 1000);
             }
         }
 
+        function getTrackIndex(color, pos) {
+            if (pos < 0 || pos > 50) return -1;
+            let startIdx = 0;
+            if (color === 'green') startIdx = 13;
+            if (color === 'yellow') startIdx = 26;
+            if (color === 'blue') startIdx = 39;
+            return (startIdx + pos) % 52;
+        }
+
+        // GRANDMASTER BOT AI
         function botPlay() {
             if (uiState !== 'WAITING_MOVE') return;
             let validMoves = [];
@@ -368,55 +542,115 @@
             });
 
             if (validMoves.length === 0) {
-                setTimeout(nextTurn, 1000);
-                return;
+                setTimeout(nextTurn, 1000); return;
             }
-
             validMoves.sort((a, b) => b.score - a.score);
-            executeMove(validMoves[0].token, currentRoll);
+            startMoveAnimation(validMoves[0].token, currentRoll);
         }
 
         function evaluateMove(t, roll) {
             if (t.pos === -1) {
-                if (roll === 6) return 300; // Priority 3
+                if (roll === 6) return 300; // Priority 3: Spawn
                 return -1;
             }
             let newPos = t.pos + roll;
             if (newPos > 56) return -1;
-            if (newPos === 56) return 500; // Priority 2
+            if (newPos === 56) return 500; // Priority 2: Finish
+            if (newPos >= 51 && t.pos < 51) return 500; // Priority 2: Enter safe stretch
             
             let abs = playerPaths[t.color][newPos];
-            let score = t.pos; // Priority 4 (closest to home)
+            let score = t.pos; // Priority 4: closest to home
             
-            if (!abs.safe) {
+            // Priority 1: Kill
+            let newTrackIdx = getTrackIndex(t.color, newPos);
+            if (!abs.safe && newTrackIdx !== -1) {
                 let enemies = tokens.filter(other => 
                     other.color !== t.color && 
                     other.pos >= 0 && other.pos <= 50 &&
-                    playerPaths[other.color][other.pos].x === abs.x &&
-                    playerPaths[other.color][other.pos].y === abs.y
+                    getTrackIndex(other.color, other.pos) === newTrackIdx
                 );
-                if (enemies.length > 0) score += 1000 * enemies.length; // Priority 1
+                if (enemies.length > 0) score += 1000 * enemies.length;
             }
+
+            // Priority: Evasion (-800 / +800)
+            let currTrackIdx = getTrackIndex(t.color, t.pos);
+            let humanTokens = tokens.filter(tk => tk.color === 'red' && tk.pos >= 0 && tk.pos <= 50);
+            
+            // Are we currently in danger?
+            if (currTrackIdx !== -1 && !playerPaths[t.color][t.pos].safe) {
+                let wasInDanger = false;
+                humanTokens.forEach(ht => {
+                    let htTrack = getTrackIndex(ht.color, ht.pos);
+                    let dist = (currTrackIdx - htTrack + 52) % 52;
+                    if (dist >= 1 && dist <= 5) wasInDanger = true;
+                });
+                if (wasInDanger) score += 800; // Move to escape!
+            }
+            
+            // Will the NEW position put us in danger?
+            if (newTrackIdx !== -1 && !abs.safe) {
+                let putsInDanger = false;
+                humanTokens.forEach(ht => {
+                    let htTrack = getTrackIndex(ht.color, ht.pos);
+                    let dist = (newTrackIdx - htTrack + 52) % 52;
+                    if (dist >= 1 && dist <= 5) putsInDanger = true;
+                });
+                if (putsInDanger) score -= 800; // Avoid moving into danger
+            }
+
             return score;
         }
 
-        function executeMove(t, roll) {
-            if (t.pos === -1) t.pos = 0;
-            else t.pos += roll;
+        function startMoveAnimation(token, roll) {
+            uiState = 'MOVING';
+            let startPos = token.pos;
+            let endPos = startPos === -1 ? 0 : startPos + roll;
+            
+            let currentStep = startPos;
+            
+            function nextHop() {
+                if (currentStep === endPos) {
+                    executeMoveLogic(token, endPos, roll);
+                    return;
+                }
+                let fromAbs = currentStep === -1 ? basePositions[token.color][token.idx] : playerPaths[token.color][currentStep];
+                let toAbs = playerPaths[token.color][currentStep + 1];
+                
+                let startX = fromAbs.x * cellSize + cellSize/2;
+                let startY = fromAbs.y * cellSize + cellSize/2;
+                let endX = toAbs.x * cellSize + cellSize/2;
+                let endY = toAbs.y * cellSize + cellSize/2;
+                
+                animations.push({
+                    token: token, startTime: Date.now(), duration: 250,
+                    startX: startX, startY: startY, endX: endX, endY: endY,
+                    onComplete: () => {
+                        currentStep++;
+                        playSound('clack');
+                        nextHop();
+                    }
+                });
+            }
+            nextHop();
+        }
+
+        function executeMoveLogic(token, newPos, roll) {
+            token.pos = newPos;
             
             let killed = false;
             let home = false;
             
-            if (t.pos === 56) {
+            if (token.pos === 56) {
                 home = true;
-            } else if (t.pos <= 50) {
-                let abs = playerPaths[t.color][t.pos];
+                playSound('chime');
+            } else if (token.pos <= 50) {
+                let abs = playerPaths[token.color][token.pos];
                 if (!abs.safe) {
                     tokens.forEach(other => {
-                        if (other.color !== t.color && other.pos >= 0 && other.pos <= 50) {
+                        if (other.color !== token.color && other.pos >= 0 && other.pos <= 50) {
                             let oAbs = playerPaths[other.color][other.pos];
                             if (oAbs.x === abs.x && oAbs.y === abs.y) {
-                                other.pos = -1; 
+                                captureToken(other);
                                 killed = true;
                             }
                         }
@@ -424,10 +658,8 @@
                 }
             }
             
-            renderBoard();
-            
-            if (tokens.filter(tk => tk.color === t.color && tk.pos === 56).length === 4) {
-                endGame(t.color);
+            if (tokens.filter(tk => tk.color === token.color && tk.pos === 56).length === 4) {
+                endGame(token.color);
                 return;
             }
 
@@ -440,23 +672,50 @@
             }
         }
 
+        function captureToken(targetToken) {
+            let abs = playerPaths[targetToken.color][targetToken.pos];
+            let cx = abs.x * cellSize + cellSize/2;
+            let cy = abs.y * cellSize + cellSize/2;
+            
+            playSound('smash');
+            // Particles
+            for(let i=0; i<20; i++) {
+                particles.push({
+                    x: cx, y: cy,
+                    vx: (Math.random()-0.5)*0.8, vy: (Math.random()-0.5)*0.8,
+                    radius: Math.random()*5 + 2,
+                    r: 255, g: 255, b: 255, startTime: Date.now(), duration: 1000
+                });
+            }
+
+            let endAbs = basePositions[targetToken.color][targetToken.idx];
+            let endX = endAbs.x * cellSize + cellSize/2;
+            let endY = endAbs.y * cellSize + cellSize/2;
+
+            targetToken.pos = -1; // logically reset immediately so it doesn't block
+            
+            animations.push({
+                token: targetToken, startTime: Date.now(), duration: 600,
+                startX: cx, startY: cy, endX: endX, endY: endY, scale: 0.5
+            });
+        }
+
         function nextTurn() {
             if(uiState === 'GAME_OVER') return;
             turnIndex = (turnIndex + 1) % players.length;
             currentPlayer = players[turnIndex];
             uiState = 'WAITING_ROLL';
             updateTurnUI();
-            renderBoard();
         }
 
         function updateTurnUI() {
             if(uiState === 'GAME_OVER') return;
             const ind = document.getElementById('turn-indicator');
             ind.style.color = hexColors[currentPlayer];
-            ind.innerText = currentPlayer === 'red' ? "Your Turn (Click Dice)" : `Bot Turn (${currentPlayer})`;
+            ind.innerText = currentPlayer === 'red' ? "Your Turn (Click Dice)" : `Bot Turn (${currentPlayer.toUpperCase()})`;
             
             if (currentPlayer !== 'red' && uiState === 'WAITING_ROLL') {
-                setTimeout(executeRoll, 1000);
+                setTimeout(executeRoll, 1500);
             }
         }
 
@@ -465,21 +724,17 @@
             let isWin = (winnerColor === 'red');
             let payout = isWin ? wager * numBots : 0;
             
-            let msg = isWin ? `You won! Payout: $${payout}` : `Bot (${winnerColor}) won. You lost.`;
+            let msg = isWin ? `YOU WON! Payout: +$${payout}` : `BOT (${winnerColor.toUpperCase()}) WON. You lost.`;
             document.getElementById('turn-indicator').innerText = msg;
             
             try {
                 await fetch('/api/ludo/result', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ userId, wager, isWin, payout })
                 });
             } catch(e) {}
             
-            setTimeout(() => {
-                alert(msg);
-                goBack();
-            }, 2000);
+            setTimeout(() => { alert(msg); goBack(); }, 3000);
         }
 
         canvas.addEventListener('click', (e) => {
@@ -498,20 +753,14 @@
             tokens.filter(t => t.color === 'red').forEach(t => {
                 let abs = t.pos === -1 ? basePositions[t.color][t.idx] : playerPaths[t.color][t.pos];
                 if (abs.x === gridX && abs.y === gridY) {
-                    if (evaluateMove(t, currentRoll) >= 0) {
-                        validMoves.push(t);
-                    }
+                    if (evaluateMove(t, currentRoll) >= 0) validMoves.push(t);
                 }
             });
 
             if (validMoves.length > 0) {
-                uiState = 'MOVING';
-                executeMove(validMoves[0], currentRoll);
+                startMoveAnimation(validMoves[0], currentRoll);
             }
         });
-        
-        // Initial Draw
-        renderBoard();
     </script>
 </body>
 </html>

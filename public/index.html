@@ -1442,6 +1442,14 @@ function applyTranslation() {
                         </div>
                         <button class="game-play-btn">Play</button>
                     </div>
+                    <div class="game-row cyber-card" onclick="openGame('chickenroad')">
+                        <div class="game-icon-box" style="color:#F59E0B;"><i class="fa-solid fa-drumstick-bite"></i></div>
+                        <div class="mid">
+                            <h3>Chicken Road</h3>
+                            <p>Dodge Traffic, Multiply Cash.</p>
+                        </div>
+                        <button class="game-play-btn">Play</button>
+                    </div>
                 </div>`;
         }
 
@@ -1953,7 +1961,11 @@ function applyTranslation() {
 
         window.openGame = function(gameId) {
             if(gameId === 'ludo') {
-                window.location.href = '/game.html?game=ludo&userId=' + (typeof userId !== 'undefined' ? userId : '');
+                window.location.href = '/ludo.html?userId=' + (typeof userId !== 'undefined' ? userId : '');
+                return;
+            }
+            if(gameId === 'chickenroad') {
+                window.location.href = '/chicken.html?userId=' + (typeof userId !== 'undefined' ? userId : '');
                 return;
             }
             const main = document.getElementById('mainContent');

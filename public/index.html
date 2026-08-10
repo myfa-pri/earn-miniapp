@@ -1951,55 +1951,45 @@ function applyTranslation() {
             }
         }
 
-        function openGame(gameId) {
+        window.openGame = function(gameId) {
             if(gameId === 'ludo') {
-                window.location.href = '/game.html?game=' + gameId + '&userId=' + userId;
+                window.location.href = '/game.html?game=ludo&userId=' + (typeof userId !== 'undefined' ? userId : '');
                 return;
             }
+            const main = document.getElementById('mainContent');
+            const wrapper = document.getElementById('gameCanvasWrapper');
+            const canvasArea = document.getElementById('activeGameCanvas');
+            if(!main || !wrapper || !canvasArea) return console.error("DOM missing");
 
+            main.style.display = 'none';
+            wrapper.style.display = 'block';
+            canvasArea.innerHTML = ''; // Clear previous
+
+            if(gameId === 'aviator') renderAviatorGame(canvasArea);
+            else if(gameId === 'multiox') renderMultiOxGame(canvasArea);
+            else if(gameId === 'dailycombo') renderDailyComboGame(canvasArea);
+            else if(gameId === 'prospin') renderProSpinGame(canvasArea);
+            else if(gameId === 'scratchcard') renderScratchCardGame(canvasArea);
+        };
+
+        window.closeGame = function() {
             const main = document.getElementById('mainContent');
             const wrapper = document.getElementById('gameCanvasWrapper');
-            const nav = document.querySelector('.bottom-nav');
+            const canvasArea = document.getElementById('activeGameCanvas');
             
-            main.classList.add('game-transition-out');
-            nav.classList.add('nav-transition-out');
-            
-            setTimeout(() => {
-                main.style.display = 'none';
-                main.classList.remove('game-transition-out');
-                
-                wrapper.style.display = 'block';
-                wrapper.style.animation = "fadeIn 0.3s forwards";
-                if(gameId === 'aviator') renderAviatorGame(document.getElementById('activeGameCanvas'));
-                if(gameId === 'multiox') renderMultiOxGame(document.getElementById('activeGameCanvas'));
-                if(gameId === 'dailycombo') renderDailyComboGame(document.getElementById('activeGameCanvas'));
-                if(gameId === 'prospin') renderProSpinGame(document.getElementById('activeGameCanvas'));
-                if(gameId === 'scratchcard') renderScratchCardGame(document.getElementById('activeGameCanvas'));
-            }, 300);
-        }
-        function closeGame() {
-            const main = document.getElementById('mainContent');
-            const wrapper = document.getElementById('gameCanvasWrapper');
-            const nav = document.querySelector('.bottom-nav');
-            
-            if(typeof aviatorActive !== 'undefined') aviatorActive = false;
-            if(typeof avGameState !== 'undefined') avGameState = 'IDLE';
-            if(typeof avReq !== 'undefined') cancelAnimationFrame(avReq);
-            if(typeof chatInterval !== 'undefined') clearInterval(chatInterval);
-            if(typeof avBetTimer !== 'undefined') clearInterval(avBetTimer);
+            if(typeof aviatorActive !== 'undefined') window.aviatorActive = false;
+            if(typeof avGameState !== 'undefined') window.avGameState = 'IDLE';
+            if(typeof avReq !== 'undefined') cancelAnimationFrame(window.avReq);
+            if(typeof chatInterval !== 'undefined') clearInterval(window.chatInterval);
+            if(typeof avBetTimer !== 'undefined') clearInterval(window.avBetTimer);
             if(typeof stopEngineSound === 'function') stopEngineSound();
             
-            wrapper.style.animation = "fadeOut 0.3s forwards";
-            setTimeout(() => {
-                wrapper.style.display = 'none';
-                document.getElementById('activeGameCanvas').innerHTML = '';
-                
-                main.style.display = 'block';
-                main.style.animation = "fadeIn 0.3s forwards";
-                nav.classList.remove('nav-transition-out');
-                updateUI();
-            }, 300);
-        }
+            if (wrapper) wrapper.style.display = 'none';
+            if (canvasArea) canvasArea.innerHTML = '';
+            if (main) main.style.display = 'block';
+            
+            if (typeof updateUI === 'function') updateUI();
+        };
 
         // ==========================================
         // AVIATOR 20 FEATURES OVERHAUL & STRICT 5-SECOND LOOP

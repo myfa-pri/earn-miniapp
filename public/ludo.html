@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ludo Rewards</title>
+    <link rel="stylesheet" href="ludo.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+</head>
+<body>
+
+    <!-- Matchmaking Lobby -->
+    <div id="lobby-screen">
+        <h1 style="color:var(--gold); font-style:italic; font-size:2.5rem; margin-bottom:40px; text-shadow: 0 4px 10px rgba(0,0,0,0.5);">LUDO<br>REWARDS</h1>
+        
+        <div class="rings-container">
+            <div class="ring ring-1"></div>
+            <div class="ring ring-2"></div>
+            <div class="ring ring-3"></div>
+            
+            <img id="lobby-user-avatar" class="avatar-center" src="https://ui-avatars.com/api/?name=User" alt="User">
+            
+            <img class="orbit-avatar orbit-1" src="https://ui-avatars.com/api/?name=Bot1" alt="Bot1">
+            <img class="orbit-avatar orbit-2" src="https://ui-avatars.com/api/?name=Bot2" alt="Bot2">
+            <img class="orbit-avatar orbit-3" src="https://ui-avatars.com/api/?name=Bot3" alt="Bot3">
+        </div>
+        
+        <div class="loading-text">LOADING ......</div>
+    </div>
+
+    <!-- VS Screen -->
+    <div id="vs-screen">
+        <h1 style="color:var(--gold); font-style:italic; font-size:2.5rem; margin-bottom:60px; text-shadow: 0 4px 10px rgba(0,0,0,0.5);">LUDO<br>REWARDS</h1>
+        
+        <div class="vs-row">
+            <div class="vs-avatar-col">
+                <img id="vs-user-avatar" class="vs-avatar" src="https://ui-avatars.com/api/?name=User" alt="User">
+                <div id="vs-user-name" style="margin-top:10px; font-weight:bold;">Name</div>
+            </div>
+            
+            <div class="vs-text">VS</div>
+            
+            <div class="vs-avatar-col">
+                <img id="vs-bot-avatar" class="vs-avatar" src="https://ui-avatars.com/api/?name=Bot1" alt="Bot">
+                <div style="margin-top:10px; font-weight:bold;">Bot 1</div>
+            </div>
+        </div>
+        
+        <div class="timer" style="margin-top:80px;">00 : 05</div>
+    </div>
+
+    <!-- Game Board -->
+    <div id="game-screen">
+        <!-- Top HUD (Bots) -->
+        <div class="hud-bar">
+            <div class="player-info">
+                <img id="hud-bot-avatar" src="https://ui-avatars.com/api/?name=Bot1">
+                <div>
+                    <div style="font-weight:bold;">Bot 1</div>
+                    <div class="player-score" id="score-bot">Score: 0</div>
+                </div>
+            </div>
+            <div class="timer">05:00</div>
+            <i class="fa-solid fa-gear settings-icon" onclick="openSettings()"></i>
+        </div>
+
+        <canvas id="ludoCanvas" width="600" height="600"></canvas>
+
+        <!-- Bottom HUD (User) -->
+        <div class="hud-bar">
+            <div class="player-info">
+                <img id="hud-user-avatar" src="https://ui-avatars.com/api/?name=User">
+                <div>
+                    <div id="hud-user-name" style="font-weight:bold;">User Name</div>
+                    <div class="player-score" id="score-user">Score: 0</div>
+                </div>
+            </div>
+            
+            <div class="dice-container" onclick="rollDiceAction()">
+                <div class="dice-cube" id="dice">
+                    <div class="dice-face face-1">1</div>
+                    <div class="dice-face face-2">2</div>
+                    <div class="dice-face face-3">3</div>
+                    <div class="dice-face face-4">4</div>
+                    <div class="dice-face face-5">5</div>
+                    <div class="dice-face face-6">6</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="win-modal" class="modal-overlay">
+        <div class="glass-modal">
+            <div style="background:var(--green); color:white; padding:10px 20px; border-radius:30px; font-weight:bold; display:inline-block; margin-bottom:20px;">YOU WON 🥳</div>
+            <div style="position:relative; width:100px; height:100px; margin:0 auto;">
+                <i class="fa-solid fa-crown" style="position:absolute; top:-20px; left:25px; font-size:3rem; color:var(--gold); z-index:10; transform:rotate(-15deg);"></i>
+                <img id="win-avatar" src="" style="width:80px; height:80px; border-radius:50%; border:3px solid var(--gold); object-fit:cover;">
+            </div>
+            <h2 id="win-name" style="margin:10px 0;">You</h2>
+            <h3 id="win-score" style="color:var(--gold);">Score</h3>
+            <button class="btn btn-dark" onclick="window.location.href='/'">Play Another Game</button>
+        </div>
+    </div>
+
+    <div id="loss-modal" class="modal-overlay">
+        <div class="glass-modal">
+            <div style="background:#555; color:white; padding:10px 20px; border-radius:30px; font-weight:bold; display:inline-block; margin-bottom:20px;">YOU LOST 🥺</div>
+            <img id="loss-avatar" src="" style="width:80px; height:80px; border-radius:50%; border:3px solid #888; margin-top:20px; object-fit:cover;">
+            <h2 id="loss-name" style="margin:10px 0;">Bot</h2>
+            <h3 id="loss-score" style="color:#888;">Score</h3>
+            <button class="btn btn-dark" onclick="window.location.href='/'">Play Another Game</button>
+        </div>
+    </div>
+    
+    <div id="no-coins-modal" class="modal-overlay">
+        <div class="glass-modal">
+            <h2 style="color:var(--gold);">Opps!!!</h2>
+            <p>Something went wrong, please try again later.</p>
+            <div style="font-size:4rem; color:var(--gold); margin:20px 0;"><i class="fa-solid fa-sack-dollar"></i></div>
+            <p>You don't have enough Coins in your account to play the game</p>
+            <button class="btn" style="background:var(--bg-secondary); color:white;" onclick="window.location.href='/'">Close</button>
+        </div>
+    </div>
+    
+    <div id="settings-modal" class="modal-overlay">
+        <div class="glass-modal">
+            <h2 style="color:white; margin-bottom:20px;">Settings</h2>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px;">
+                <span><i class="fa-solid fa-volume-high"></i> Sounds</span>
+                <input type="checkbox" checked style="width:40px; height:20px;">
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:30px;">
+                <span><i class="fa-solid fa-mobile-screen"></i> Vibration</span>
+                <input type="checkbox" style="width:40px; height:20px;">
+            </div>
+            <button class="btn btn-dark" onclick="document.getElementById('settings-modal').style.display='none'">Close</button>
+            <button class="btn" style="background:var(--red); color:white;" onclick="window.location.href='/'">Leave Game</button>
+        </div>
+    </div>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const userId = params.get('userId');
+        
+        let uName = "User";
+        let uAvatar = "https://ui-avatars.com/api/?name=User";
+        
+        // Audio Synth
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            if (type === 'clack') {
+                osc.type = 'square'; osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.05);
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+            }
+        }
+        
+        function openSettings() { document.getElementById('settings-modal').style.display = 'flex'; }
+        
+        // Sequence: Lobby -> VS -> Game
+        setTimeout(() => {
+            document.getElementById('lobby-screen').style.display = 'none';
+            document.getElementById('vs-screen').style.display = 'flex';
+            let c = 5;
+            let timerEl = document.querySelector('#vs-screen .timer');
+            let i = setInterval(() => {
+                c--;
+                timerEl.innerText = `00 : 0${c}`;
+                if (c <= 0) {
+                    clearInterval(i);
+                    document.getElementById('vs-screen').style.display = 'none';
+                    document.getElementById('game-screen').style.display = 'flex';
+                    initLudo();
+                }
+            }, 1000);
+        }, 3000);
+
+        function initLudo() {
+            const canvas = document.getElementById('ludoCanvas');
+            const ctx = canvas.getContext('2d');
+            const cw = canvas.width, ch = canvas.height;
+            const tSize = cw / 15; // 15x15 grid
+            
+            let isUserTurn = true;
+            let humanScore = 0, botScore = 0;
+            
+            // Draw 3D Board
+            function drawBoard() {
+                ctx.fillStyle = "#fff";
+                ctx.fillRect(0,0,cw,ch);
+                
+                // Bases (Soft Inner Shadows via multiple borders)
+                function drawBase(x, y, color) {
+                    ctx.fillStyle = color;
+                    ctx.roundRect ? ctx.roundRect(x,y, tSize*6, tSize*6, 20) : ctx.fillRect(x,y, tSize*6, tSize*6);
+                    ctx.fill();
+                    ctx.fillStyle = "#fff";
+                    ctx.roundRect ? ctx.roundRect(x+tSize,y+tSize, tSize*4, tSize*4, 15) : ctx.fillRect(x+tSize,y+tSize, tSize*4, tSize*4);
+                    ctx.fill();
+                    // Inner Circles
+                    ctx.fillStyle = color;
+                    [ {cx:x+tSize*1.8, cy:y+tSize*1.8}, {cx:x+tSize*4.2, cy:y+tSize*1.8},
+                      {cx:x+tSize*1.8, cy:y+tSize*4.2}, {cx:x+tSize*4.2, cy:y+tSize*4.2}].forEach(c => {
+                          ctx.beginPath(); ctx.arc(c.cx, c.cy, tSize*0.6, 0, Math.PI*2); ctx.fill();
+                    });
+                }
+                
+                drawBase(0, 0, "#00E676"); // Top Left (Green)
+                drawBase(cw - tSize*6, 0, "#FFD700"); // Top Right (Yellow)
+                drawBase(0, ch - tSize*6, "#FF3366"); // Bottom Left (Red)
+                drawBase(cw - tSize*6, ch - tSize*6, "#00A8FF"); // Bottom Right (Blue)
+                
+                // Center Home
+                ctx.beginPath(); ctx.moveTo(cw/2, ch/2); ctx.lineTo(cw/2 - tSize*1.5, ch/2 - tSize*1.5); ctx.lineTo(cw/2 + tSize*1.5, ch/2 - tSize*1.5); ctx.fillStyle = "#FFD700"; ctx.fill();
+                ctx.beginPath(); ctx.moveTo(cw/2, ch/2); ctx.lineTo(cw/2 + tSize*1.5, ch/2 - tSize*1.5); ctx.lineTo(cw/2 + tSize*1.5, ch/2 + tSize*1.5); ctx.fillStyle = "#00A8FF"; ctx.fill();
+                ctx.beginPath(); ctx.moveTo(cw/2, ch/2); ctx.lineTo(cw/2 + tSize*1.5, ch/2 + tSize*1.5); ctx.lineTo(cw/2 - tSize*1.5, ch/2 + tSize*1.5); ctx.fillStyle = "#FF3366"; ctx.fill();
+                ctx.beginPath(); ctx.moveTo(cw/2, ch/2); ctx.lineTo(cw/2 - tSize*1.5, ch/2 + tSize*1.5); ctx.lineTo(cw/2 - tSize*1.5, ch/2 - tSize*1.5); ctx.fillStyle = "#00E676"; ctx.fill();
+            }
+            
+            drawBoard();
+        }
+
+        window.rollDiceAction = function() {
+            const dice = document.getElementById('dice');
+            if(dice.classList.contains('tumble')) return;
+            
+            const result = Math.floor(Math.random() * 6) + 1;
+            
+            // Mapping result to correct CSS 3D transform
+            const transforms = {
+                1: 'rotateY(0deg)',
+                2: 'rotateY(-90deg)',
+                3: 'rotateY(-180deg)',
+                4: 'rotateY(90deg)',
+                5: 'rotateX(-90deg)',
+                6: 'rotateX(90deg)'
+            };
+            
+            dice.style.setProperty('--final-transform', transforms[result]);
+            dice.classList.add('tumble');
+            
+            setTimeout(() => {
+                dice.classList.remove('tumble');
+                dice.style.transform = transforms[result];
+                // Move token logic would go here
+            }, 800);
+        }
+    </script>
+</body>
+</html>

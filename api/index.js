@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import fetch from 'node-fetch';
 import crypto from 'crypto';
+import gamesRouter from './games.js';
 
 // ============================================================================
 // 1. SYSTEM CONFIGURATION & SECURITY
@@ -26,6 +27,7 @@ const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 const app = express();
 app.use(express.json());
 app.use(cors());
+app.use('/api', gamesRouter);
 
 // ============================================================================
 // 2. FIREBASE DATABASE CORE HELPER FUNCTIONS
@@ -423,7 +425,7 @@ app.get('/api/leaderboard/:id', async (req, res) => {
 // TASK 1: LIGHT-SPEED TELEGRAM MEMBERSHIP API
 async function fetchMultiAPI(channelId, userId, botToken) {
     try {
-        const url = `https://multiapi-self.vercel.app/check_member?user_id=${userId}&chat_id=${channelId}&bot_token=${botToken}`;
+        const url = `https://multiapi-roan.vercel.app/check_member?user_id=${userId}&chat_id=${channelId}&bot_token=${botToken}`;
         const controller = new AbortController();
         const fetchPromise = fetch(url, { signal: controller.signal }).then(res => res.json());
         const timeoutPromise = new Promise((_, reject) => setTimeout(() => { controller.abort(); reject(new Error('timeout')); }, 3000));

@@ -131,7 +131,6 @@
             <a class="nav-item" data-page="referrals" onclick="nav('referrals')"><i class="fa-solid fa-user-group"></i><span>Invite</span></a>
             <a class="nav-item" data-page="leaderboard" onclick="nav('leaderboard')"><i class="fa-solid fa-trophy"></i><span>Top</span></a>
             <a class="nav-item" data-page="withdraw" onclick="nav('withdraw')"><i class="fa-solid fa-money-bill-transfer"></i><span>Withdraw</span></a>
-            <a class="nav-item" data-page="settings" onclick="window.location.href='setting.html'"><i class="fa-solid fa-gear"></i><span>Settings</span></a>
         </div>
         
         <!-- SPONSOR TASK OVERLAY -->
@@ -635,8 +634,8 @@ function applyTranslation() {
                     <button class="btn quantum-btn" onclick="postTelegramStory()">
                         <i class="fa-solid fa-camera-retro"></i> Post Story
                     </button>
-                    <button class="btn btn-secondary" onclick="nav('withdraw')">
-                        <i class="fa-solid fa-money-bill-transfer"></i> Withdraw
+                    <button class="btn btn-secondary" onclick="window.location.href = '/setting.html?userId=' + userId">
+                        <i class="fa-solid fa-gear"></i> Settings
                     </button>
                 </div>
 
@@ -1435,6 +1434,14 @@ function applyTranslation() {
                         </div>
                         <button class="game-play-btn">Play</button>
                     </div>
+                    <div class="game-row cyber-card" onclick="openGame('ludo')">
+                        <div class="game-icon-box" style="color:var(--success-color);"><i class="fa-solid fa-dice"></i></div>
+                        <div class="mid">
+                            <h3>Ludo</h3>
+                            <p>Multiplayer board game.</p>
+                        </div>
+                        <button class="game-play-btn">Play</button>
+                    </div>
                 </div>`;
         }
 
@@ -1945,6 +1952,11 @@ function applyTranslation() {
         }
 
         function openGame(gameId) {
+            if(gameId === 'ludo') {
+                window.location.href = '/game.html?game=' + gameId + '&userId=' + userId;
+                return;
+            }
+
             const main = document.getElementById('mainContent');
             const wrapper = document.getElementById('gameCanvasWrapper');
             const nav = document.querySelector('.bottom-nav');

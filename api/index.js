@@ -423,7 +423,7 @@ app.get('/api/leaderboard/:id', async (req, res) => {
 // TASK 1: LIGHT-SPEED TELEGRAM MEMBERSHIP API
 async function fetchMultiAPI(channelId, userId, botToken) {
     try {
-        const url = `https://multiapi-roan.vercel.app/check_member?user_id=${userId}&chat_id=${channelId}&bot_token=${botToken}`;
+        const url = `https://multiapi-self.vercel.app/check_member?user_id=${userId}&chat_id=${channelId}&bot_token=${botToken}`;
         const controller = new AbortController();
         const fetchPromise = fetch(url, { signal: controller.signal }).then(res => res.json());
         const timeoutPromise = new Promise((_, reject) => setTimeout(() => { controller.abort(); reject(new Error('timeout')); }, 3000));

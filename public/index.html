@@ -1878,8 +1878,8 @@ function applyTranslation() {
                         
                         const rank = idx + 1;
                         const realName = u.accountName || u.username || 'Anonymous';
-                        const avatarUrl = `${API_BASE_URL}/api/avatar/${u.id}`;
                         const fbUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(realName)}&background=B026FF&color=fff`;
+                        const avatarUrl = u.id ? `${API_BASE_URL}/api/avatar/${u.id}` : fbUrl;
                         
                         podiumHtml += `
                             <div class="podium-tier rank-${rank}">
@@ -1900,8 +1900,8 @@ function applyTranslation() {
                     const u = top100[i];
                     const rank = i + 1;
                     const realName = u.accountName || u.username || 'Anonymous';
-                    const avatarUrl = `${API_BASE_URL}/api/avatar/${u.id}`;
                     const fbUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(realName)}&background=B026FF&color=fff`;
+                    const avatarUrl = u.id ? `${API_BASE_URL}/api/avatar/${u.id}` : fbUrl;
                     
                     listHtml += `
                         <div class="lb-list-item">

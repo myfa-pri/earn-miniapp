@@ -134,33 +134,32 @@
         </div>
         
         <!-- SPONSOR TASK OVERLAY -->
-        <div id="sponsorOverlay" class="sponsor-overlay">
-            <div style="position:absolute; top:20px; right:20px; cursor:pointer; font-size:1.5rem; color:#94A3B8; width:40px; height:40px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.1); border-radius:50%;" onclick="closeSponsorTask()">
+        <div id="sponsorOverlay" class="sponsor-overlay" style="backdrop-filter: blur(25px); border-radius: 30px 30px 0 0; border-top: 1px solid rgba(255,255,255,0.2);">
+            <div style="position:absolute; top:20px; right:20px; cursor:pointer; font-size:1.5rem; color:#94A3B8; width:40px; height:40px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.1); border-radius:50%; box-shadow:0 4px 10px rgba(0,0,0,0.3);" onclick="closeSponsorTask()">
                 <i class="fa-solid fa-xmark"></i>
             </div>
             
             <div style="text-align:center; margin-top:20px;">
-                <div id="so-icon-box" style="width:90px; height:90px; background:rgba(240, 147, 251, 0.1); border-radius:30px; display:flex; align-items:center; justify-content:center; margin:0 auto 15px; font-size:3rem; color:var(--color-magenta); box-shadow:0 0 30px rgba(240, 147, 251, 0.3);">
+                <div id="so-icon-box" style="width:90px; height:90px; background:rgba(255,255,255,0.05); border-radius:30px; display:flex; align-items:center; justify-content:center; margin:0 auto 15px; font-size:3rem; color:var(--color-cyan); box-shadow:0 10px 30px rgba(0,242,254, 0.2); border:1px solid rgba(255,255,255,0.1);">
                     <i id="so-icon" class="fa-solid fa-star"></i>
                 </div>
-                <h2 id="so-title" style="font-size:1.6rem; font-weight:800; margin-bottom:5px;">Task Name</h2>
-                <div id="so-reward" style="font-size:1.3rem; color:var(--success-color); font-weight:900; text-shadow:0 0 10px rgba(16, 185, 129, 0.5);">+0 Gems</div>
+                <h2 id="so-title" style="font-size:1.8rem; font-weight:900; margin-bottom:5px; text-shadow: 0 4px 10px rgba(0,0,0,0.5);">Task Name</h2>
+                <div id="so-reward" style="font-size:1.4rem; color:var(--success-color); font-weight:900; text-shadow:0 0 15px rgba(16, 185, 129, 0.6);">+0 Gems</div>
             </div>
             
             <div style="flex:1; margin-top:25px; overflow-y:auto; padding-right:10px;">
-                <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:15px; padding:15px; font-size:0.95rem; color:#E2E8F0; line-height:1.5;" id="so-desc">
+                <div style="background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.05); border-radius:20px; padding:20px; font-size:1rem; color:#E2E8F0; line-height:1.6; text-align:center;" id="so-desc">
                     Task description goes here...
                 </div>
                 
-                <div id="so-manual-proof-section" style="display:none; margin-top:15px;">
-                    <label style="font-size:0.8rem; color:#94A3B8; font-weight:700; margin-bottom:5px; display:block;">Upload Screenshot Proof</label>
-                    <input type="file" id="so-proof-file" accept="image/*" style="width:100%; color:#fff; background:rgba(0,0,0,0.3); padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,0.1);">
+                <div id="so-manual-proof-section" style="display:none; margin-top:20px; background:rgba(255,255,255,0.05); padding:15px; border-radius:15px; border:1px dashed rgba(255,255,255,0.2);">
+                    <label style="font-size:0.85rem; color:#94A3B8; font-weight:800; margin-bottom:10px; display:block; text-align:center;"><i class="fa-solid fa-cloud-arrow-up"></i> Upload Screenshot Proof</label>
+                    <input type="file" id="so-proof-file" accept="image/*" style="width:100%; color:#fff; background:rgba(0,0,0,0.5); padding:12px; border-radius:10px; outline:none; border:none;">
                 </div>
             </div>
             
-            <div style="margin-top:20px; display:flex; flex-direction:column; gap:10px;">
-                <button id="so-start-btn" class="btn quantum-btn" style="font-size:1.2rem; padding:18px; box-shadow:0 0 20px var(--color-cyan); animation:pulse 2s infinite;" onclick="executeSponsorTask()">Start Task</button>
-                <button id="so-verify-btn" class="btn" style="background:var(--gold-color); color:black; font-size:1.2rem; padding:18px; display:none; font-weight:800;" onclick="verifySponsorTask()">Check</button>
+            <div id="so-button-container" style="margin-top:25px; display:flex; gap:15px; width:100%;">
+                <!-- Dynamic Dual-Button Logic -->
             </div>
         </div>
     </div>
@@ -1117,22 +1116,21 @@ function applyTranslation() {
             
             document.getElementById('so-proof-file').value = '';
             
+            const btnContainer = document.getElementById('so-button-container');
+            
             if (task.type === 'manual') {
                 document.getElementById('so-manual-proof-section').style.display = 'block';
+                btnContainer.innerHTML = `
+                    <button class="btn" style="flex:1; background:linear-gradient(45deg, #8A2BE2, #B026FF); color:white; font-size:1.2rem; padding:18px; font-weight:800; box-shadow:0 0 20px rgba(176,38,255,0.4);" onclick="executeSponsorTask()"><i class="fa-solid fa-arrow-up-right-from-square"></i> Do Task</button>
+                    <button id="so-verify-btn" class="btn" style="flex:1; background:linear-gradient(45deg, #FFD700, #F59E0B); color:black; font-size:1.2rem; padding:18px; font-weight:900; box-shadow:0 0 20px rgba(255,215,0,0.4);" onclick="verifySponsorTask()"><i class="fa-solid fa-check-double"></i> Submit</button>
+                `;
             } else {
                 document.getElementById('so-manual-proof-section').style.display = 'none';
+                btnContainer.innerHTML = `
+                    <button class="btn" style="flex:1; background:linear-gradient(45deg, #00A8FF, #00F2FE); color:white; font-size:1.2rem; padding:18px; font-weight:800; box-shadow:0 0 20px rgba(0,242,254,0.4);" onclick="executeSponsorTask()"><i class="fa-brands fa-telegram"></i> Join</button>
+                    <button id="so-verify-btn" class="btn" style="flex:1; background:linear-gradient(45deg, #00E676, #10B981); color:white; font-size:1.2rem; padding:18px; font-weight:900; box-shadow:0 0 20px rgba(0,230,118,0.4);" onclick="verifySponsorTask()"><i class="fa-solid fa-circle-check"></i> Check</button>
+                `;
             }
-            
-            const startBtn = document.getElementById('so-start-btn');
-            startBtn.style.display = 'block';
-            startBtn.innerText = 'Start Task';
-            startBtn.disabled = false;
-            startBtn.style.background = 'var(--gradient-main)';
-            startBtn.style.color = 'white';
-            
-            document.getElementById('so-verify-btn').style.display = 'none';
-            document.getElementById('so-verify-btn').innerText = 'Check';
-            document.getElementById('so-verify-btn').disabled = false;
             
             document.getElementById('sponsorOverlay').classList.add('open');
         }

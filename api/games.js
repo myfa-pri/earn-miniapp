@@ -43,7 +43,7 @@ router.post('/ludo/payout', async (req, res) => {
 });
 
 // Chicken Road Rigged Math (75 / 15 / 10)
-router.post('/chicken/play', async (req, res) => {
+router.post('/chicken/start', async (req, res) => {
     try {
         const { userId, wager } = req.body;
         const user = await dbGet(`users/${userId}`);
@@ -74,8 +74,10 @@ router.post('/chicken/play', async (req, res) => {
             deathLane = Math.floor(Math.random() * 5) + 4;
         }
         
+        const multipliers = [1.00, 1.20, 1.50, 2.00, 3.00, 5.00, 10.0, 25.0];
+        
         // Return the death lane (Server Seed resolved)
-        res.json({ success: true, deathLane, balance: newBal, seed: Math.random().toString(36).substring(7) });
+        res.json({ success: true, deathLane, balance: newBal, multipliers, seed: Math.random().toString(36).substring(7) });
     } catch(e) { res.status(500).json({ error: e.message }); }
 });
 

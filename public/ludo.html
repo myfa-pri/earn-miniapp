@@ -9,9 +9,32 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 </head>
 <body>
+    <!-- Pre-Game Setup Modal -->
+    <div id="pre-game-screen" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, var(--bg-primary), var(--bg-secondary)); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 150;">
+        <div class="glass-modal" style="background: rgba(74, 37, 225, 0.5); width: 85%; padding: 25px;">
+            <h2 style="color:var(--gold); margin-bottom:20px; text-shadow:0 0 10px rgba(255,215,0,0.5);"><i class="fa-solid fa-dice-d20"></i> Game Setup</h2>
+            <div style="margin-bottom:15px; text-align:left;">
+                <label style="font-weight:bold; color:#E2E8F0; font-size:0.9rem;">Bet Amount (Gems)</label>
+                <input type="number" id="ludo-wager" value="50" style="width:100%; padding:12px; margin-top:5px; border-radius:10px; border:1px solid rgba(255,255,255,0.2); background:rgba(0,0,0,0.3); color:white; font-size:1.1rem; box-sizing:border-box;" oninput="updateLudoPotentialWin()">
+            </div>
+            <div style="margin-bottom:20px; text-align:left;">
+                <label style="font-weight:bold; color:#E2E8F0; font-size:0.9rem;">Select Opponents</label>
+                <select id="ludo-bots" style="width:100%; padding:12px; margin-top:5px; border-radius:10px; border:1px solid rgba(255,255,255,0.2); background:rgba(0,0,0,0.3); color:white; font-size:1.1rem; box-sizing:border-box;" onchange="updateLudoPotentialWin()">
+                    <option value="1">1 Bot</option>
+                    <option value="2">2 Bots</option>
+                    <option value="3">3 Bots</option>
+                </select>
+            </div>
+            <div style="margin-bottom:25px; padding:15px; background:rgba(0,0,0,0.4); border-radius:10px; border:1px dashed var(--gold);">
+                <div style="font-size:0.9rem; color:#94A3B8;">Potential Win</div>
+                <div id="ludo-potential-win" style="font-size:1.5rem; font-weight:900; color:#00E676; text-shadow:0 0 10px rgba(0,230,118,0.5);">50 Gems</div>
+            </div>
+            <button id="ludo-start-btn" class="btn" style="background:linear-gradient(45deg, #FFD700, #F59E0B); color:black; font-size:1.2rem; padding:15px; box-shadow:0 0 20px rgba(255,215,0,0.4);" onclick="startLudoMatchmaking()">Start Game</button>
+        </div>
+    </div>
 
     <!-- Matchmaking Lobby -->
-    <div id="lobby-screen">
+    <div id="lobby-screen" style="display: none;">
         <h1 style="color:var(--gold); font-style:italic; font-size:2.5rem; margin-bottom:40px; text-shadow: 0 4px 10px rgba(0,0,0,0.5);">LUDO<br>REWARDS</h1>
         
         <div class="rings-container">
@@ -165,23 +188,42 @@
         
         function openSettings() { document.getElementById('settings-modal').style.display = 'flex'; }
         
-        // Sequence: Lobby -> VS -> Game
-        setTimeout(() => {
-            document.getElementById('lobby-screen').style.display = 'none';
-            document.getElementById('vs-screen').style.display = 'flex';
-            let c = 5;
-            let timerEl = document.querySelector('#vs-screen .timer');
-            let i = setInterval(() => {
-                c--;
-                timerEl.innerText = `00 : 0${c}`;
-                if (c <= 0) {
-                    clearInterval(i);
-                    document.getElementById('vs-screen').style.display = 'none';
-                    document.getElementById('game-screen').style.display = 'flex';
-                    initLudo();
-                }
-            }, 1000);
-        }, 3000);
+        function updateLudoPotentialWin() {
+            const w = parseFloat(document.getElementById('ludo-wager').value) || 0;
+            const b = parseInt(document.getElementById('ludo-bots').value) || 1;
+            document.getElementById('ludo-potential-win').innerText = (w * b) + ' Gems';
+        }
+
+        async function startLudoMatchmaking() {
+            const wager = parseFloat(document.getElementById('ludo-wager').value) || 0;
+            if(wager <= 0) return alert('Invalid Wager');
+            
+            document.getElementById('ludo-start-btn').innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+            document.getElementById('ludo-start-btn').disabled = true;
+            
+            // TODO: Actually deduct wager from backend here if required
+            // For now, assume success to proceed with UI demo
+            document.getElementById('pre-game-screen').style.display = 'none';
+            document.getElementById('lobby-screen').style.display = 'flex';
+            
+            // Sequence: Lobby -> VS -> Game
+            setTimeout(() => {
+                document.getElementById('lobby-screen').style.display = 'none';
+                document.getElementById('vs-screen').style.display = 'flex';
+                let c = 5;
+                let timerEl = document.querySelector('#vs-screen .timer');
+                let i = setInterval(() => {
+                    c--;
+                    timerEl.innerText = `00 : 0${c}`;
+                    if (c <= 0) {
+                        clearInterval(i);
+                        document.getElementById('vs-screen').style.display = 'none';
+                        document.getElementById('game-screen').style.display = 'flex';
+                        initLudo();
+                    }
+                }, 1000);
+            }, 3000);
+        }
 
         function initLudo() {
             const canvas = document.getElementById('ludoCanvas');

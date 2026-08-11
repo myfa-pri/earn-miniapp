@@ -6,6 +6,7 @@
     <title>Chicken of Fire</title>
     <link rel="stylesheet" href="chicken.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 </head>
 <body>
     <div class="header">
@@ -16,96 +17,158 @@
         <i class="fa-solid fa-xmark" style="font-size:1.5rem; cursor:pointer;" onclick="window.location.href='/'"></i>
     </div>
     
-    <div id="game-container" style="flex:1; display:flex; justify-content:center; align-items:center; background:#1a1c23; position:relative;">
+    <div id="game-container">
         <canvas id="gameCanvas"></canvas>
     </div>
     
-    <div id="control-panel" style="background: rgba(31, 41, 55, 0.8); backdrop-filter: blur(15px); padding: 20px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; gap: 20px; align-items: center; z-index: 10;">
-        <div style="display:flex; flex-direction:column; gap:5px;">
-            <label style="color:#9CA3AF; font-size:0.8rem; font-weight:bold;">Wager Amount</label>
-            <input type="number" id="wagerAmount" class="bet-input" value="10" style="background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.2); color:white; padding:15px; border-radius:10px; font-size:1.2rem; width:120px; text-align:center;">
+    <div id="control-panel">
+        <div class="input-group">
+            <label class="input-label">Wager Amount</label>
+            <input type="number" id="wagerAmount" class="bet-input" value="10">
         </div>
-        <div style="display:flex; flex-direction:column; gap:5px;">
-            <label style="color:#9CA3AF; font-size:0.8rem; font-weight:bold;">Difficulty</label>
-            <select id="diffSelector" style="background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.2); color:white; padding:15px; border-radius:10px; font-size:1rem; width:120px;">
-                <option>Medium</option>
+        <div class="input-group">
+            <label class="input-label">Difficulty</label>
+            <select id="diffSelector" class="diff-selector">
+                <option>Easy</option>
+                <option selected>Medium</option>
+                <option>Hard</option>
+                <option>Hardcore</option>
             </select>
         </div>
-        <button id="btn-go" class="action-btn btn-go" onclick="startRound()" style="flex:1; background:var(--green); color:white; padding:20px; border-radius:10px; border:none; font-size:1.5rem; font-weight:900; box-shadow:0 0 20px rgba(16, 185, 129, 0.5); cursor:pointer;">GO / BET</button>
-        <button id="btn-cashout" class="action-btn btn-cashout" onclick="cashOut()" style="flex:1; background:var(--gold); color:black; padding:20px; border-radius:10px; border:none; font-size:1.5rem; font-weight:900; box-shadow:0 0 20px rgba(245, 158, 11, 0.5); cursor:pointer; display:none;">CASH OUT</button>
+        <button id="btn-action" class="action-btn btn-go" onclick="onActionClick()">PLACE BET</button>
     </div>
 
     <script>
         const params = new URLSearchParams(window.location.search);
         const userId = params.get('userId') || 'test';
         
-        let state = 'IDLE'; // IDLE, HOPPING, PLAYING, CRASHED
+        let state = 'IDLE'; // IDLE, HOPPING, PLAYING, CRASHED, CASHED_OUT
         let currentLane = 0;
         let deathLane = 999;
         let wager = 0;
-        const multipliers = [1.00, 1.20, 1.50, 2.00, 3.00, 5.00, 10.0, 25.0];
+        let multipliers = [1.00];
         
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         let cw, ch;
         
-        const chickenImg = new Image();
-        chickenImg.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='60' r='30' fill='%23fff'/><circle cx='70' cy='40' r='20' fill='%23fff'/><circle cx='75' cy='35' r='5' fill='%23000'/><path d='M85 45 L100 50 L85 55 Z' fill='%23F59E0B'/><path d='M50 30 L60 10 L70 30 Z' fill='%23EF4444'/><path d='M40 90 L40 100 M60 90 L60 100' stroke='%23F59E0B' stroke-width='5'/></svg>";
+        // SVGs
+        const chickenSvg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='60' r='30' fill='%23fff'/><circle cx='70' cy='40' r='20' fill='%23fff'/><circle cx='75' cy='35' r='5' fill='%23000'/><path d='M85 45 L100 50 L85 55 Z' fill='%23F59E0B'/><path d='M50 30 L60 10 L70 30 Z' fill='%23EF4444'/><path d='M40 90 L40 100 M60 90 L60 100' stroke='%23F59E0B' stroke-width='5'/></svg>";
+        const burntSvg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='60' r='30' fill='%23222'/><circle cx='70' cy='40' r='20' fill='%23222'/><circle cx='75' cy='35' r='5' fill='%23000'/><path d='M85 45 L100 50 L85 55 Z' fill='%23555'/><path d='M50 30 L60 10 L70 30 Z' fill='%23111'/><path d='M40 90 L40 100 M60 90 L60 100' stroke='%23333' stroke-width='5'/></svg>";
+        const eggSvg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><ellipse cx='50' cy='50' rx='30' ry='40' fill='%23FFD700'/><ellipse cx='40' cy='35' rx='8' ry='15' fill='%23FFF' opacity='0.5' transform='rotate(-20 40 35)'/></svg>";
+        const fireSvg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 200'><path d='M50 0 Q30 50 10 100 Q30 150 50 200 Q70 150 90 100 Q70 50 50 0Z' fill='url(%23g)'/><defs><linearGradient id='g' x1='0' y1='0' x2='0' y2='1'><stop offset='0%' stop-color='%23FFeb3b'/><stop offset='50%' stop-color='%23FF9800'/><stop offset='100%' stop-color='%23f44336'/></linearGradient></defs></svg>";
         
-        const burntChickenImg = new Image();
-        burntChickenImg.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='60' r='30' fill='%23444'/><circle cx='70' cy='40' r='20' fill='%23444'/><circle cx='75' cy='35' r='5' fill='%23000'/><path d='M85 45 L100 50 L85 55 Z' fill='%23222'/><path d='M50 30 L60 10 L70 30 Z' fill='%23111'/><path d='M40 90 L40 100 M60 90 L60 100' stroke='%23222' stroke-width='5'/></svg>";
-        
-        const fireImg = new Image();
-        fireImg.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23EF4444'><path d='M12 2c0 0-4.5 4.5-4.5 9.5 0 2.48 2.02 4.5 4.5 4.5s4.5-2.02 4.5-4.5C16.5 6.5 12 2 12 2zm0 11.5c-1.38 0-2.5-1.12-2.5-2.5 0-1.66 1.67-3.33 2.5-4.25.83.92 2.5 2.59 2.5 4.25 0 1.38-1.12 2.5-2.5 2.5z'/></svg>";
+        const imgChicken = new Image(); imgChicken.src = chickenSvg;
+        const imgBurnt = new Image(); imgBurnt.src = burntSvg;
+        const imgEgg = new Image(); imgEgg.src = eggSvg;
+        const imgFire = new Image(); imgFire.src = fireSvg;
 
+        // Physics & Animation
         let bgScrollY = 0;
+        let targetScrollY = 0;
         let hopStartT = 0;
-        let hopDuration = 500;
-        let startX = 0, targetX = 0;
-        let cX = 0, cY = 0;
-        let animReq;
+        let hopDuration = 400;
+        const laneHeight = 120;
         
+        // Particles
+        let feathers = [];
+        
+        // Audio Context (Lazy Init)
+        let audioCtx;
+        function initAudio() {
+            if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+        }
+        function playTone(freq, type, dur, vol=0.1) {
+            initAudio();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + dur);
+            osc.start(); osc.stop(audioCtx.currentTime + dur);
+        }
+        function playBoop() { playTone(600, 'sine', 0.1, 0.2); }
+        function playRoar() { 
+            initAudio();
+            const bufferSize = audioCtx.sampleRate * 1;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for(let i=0; i<bufferSize; i++) data[i] = Math.random() * 2 - 1;
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buffer;
+            
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'lowpass'; filter.frequency.value = 400;
+            
+            const gain = audioCtx.createGain();
+            gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1);
+            
+            noise.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+            noise.start();
+        }
+        function playJackpot() {
+            playTone(800, 'square', 0.5, 0.1);
+            setTimeout(() => playTone(1200, 'square', 0.5, 0.1), 100);
+            setTimeout(() => playTone(1600, 'square', 0.8, 0.1), 200);
+        }
+
         function resize() {
             const container = document.getElementById('game-container');
             cw = container.clientWidth;
             ch = container.clientHeight;
             canvas.width = cw;
             canvas.height = ch;
-            if (state === 'IDLE') {
-                cX = (cw / 7) * 0.5;
-                cY = ch - 100;
-            }
         }
         window.addEventListener('resize', resize);
         resize();
         
-        function loop(time) {
-            ctx.fillStyle = '#1a1c23';
+        function getMultiplierColor(mult) {
+            if (mult < 1.5) return '#FFFFFF'; // White
+            if (mult < 3.0) return '#F59E0B'; // Yellow/Gold
+            return '#00F2FE'; // Neon Blue/Green
+        }
+        
+        function draw() {
+            const time = performance.now();
+            ctx.fillStyle = '#111827';
             ctx.fillRect(0, 0, cw, ch);
             
-            // Draw lanes
-            const laneW = cw / 7;
-            bgScrollY = (bgScrollY + 2) % 100;
+            // Smooth scroll approach
+            bgScrollY += (targetScrollY - bgScrollY) * 0.1;
             
-            ctx.strokeStyle = 'rgba(255,255,255,0.1)';
-            ctx.lineWidth = 2;
+            // Draw Lanes (Horizontal)
+            ctx.lineWidth = 3;
             ctx.setLineDash([20, 20]);
             
-            for(let i=0; i<=7; i++) {
+            const startLaneIdx = Math.floor(bgScrollY / laneHeight) - 2;
+            const endLaneIdx = startLaneIdx + Math.ceil(ch / laneHeight) + 3;
+            
+            for(let i = startLaneIdx; i <= endLaneIdx; i++) {
+                // y is based on chicken's baseline. Chicken is always at ch - 150 visually
+                // So lane 0 is at ch - 150. Lane 1 is at ch - 150 - laneHeight.
+                const visualY = (ch - 150) - (i * laneHeight) + bgScrollY;
+                
+                // Draw Golden Safe Zone every 5th lane
+                if (i > 0 && i % 5 === 0) {
+                    ctx.fillStyle = 'rgba(245, 158, 11, 0.2)';
+                    ctx.fillRect(0, visualY - laneHeight/2, cw, laneHeight);
+                }
+                
+                // Draw Dashed separator
+                ctx.strokeStyle = 'rgba(0, 242, 254, 0.5)'; // Neon Blue
                 ctx.beginPath();
-                ctx.moveTo(i * laneW, 0 - bgScrollY);
-                ctx.lineTo(i * laneW, ch);
+                ctx.moveTo(0, visualY + laneHeight/2);
+                ctx.lineTo(cw, visualY + laneHeight/2);
                 ctx.stroke();
             }
             ctx.setLineDash([]);
             
-            // Draw multipliers
-            ctx.fillStyle = 'rgba(255,255,255,0.3)';
-            ctx.font = 'bold 24px sans-serif';
-            ctx.textAlign = 'center';
-            for(let i=0; i<7; i++) {
-                ctx.fillText(multipliers[i].toFixed(2) + 'x', i * laneW + laneW/2, ch/2);
-            }
+            // Chicken Y is physically static (illusion of forward movement)
+            let chickenY = ch - 150; 
+            let scale = 1;
             
             // Hop physics
             if (state === 'HOPPING') {
@@ -116,81 +179,137 @@
                     
                     if (currentLane === deathLane) {
                         state = 'CRASHED';
-                        document.getElementById('btn-go').innerText = "GO / BET";
-                        document.getElementById('btn-go').style.display = 'block';
-                        document.getElementById('btn-cashout').style.display = 'none';
-                    } else {
-                        updateCashoutBtn();
+                        triggerDeath();
                     }
                 }
                 
-                cX = startX + (targetX - startX) * progress;
-                // Math Sine Wave for Parabolic Hop
-                let jumpH = Math.sin(progress * Math.PI) * 100;
-                cY = ch - 100 - jumpH;
+                // Parabolic Sine Wave
+                let jump = Math.sin(progress * Math.PI);
+                chickenY -= jump * 80; // Jump height
+                scale = 1 + (jump * 0.3); // Scale up and down (squish)
             }
             
-            // Draw Chicken
-            const img = (state === 'CRASHED') ? burntChickenImg : chickenImg;
+            // Draw Chicken or Egg
+            ctx.save();
+            ctx.translate(cw/2, chickenY);
+            ctx.scale(scale, scale);
+            
+            // Drop Shadow
+            ctx.shadowColor = 'rgba(0,0,0,0.8)';
+            ctx.shadowBlur = 15;
+            ctx.shadowOffsetY = 15;
+            
+            let img = imgChicken;
+            if (state === 'CRASHED') img = imgBurnt;
+            if (state === 'CASHED_OUT') img = imgEgg;
+            
             if(img.complete) {
-                ctx.drawImage(img, cX - 40, cY - 40, 80, 80);
+                ctx.drawImage(img, -40, -40, 80, 80);
+            }
+            ctx.restore();
+            
+            // Draw Multiplier HUD directly above chicken
+            if (state !== 'CASHED_OUT') {
+                const multText = (multipliers[currentLane] || 1.00).toFixed(2) + 'x';
+                ctx.fillStyle = (state === 'CRASHED') ? '#EF4444' : getMultiplierColor(multipliers[currentLane] || 1);
+                ctx.font = '900 32px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.shadowColor = (state === 'CRASHED') ? 'rgba(239, 68, 68, 0.8)' : ctx.fillStyle;
+                ctx.shadowBlur = 20;
+                ctx.fillText(state === 'CRASHED' ? "BURNED!" : multText, cw/2, chickenY - 70);
+                ctx.shadowBlur = 0; // Reset
             }
             
-            // Floating Multiplier text above chicken
-            ctx.fillStyle = '#00F2FE';
-            ctx.font = '900 20px sans-serif';
-            ctx.fillText(multipliers[currentLane].toFixed(2) + 'x', cX, cY - 50);
-            
-            // Draw Fire Pillar if crashed
+            // Draw Fire if crashed
             if (state === 'CRASHED') {
-                if(fireImg.complete) {
-                    ctx.drawImage(fireImg, cX - 60, ch - 200, 120, 200);
+                if(imgFire.complete) {
+                    // Towering fire
+                    ctx.drawImage(imgFire, cw/2 - 75, chickenY - 150, 150, 250);
                 }
-                ctx.fillStyle = '#EF4444';
-                ctx.font = '900 36px sans-serif';
-                ctx.fillText('BURNED!', cw/2, 100);
             }
             
-            animReq = requestAnimationFrame(loop);
+            // Draw Feathers
+            for(let i=feathers.length-1; i>=0; i--) {
+                let f = feathers[i];
+                f.x += f.vx; f.y += f.vy; f.rot += f.rotv;
+                f.life++;
+                if (f.life >= f.maxLife) { feathers.splice(i, 1); continue; }
+                
+                ctx.save();
+                ctx.translate(f.x, f.y);
+                ctx.rotate(f.rot);
+                ctx.fillStyle = `rgba(255,255,255,${1 - f.life/f.maxLife})`;
+                ctx.fillRect(-5, -2, 10, 4); // Simple feather block
+                ctx.restore();
+            }
+            
+            requestAnimationFrame(draw);
+        }
+        requestAnimationFrame(draw);
+        
+        function triggerDeath() {
+            playRoar();
+            document.getElementById('btn-action').innerText = "GAME OVER";
+            document.getElementById('btn-action').className = "action-btn btn-disabled";
+            
+            // Explode feathers
+            for(let i=0; i<20; i++) {
+                feathers.push({
+                    x: cw/2, y: ch-150,
+                    vx: (Math.random()-0.5)*15, vy: (Math.random()-0.5)*15 - 5,
+                    rot: Math.random()*Math.PI*2, rotv: (Math.random()-0.5)*0.5,
+                    life: 0, maxLife: 30 + Math.random()*30
+                });
+            }
+            setTimeout(() => { resetToIdle(); }, 3000);
         }
         
-        requestAnimationFrame(loop);
+        function resetToIdle() {
+            state = 'IDLE';
+            currentLane = 0;
+            bgScrollY = 0;
+            targetScrollY = 0;
+            document.getElementById('btn-action').innerText = "PLACE BET";
+            document.getElementById('btn-action').className = "action-btn btn-go";
+        }
         
-        async function startRound() {
-            if (state === 'PLAYING') { doHop(); return; }
-            if (state === 'HOPPING') return;
-            
-            wager = parseFloat(document.getElementById('wagerAmount').value);
-            if (isNaN(wager) || wager <= 0) return alert("Invalid wager");
-            
-            document.getElementById('btn-go').innerText = "LOADING...";
-            
-            try {
-                const res = await fetch('/api/chicken/play', {
-                    method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ userId, wager })
-                });
-                const data = await res.json();
+        async function onActionClick() {
+            const btn = document.getElementById('btn-action');
+            if (state === 'IDLE') {
+                // START GAME
+                wager = parseFloat(document.getElementById('wagerAmount').value);
+                if (isNaN(wager) || wager <= 0) return alert("Invalid wager");
                 
-                if (!data.success) {
-                    alert(data.error);
-                    document.getElementById('btn-go').innerText = "GO / BET";
-                    return;
-                }
-                
-                document.getElementById('user-balance').innerText = data.balance.toFixed(2);
-                deathLane = data.deathLane;
-                
-                state = 'PLAYING';
-                currentLane = 0;
-                cX = (cw / 7) * 0.5;
-                cY = ch - 100;
-                
-                document.getElementById('btn-go').innerText = "HOP (Next)";
-                document.getElementById('btn-cashout').style.display = 'block';
-                updateCashoutBtn();
-                
-            } catch (e) { alert("Error starting game."); document.getElementById('btn-go').innerText = "GO / BET"; }
+                btn.innerText = "LOADING...";
+                try {
+                    const res = await fetch('/api/chicken/start', {
+                        method: 'POST', headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ userId, wager })
+                    });
+                    const data = await res.json();
+                    
+                    if (!data.success) {
+                        alert(data.error);
+                        btn.innerText = "PLACE BET";
+                        return;
+                    }
+                    
+                    document.getElementById('user-balance').innerText = data.balance.toFixed(2);
+                    deathLane = data.deathLane;
+                    multipliers = data.multipliers || [1, 1.2, 1.5, 2, 3, 5, 10, 25]; // fallback
+                    
+                    state = 'PLAYING';
+                    currentLane = 0;
+                    
+                    // First Hop automatically
+                    doHop();
+                    
+                } catch (e) { alert("Error starting."); btn.innerText = "PLACE BET"; }
+            } 
+            else if (state === 'PLAYING' || state === 'HOPPING') {
+                // CASH OUT
+                cashOut();
+            }
         }
         
         function doHop() {
@@ -199,27 +318,31 @@
             currentLane++;
             
             hopStartT = performance.now();
-            startX = cX;
-            targetX = (currentLane + 0.5) * (cw / 7);
+            targetScrollY += laneHeight; // Scroll road down
+            playBoop();
+            
+            const nextMult = multipliers[currentLane] || 1;
+            const payout = (wager * nextMult).toFixed(2);
+            document.getElementById('btn-action').className = "action-btn btn-cashout";
+            document.getElementById('btn-action').innerText = `CASH OUT $${payout}`;
+            
+            // Auto-hop if they don't cash out
+            setTimeout(() => {
+                if (state === 'PLAYING') doHop();
+            }, hopDuration + 400); // Wait between hops
         }
         
         async function cashOut() {
-            if (state !== 'PLAYING' || currentLane === 0) return;
+            if (state !== 'PLAYING' && state !== 'HOPPING') return;
+            state = 'CASHED_OUT';
             
-            let payout = wager * multipliers[currentLane];
-            state = 'IDLE';
+            playJackpot();
+            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
             
-            document.getElementById('btn-go').innerText = "GO / BET";
-            document.getElementById('btn-go').style.display = 'block';
-            document.getElementById('btn-cashout').style.display = 'none';
+            let payout = wager * (multipliers[currentLane] || 1);
             
-            // Jackpot sound simulation
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const osc = audioCtx.createOscillator();
-            osc.type = 'sine'; osc.frequency.setValueAtTime(800, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.3);
-            osc.connect(audioCtx.destination);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+            document.getElementById('btn-action').innerText = "WINNER!";
+            document.getElementById('btn-action').className = "action-btn btn-disabled";
             
             try {
                 const res = await fetch('/api/chicken/cashout', {
@@ -229,14 +352,10 @@
                 const data = await res.json();
                 if (data.success) {
                     document.getElementById('user-balance').innerText = data.balance.toFixed(2);
-                    alert("Cashed out: $" + payout.toFixed(2));
                 }
             } catch (e) {}
-        }
-        
-        function updateCashoutBtn() {
-            let payout = wager * multipliers[currentLane];
-            document.getElementById('btn-cashout').innerText = "CASH OUT $" + payout.toFixed(2);
+            
+            setTimeout(() => { resetToIdle(); }, 3000);
         }
     </script>
 </body>

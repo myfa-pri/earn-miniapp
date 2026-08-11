@@ -16,68 +16,154 @@
         <i class="fa-solid fa-xmark" style="font-size:1.5rem; cursor:pointer;" onclick="window.location.href='/'"></i>
     </div>
     
-    <div id="game-container">
-        <!-- SVG Chicken -->
-        <img id="chicken" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='60' r='30' fill='%23fff'/><circle cx='70' cy='40' r='20' fill='%23fff'/><circle cx='75' cy='35' r='5' fill='%23000'/><path d='M85 45 L100 50 L85 55 Z' fill='%23F59E0B'/><path d='M50 30 L60 10 L70 30 Z' fill='%23EF4444'/><path d='M40 90 L40 100 M60 90 L60 100' stroke='%23F59E0B' stroke-width='5'/></svg>" alt="Chicken">
+    <div id="game-container" style="flex:1; display:flex; justify-content:center; align-items:center; background:#1a1c23; position:relative;">
+        <canvas id="gameCanvas"></canvas>
     </div>
     
-    <div id="control-panel">
-        <input type="number" id="wagerAmount" class="bet-input" value="10">
-        <div class="diff-selector">
-            <button class="diff-btn">Easy</button>
-            <button class="diff-btn active">Medium</button>
-            <button class="diff-btn">Hard</button>
-            <button class="diff-btn" style="color:var(--red);">Hardcore</button>
+    <div id="control-panel" style="background: rgba(31, 41, 55, 0.8); backdrop-filter: blur(15px); padding: 20px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; gap: 20px; align-items: center; z-index: 10;">
+        <div style="display:flex; flex-direction:column; gap:5px;">
+            <label style="color:#9CA3AF; font-size:0.8rem; font-weight:bold;">Wager Amount</label>
+            <input type="number" id="wagerAmount" class="bet-input" value="10" style="background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.2); color:white; padding:15px; border-radius:10px; font-size:1.2rem; width:120px; text-align:center;">
         </div>
-        <button id="btn-go" class="action-btn btn-go" onclick="startRound()">GO / BET</button>
-        <button id="btn-cashout" class="action-btn btn-cashout" onclick="cashOut()">CASH OUT</button>
+        <div style="display:flex; flex-direction:column; gap:5px;">
+            <label style="color:#9CA3AF; font-size:0.8rem; font-weight:bold;">Difficulty</label>
+            <select id="diffSelector" style="background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.2); color:white; padding:15px; border-radius:10px; font-size:1rem; width:120px;">
+                <option>Medium</option>
+            </select>
+        </div>
+        <button id="btn-go" class="action-btn btn-go" onclick="startRound()" style="flex:1; background:var(--green); color:white; padding:20px; border-radius:10px; border:none; font-size:1.5rem; font-weight:900; box-shadow:0 0 20px rgba(16, 185, 129, 0.5); cursor:pointer;">GO / BET</button>
+        <button id="btn-cashout" class="action-btn btn-cashout" onclick="cashOut()" style="flex:1; background:var(--gold); color:black; padding:20px; border-radius:10px; border:none; font-size:1.5rem; font-weight:900; box-shadow:0 0 20px rgba(245, 158, 11, 0.5); cursor:pointer; display:none;">CASH OUT</button>
     </div>
 
     <script>
         const params = new URLSearchParams(window.location.search);
-        const userId = params.get('userId');
+        const userId = params.get('userId') || 'test';
         
-        let state = 'IDLE'; // IDLE, PLAYING, CRASHED
+        let state = 'IDLE'; // IDLE, HOPPING, PLAYING, CRASHED
         let currentLane = 0;
         let deathLane = 999;
         let wager = 0;
         const multipliers = [1.00, 1.20, 1.50, 2.00, 3.00, 5.00, 10.0, 25.0];
         
-        function initGrid() {
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        let cw, ch;
+        
+        const chickenImg = new Image();
+        chickenImg.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='60' r='30' fill='%23fff'/><circle cx='70' cy='40' r='20' fill='%23fff'/><circle cx='75' cy='35' r='5' fill='%23000'/><path d='M85 45 L100 50 L85 55 Z' fill='%23F59E0B'/><path d='M50 30 L60 10 L70 30 Z' fill='%23EF4444'/><path d='M40 90 L40 100 M60 90 L60 100' stroke='%23F59E0B' stroke-width='5'/></svg>";
+        
+        const burntChickenImg = new Image();
+        burntChickenImg.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='60' r='30' fill='%23444'/><circle cx='70' cy='40' r='20' fill='%23444'/><circle cx='75' cy='35' r='5' fill='%23000'/><path d='M85 45 L100 50 L85 55 Z' fill='%23222'/><path d='M50 30 L60 10 L70 30 Z' fill='%23111'/><path d='M40 90 L40 100 M60 90 L60 100' stroke='%23222' stroke-width='5'/></svg>";
+        
+        const fireImg = new Image();
+        fireImg.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23EF4444'><path d='M12 2c0 0-4.5 4.5-4.5 9.5 0 2.48 2.02 4.5 4.5 4.5s4.5-2.02 4.5-4.5C16.5 6.5 12 2 12 2zm0 11.5c-1.38 0-2.5-1.12-2.5-2.5 0-1.66 1.67-3.33 2.5-4.25.83.92 2.5 2.59 2.5 4.25 0 1.38-1.12 2.5-2.5 2.5z'/></svg>";
+
+        let bgScrollY = 0;
+        let hopStartT = 0;
+        let hopDuration = 500;
+        let startX = 0, targetX = 0;
+        let cX = 0, cY = 0;
+        let animReq;
+        
+        function resize() {
             const container = document.getElementById('game-container');
-            container.innerHTML = document.getElementById('chicken').outerHTML; // Keep chicken
-            const w = container.clientWidth;
-            const laneWidth = w / 7;
+            cw = container.clientWidth;
+            ch = container.clientHeight;
+            canvas.width = cw;
+            canvas.height = ch;
+            if (state === 'IDLE') {
+                cX = (cw / 7) * 0.5;
+                cY = ch - 100;
+            }
+        }
+        window.addEventListener('resize', resize);
+        resize();
+        
+        function loop(time) {
+            ctx.fillStyle = '#1a1c23';
+            ctx.fillRect(0, 0, cw, ch);
             
+            // Draw lanes
+            const laneW = cw / 7;
+            bgScrollY = (bgScrollY + 2) % 100;
+            
+            ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([20, 20]);
+            
+            for(let i=0; i<=7; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * laneW, 0 - bgScrollY);
+                ctx.lineTo(i * laneW, ch);
+                ctx.stroke();
+            }
+            ctx.setLineDash([]);
+            
+            // Draw multipliers
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            ctx.font = 'bold 24px sans-serif';
+            ctx.textAlign = 'center';
             for(let i=0; i<7; i++) {
-                let div = document.createElement('div');
-                div.className = 'lane';
-                div.style.left = (i * laneWidth) + 'px';
-                div.style.width = laneWidth + 'px';
-                
-                let text = document.createElement('div');
-                text.className = 'multiplier-text';
-                text.innerText = multipliers[i].toFixed(2) + 'x';
-                div.appendChild(text);
-                
-                container.appendChild(div);
+                ctx.fillText(multipliers[i].toFixed(2) + 'x', i * laneW + laneW/2, ch/2);
             }
             
-            // Initial positioning
-            const chicken = document.getElementById('chicken');
-            chicken.className = '';
-            chicken.style.left = (laneWidth / 2) + 'px';
-            chicken.style.bottom = '50px';
+            // Hop physics
+            if (state === 'HOPPING') {
+                let progress = (time - hopStartT) / hopDuration;
+                if (progress >= 1) {
+                    progress = 1;
+                    state = 'PLAYING';
+                    
+                    if (currentLane === deathLane) {
+                        state = 'CRASHED';
+                        document.getElementById('btn-go').innerText = "GO / BET";
+                        document.getElementById('btn-go').style.display = 'block';
+                        document.getElementById('btn-cashout').style.display = 'none';
+                    } else {
+                        updateCashoutBtn();
+                    }
+                }
+                
+                cX = startX + (targetX - startX) * progress;
+                // Math Sine Wave for Parabolic Hop
+                let jumpH = Math.sin(progress * Math.PI) * 100;
+                cY = ch - 100 - jumpH;
+            }
+            
+            // Draw Chicken
+            const img = (state === 'CRASHED') ? burntChickenImg : chickenImg;
+            if(img.complete) {
+                ctx.drawImage(img, cX - 40, cY - 40, 80, 80);
+            }
+            
+            // Floating Multiplier text above chicken
+            ctx.fillStyle = '#00F2FE';
+            ctx.font = '900 20px sans-serif';
+            ctx.fillText(multipliers[currentLane].toFixed(2) + 'x', cX, cY - 50);
+            
+            // Draw Fire Pillar if crashed
+            if (state === 'CRASHED') {
+                if(fireImg.complete) {
+                    ctx.drawImage(fireImg, cX - 60, ch - 200, 120, 200);
+                }
+                ctx.fillStyle = '#EF4444';
+                ctx.font = '900 36px sans-serif';
+                ctx.fillText('BURNED!', cw/2, 100);
+            }
+            
+            animReq = requestAnimationFrame(loop);
         }
         
-        window.addEventListener('resize', initGrid);
-        initGrid();
+        requestAnimationFrame(loop);
         
         async function startRound() {
-            if (state === 'PLAYING') { hop(); return; }
+            if (state === 'PLAYING') { doHop(); return; }
+            if (state === 'HOPPING') return;
             
             wager = parseFloat(document.getElementById('wagerAmount').value);
             if (isNaN(wager) || wager <= 0) return alert("Invalid wager");
+            
+            document.getElementById('btn-go').innerText = "LOADING...";
             
             try {
                 const res = await fetch('/api/chicken/play', {
@@ -87,7 +173,9 @@
                 const data = await res.json();
                 
                 if (!data.success) {
-                    alert(data.error); return;
+                    alert(data.error);
+                    document.getElementById('btn-go').innerText = "GO / BET";
+                    return;
                 }
                 
                 document.getElementById('user-balance').innerText = data.balance.toFixed(2);
@@ -95,53 +183,24 @@
                 
                 state = 'PLAYING';
                 currentLane = 0;
-                initGrid();
+                cX = (cw / 7) * 0.5;
+                cY = ch - 100;
                 
                 document.getElementById('btn-go').innerText = "HOP (Next)";
                 document.getElementById('btn-cashout').style.display = 'block';
                 updateCashoutBtn();
                 
-            } catch (e) { alert("Error starting game."); }
+            } catch (e) { alert("Error starting game."); document.getElementById('btn-go').innerText = "GO / BET"; }
         }
         
-        function hop() {
+        function doHop() {
             if (state !== 'PLAYING') return;
+            state = 'HOPPING';
             currentLane++;
             
-            const container = document.getElementById('game-container');
-            const laneWidth = container.clientWidth / 7;
-            const chicken = document.getElementById('chicken');
-            
-            // The Parabolic Hop
-            chicken.style.transform = `translateX(-50%) translateY(-30px) scale(1.2)`;
-            setTimeout(() => {
-                chicken.style.left = ((currentLane + 0.5) * laneWidth) + 'px';
-                chicken.style.transform = `translateX(-50%) translateY(0) scale(1)`;
-                
-                if (currentLane === deathLane) {
-                    triggerDeath();
-                } else {
-                    updateCashoutBtn();
-                }
-            }, 150);
-        }
-        
-        function triggerDeath() {
-            state = 'CRASHED';
-            const chicken = document.getElementById('chicken');
-            const container = document.getElementById('game-container');
-            
-            // Erupt Fire
-            let fire = document.createElement('div');
-            fire.className = 'fire-pillar';
-            fire.style.left = chicken.style.left;
-            fire.style.transform = 'translateX(-50%)';
-            container.appendChild(fire);
-            
-            chicken.classList.add('roasted');
-            
-            document.getElementById('btn-go').innerText = "GO / BET";
-            document.getElementById('btn-cashout').style.display = 'none';
+            hopStartT = performance.now();
+            startX = cX;
+            targetX = (currentLane + 0.5) * (cw / 7);
         }
         
         async function cashOut() {
@@ -151,7 +210,16 @@
             state = 'IDLE';
             
             document.getElementById('btn-go').innerText = "GO / BET";
+            document.getElementById('btn-go').style.display = 'block';
             document.getElementById('btn-cashout').style.display = 'none';
+            
+            // Jackpot sound simulation
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            osc.type = 'sine'; osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.3);
+            osc.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.3);
             
             try {
                 const res = await fetch('/api/chicken/cashout', {

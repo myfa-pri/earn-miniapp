@@ -626,9 +626,7 @@ function applyTranslation() {
         }
 
         
-        const renderedPages = {};
-        
-        const renderedPages = {};
+        var renderedPages = window.renderedPages || {};
         function nav(page) {
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
             let navItem = document.querySelector(`.nav-item[data-page="${page}"]`);

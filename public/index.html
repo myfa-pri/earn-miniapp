@@ -1410,7 +1410,7 @@ function applyTranslation() {
             if(!document.getElementById('settings-styles')) {
                 const style = document.createElement('style');
                 style.id = 'settings-styles';
-                style.innerHTML = \`
+                style.innerHTML = `
                     .settings-item { cursor: pointer; transition: background 0.2s; }
                     .settings-item:hover { background: rgba(255,255,255,0.05); }
                     .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
@@ -1422,7 +1422,7 @@ function applyTranslation() {
                     input:checked + .slider:before { transform: translateX(20px); }
                     .slider.round { border-radius: 34px; }
                     .slider.round:before { border-radius: 50%; }
-                \`;
+                `;
                 document.head.appendChild(style);
             }
         }

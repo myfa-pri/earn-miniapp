@@ -67,14 +67,47 @@
 </head>
 <body class="dark-mode">
 
-    <div id="loading-overlay" class="quantum-orbit-loader">
-        <div class="orbit-center">
-            <i class="fa-solid fa-gem orbit-gem"></i>
-            <div class="orbit-ring ring-outer"></div>
-            <div class="orbit-ring ring-inner"></div>
-        </div>
-        <div class="orbit-text">ESTABLISHING CONNECTION...</div>
-    </div>
+    
+<style>
+.modern-loader {
+    position: fixed; inset: 0; background: #0B0F19; z-index: 99999;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    transition: opacity 0.5s ease;
+}
+.loader-logo { font-size: 3rem; font-weight: 900; background: linear-gradient(90deg, #00F2FE, #4FACFE, #00F2FE); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 30px; animation: pulseGlow 2s infinite; }
+.loader-rings { position: relative; width: 100px; height: 100px; margin-bottom: 30px; }
+.loader-rings div { box-sizing: border-box; display: block; position: absolute; width: 80px; height: 80px; margin: 10px; border: 4px solid transparent; border-radius: 50%; animation: loader-ring 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite; }
+.loader-rings div:nth-child(1) { border-top-color: #00F2FE; animation-delay: -0.45s; }
+.loader-rings div:nth-child(2) { border-right-color: #FF007A; animation-delay: -0.3s; }
+.loader-rings div:nth-child(3) { border-bottom-color: #F59E0B; animation-delay: -0.15s; }
+.loader-rings div:nth-child(4) { border-left-color: #8B5CF6; }
+@keyframes loader-ring { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+@keyframes pulseGlow { 0% { filter: drop-shadow(0 0 5px #00F2FE); } 50% { filter: drop-shadow(0 0 20px #00F2FE); } 100% { filter: drop-shadow(0 0 5px #00F2FE); } }
+.loader-text { color: #94A3B8; font-family: 'Orbitron', sans-serif; font-size: 1.1rem; letter-spacing: 3px; font-weight: bold; }
+.progress-bar-container { width: 200px; height: 6px; background: rgba(255,255,255,0.1); border-radius: 10px; margin-top: 20px; overflow: hidden; }
+.progress-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #00F2FE, #FF007A); transition: width 0.3s ease; }
+</style>
+<div id="loading-overlay" class="modern-loader">
+    <div class="loader-logo">MYFA BIRR</div>
+    <div class="loader-rings"><div></div><div></div><div></div><div></div></div>
+    <div id="loader-text" class="loader-text">CONNECTING</div>
+    <div class="progress-bar-container"><div id="loader-progress" class="progress-bar-fill"></div></div>
+</div>
+
+<script>
+    // Modern Loader Logic - ensure under 5 seconds
+    const stages = ["CONNECTING", "VERIFYING SESSION", "LOADING PROFILE", "SYNCING BALANCE", "LOADING TASKS", "READY"];
+    let currentStage = 0;
+    const stageInterval = setInterval(() => {
+        currentStage++;
+        if(currentStage < stages.length) {
+            document.getElementById('loader-text').innerText = stages[currentStage];
+            document.getElementById('loader-progress').style.width = ((currentStage + 1) / stages.length * 100) + '%';
+        } else {
+            clearInterval(stageInterval);
+        }
+    }, 400); // 400ms * 6 = 2.4 seconds total for text transitions
+</script>
 
     <div id="gate-overlay" style="display:none; background: rgba(50, 0, 0, 0.90); backdrop-filter: blur(25px); z-index: 9999; position: fixed; inset: 0; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:20px; border: 2px solid rgba(255, 0, 0, 0.3);">
         <svg width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="#ff3333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 20px #ff0000); margin-bottom: 20px; animation: floatIcon 3s ease-in-out infinite;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
@@ -127,7 +160,7 @@
         <div class="quantum-nav" id="bottomNav">
             <a class="nav-item active" data-page="home" onclick="nav('home')"><i class="fa-solid fa-house"></i><span>Home</span></a>
             <a class="nav-item" data-page="tasks" onclick="nav('tasks')"><i class="fa-solid fa-list-check"></i><span>Tasks</span></a>
-            <a class="nav-item" data-page="settings" onclick="nav('settings')"><i class="fa-solid fa-gear"></i><span>Settings</span></a>
+            <a class="nav-item" data-page="games" onclick="nav('games')"><i class="fa-solid fa-gamepad"></i><span>Hub</span></a>
             <a class="nav-item" data-page="referrals" onclick="nav('referrals')"><i class="fa-solid fa-user-group"></i><span>Invite</span></a>
             <a class="nav-item" data-page="leaderboard" onclick="nav('leaderboard')"><i class="fa-solid fa-trophy"></i><span>Top</span></a>
             <a class="nav-item" data-page="withdraw" onclick="nav('withdraw')"><i class="fa-solid fa-money-bill-transfer"></i><span>Withdraw</span></a>
@@ -319,9 +352,9 @@
 
                 // Fade out loading
                 setTimeout(() => {
-                    const l = document.getElementById('loading-overlay');
-                    if (l) { l.style.opacity = '0'; l.style.pointerEvents = 'none'; setTimeout(()=> { l.style.display = 'none'; }, 500); }
-                }, 500);
+    const l = document.getElementById('loading-overlay');
+    if (l) { l.style.opacity = '0'; l.style.pointerEvents = 'none'; setTimeout(()=> { l.style.display = 'none'; }, 500); }
+}, 2500);
 
                 // GATE CHECK
                 if (currentUser.requireGate === true) {
@@ -595,7 +628,7 @@ function applyTranslation() {
             updateUI();
 
             if(page === 'home') renderHome(content);
-            if(page === 'settings') renderSettings(content);
+            if(page === 'games') renderGames(content);
             if(page === 'leaderboard') renderLeaderboard(content);
             if(page === 'withdraw') renderWithdraw(content);
             if(page === 'tasks') renderTasks(content);
@@ -674,1541 +707,251 @@ function applyTranslation() {
             `;
         }
 
-        async function renderTasks(c) {
-            let activeTasksHtml = '';
-            let completedTasksHtml = '';
-            let sponsorTasksHtml = '';
-            
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/tasks`);
-                const data = await res.json();
-                
-                const tasksObj = data.bonusTasks || data;
-                const sponsorTasks = data.sponsorTasks || [];
-                const claimed = currentUser.claimedBonuses || [];
-                const claimedSponsors = currentUser.claimedSponsorTasks || [];
-                
-                // Admin Bonus Tasks
-                Object.keys(tasksObj).forEach(id => {
-                    const t = tasksObj[id];
-                    const isClaimed = claimed.includes(id);
-                    const isFull = t.maxUsers > 0 && (t.claims || 0) >= t.maxUsers;
-                    const badge = t.maxUsers > 0 ? `<div style="font-size:0.7rem; background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:10px; display:inline-block; margin-top:5px;">${t.claims || 0}/${t.maxUsers} Claimed</div>` : '';
-                    
-                    let btnHtml = '';
-                    if (isClaimed) btnHtml = `<button class="task-pill-btn done" disabled><i class="fa-solid fa-check"></i> Done</button>`;
-                    else if (isFull) btnHtml = `<button class="task-pill-btn" style="background:#555; color:#ccc;" disabled>FULL</button>`;
-                    else btnHtml = `<button id="task-btn-${id}" class="task-pill-btn start" onclick="startTask('${id}', '${t.url}', '${t.type}', '${t.channelId}', ${t.reward})">Start</button>`;
+        
+// ==========================================
+// TASKS & SPONSOR TASKS OVERHAUL
+// ==========================================
+let allSponsorTasks = [];
+let allTasksObj = {};
+let currentTaskTab = 'pending';
+let currentCategory = 'All';
+let searchKeyword = '';
 
-                    const html = `
-                        <div class="task-row cyber-card" id="task-row-${id}" data-name="${t.name.toLowerCase()}">
-                            <div class="icon-sq">
-                                <i class="fa-brands ${t.icon}" style="color:var(--color-cyan);"></i>
-                            </div>
-                            <div class="mid">
-                                <h4 style="font-weight:800; font-size:1.1rem; line-height:1.2;">${t.name}</h4>
-                                <div style="color:var(--success-color); font-weight:700; font-size:0.9rem;">+${t.reward} Gems</div>
-                                ${badge}
-                            </div>
-                            ${btnHtml}
-                        </div>
-                    `;
-                    
-                    if (isClaimed) completedTasksHtml += html;
-                    else activeTasksHtml += html;
-                });
-                
-                // Sponsor Tasks
-                let completedSponsorHtml = '';
-                let sponsorProgress = 0;
-                sponsorTasks.forEach(t => {
-                    const isClaimed = claimedSponsors.includes(t.id);
-                    const taskDataStr = JSON.stringify(t).replace(/'/g, "&apos;").replace(/"/g, "&quot;");
-                    
-                    let btnHtml = '';
-                    if (isClaimed) {
-                        btnHtml = `<button class="task-pill-btn done" disabled style="background:#555; color:#ccc;"><i class="fa-solid fa-check"></i> Done</button>`;
-                        sponsorProgress++;
-                    } else {
-                        btnHtml = `<button id="sponsor-btn-${t.id}" class="task-pill-btn start" style="background:var(--color-magenta); color:white;" onclick="openSponsorTask(this, '${taskDataStr}')">View</button>`;
-                    }
-                    
-                    const html = `
-                        <div class="task-row cyber-card sponsor-task-row" id="sponsor-row-${t.id}" data-name="${t.name.toLowerCase()}" data-type="${t.type || 'auto'}">
-                            <div class="icon-sq" style="background:rgba(240, 147, 251, 0.1);">
-                                <i class="fa-solid ${t.icon || 'fa-star'}" style="color:var(--color-magenta);"></i>
-                            </div>
-                            <div class="mid">
-                                <h4 style="font-weight:800; font-size:1.1rem; line-height:1.2;">${t.name}</h4>
-                                <div style="color:var(--success-color); font-weight:700; font-size:0.9rem;">+${t.reward} Gems</div>
-                                <div style="font-size:0.75rem; color:#94A3B8; margin-top:4px; display:inline-block; background:rgba(255,255,255,0.1); padding:2px 8px; border-radius:10px;">${t.type === 'manual' ? 'Manual Verification' : 'Auto Verification'}</div>
-                            </div>
-                            ${btnHtml}
-                        </div>
-                    `;
-                    
-                    if (isClaimed) completedSponsorHtml += html;
-                    else sponsorTasksHtml += html;
-                });
-                const totalSponsor = sponsorTasks.length;
-                const sponsorProgressPct = totalSponsor > 0 ? Math.round((sponsorProgress / totalSponsor) * 100) : 0;
-                
-            } catch(e) {
-                activeTasksHtml = '<div style="text-align:center; padding:20px;">Failed to load tasks.</div>';
+async function renderTasks(c) {
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/tasks`);
+        const data = await res.json();
+        allTasksObj = data.bonusTasks || data;
+        allSponsorTasks = data.sponsorTasks || [];
+        updateTasksUI(c);
+    } catch(e) {
+        c.innerHTML = '<div style="text-align:center; padding:20px;">Failed to load tasks.</div>';
+    }
+}
+
+window.filterTasks = function(cat) {
+    currentCategory = cat;
+    updateTasksUI(document.getElementById('content-area'));
+}
+
+window.searchTasks = function(e) {
+    searchKeyword = e.target.value.toLowerCase();
+    updateTasksUI(document.getElementById('content-area'));
+}
+
+window.switchTaskTab = function(tab) {
+    currentTaskTab = tab;
+    updateTasksUI(document.getElementById('content-area'));
+}
+
+function updateTasksUI(c) {
+    const claimedSponsors = currentUser.claimedSponsorTasks || [];
+    const failedSponsors = currentUser.failedSponsorTasks || [];
+    const pendingSponsors = currentUser.pendingSponsorTasks || [];
+    
+    // Progress calculation
+    const totalSponsorTasks = allSponsorTasks.length;
+    const completedCount = claimedSponsors.length;
+    const progressPct = totalSponsorTasks === 0 ? 0 : (completedCount / totalSponsorTasks) * 100;
+
+    let uiHtml = `
+        <div class="card cyber-card" style="margin-bottom:20px; padding: 20px;">
+            <h2 style="font-size:1.5rem; font-weight:900; margin-bottom:15px; color:var(--color-cyan);">Task Center</h2>
+            
+            <!-- Feature 3: Task Progress -->
+            <div style="margin-bottom:20px;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px; font-size:0.85rem; color:#94A3B8; font-weight:700;">
+                    <span>Overall Progress</span>
+                    <span>${completedCount} / ${totalSponsorTasks} Tasks</span>
+                </div>
+                <div style="width:100%; height:8px; background:rgba(255,255,255,0.1); border-radius:10px; overflow:hidden;">
+                    <div style="width:${progressPct}%; height:100%; background:linear-gradient(90deg, #00F2FE, #4FACFE); transition:width 0.5s ease;"></div>
+                </div>
+            </div>
+
+            <!-- Feature 1: Task Search -->
+            <input type="text" placeholder="Search tasks..." class="input-field" style="margin-bottom:15px; width:100%; padding:12px; border-radius:12px;" onkeyup="searchTasks(event)" value="${searchKeyword}">
+
+            <!-- Feature 2: Category Filter -->
+            <div style="display:flex; gap:10px; overflow-x:auto; padding-bottom:10px; margin-bottom:15px;" class="hide-scrollbar">
+                ${['All', 'Telegram', 'Social', 'Website', 'Community', 'Other'].map(cat => 
+                    `<button onclick="filterTasks('${cat}')" style="padding:8px 15px; border-radius:20px; border:none; background:${currentCategory === cat ? 'var(--color-cyan)' : 'rgba(255,255,255,0.1)'}; color:${currentCategory === cat ? '#000' : '#fff'}; font-weight:700; cursor:pointer; white-space:nowrap;">${cat}</button>`
+                ).join('')}
+            </div>
+
+            <!-- Feature 5: Task History Tabs -->
+            <div style="display:flex; border-bottom:1px solid rgba(255,255,255,0.1); margin-bottom:15px;">
+                ${['pending', 'completed', 'failed'].map(tab => 
+                    `<div onclick="switchTaskTab('${tab}')" style="flex:1; text-align:center; padding:10px; cursor:pointer; font-weight:700; color:${currentTaskTab === tab ? 'var(--color-cyan)' : '#94A3B8'}; border-bottom: 2px solid ${currentTaskTab === tab ? 'var(--color-cyan)' : 'transparent'}; text-transform:capitalize;">${tab}</div>`
+                ).join('')}
+            </div>
+            
+            <div id="tasks-list">
+    `;
+
+    let filteredTasks = allSponsorTasks.filter(t => {
+        // Search
+        if (searchKeyword && !t.name.toLowerCase().includes(searchKeyword)) return false;
+        
+        // Category
+        if (currentCategory !== 'All') {
+            if (currentCategory === 'Telegram' && (!t.type || t.type.toLowerCase() !== 'telegram')) return false;
+            // Handle other categories if admin set them (fallback to true for simplicity in this mockup)
+            if (t.category && t.category !== currentCategory && currentCategory !== 'Other') return false; 
+        }
+        
+        // Tab
+        const isClaimed = claimedSponsors.includes(t.id);
+        const isFailed = failedSponsors.includes(t.id);
+        const isPending = pendingSponsors.includes(t.id);
+        
+        if (currentTaskTab === 'completed' && !isClaimed) return false;
+        if (currentTaskTab === 'failed' && !isFailed) return false;
+        if (currentTaskTab === 'pending' && (isClaimed || isFailed)) return false;
+
+        return true;
+    });
+
+    if (filteredTasks.length === 0) {
+        uiHtml += `<div style="text-align:center; color:#94A3B8; padding:30px;">No ${currentTaskTab} tasks found.</div>`;
+    } else {
+        filteredTasks.forEach(t => {
+            const isClaimed = claimedSponsors.includes(t.id);
+            const taskDataStr = JSON.stringify(t).replace(/'/g, "&apos;").replace(/"/g, "&quot;");
+            
+            let btnHtml = '';
+            if (isClaimed) {
+                btnHtml = `<button class="task-pill-btn done" disabled style="background:#555; color:#ccc;"><i class="fa-solid fa-check"></i> Done</button>`;
+            } else {
+                btnHtml = `<button id="sponsor-btn-${t.id}" class="task-pill-btn start" style="background:var(--color-magenta); color:white;" onclick="openSponsorTask(this, '${taskDataStr}')">View</button>`;
             }
 
-            const monetagWatchedToday = currentUser.monetagWatchedToday || 0;
-            const adsgramWatchedToday = currentUser.adsgramWatchedToday || 0;
-            const adsterraWatchedToday = currentUser.adsterraWatchedToday || 0;
-            const monetagLimit = appConfig.monetagLimit || 5;
-            const adsgramLimit = appConfig.adsgramLimit || 5;
-            const adsterraLimit = appConfig.adsterraLimit || 10;
-            const monetagLimitReached = monetagWatchedToday >= monetagLimit;
-            const adsgramLimitReached = adsgramWatchedToday >= adsgramLimit;
-            const adsterraLimitReached = adsterraWatchedToday >= adsterraLimit;
-
-            c.innerHTML = `
-                <!-- TASK TABS -->
-                <div style="position: sticky; top: 75px; z-index: 10; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(15px); padding: 15px 20px; border-bottom: 1px solid rgba(0,168,255,0.2);">
-                    <div style="display: flex; background: rgba(0,0,0,0.5); border-radius: 30px; padding: 5px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);">
-                        <div id="tabOfficial" class="task-tab active" onclick="switchTaskTab('official')" style="flex: 1; text-align: center; padding: 10px; border-radius: 25px; cursor: pointer; transition: 0.3s; font-weight: 700; color: white; background: var(--brand-blue); box-shadow: 0 0 15px rgba(0, 168, 255, 0.5);">Official Tasks</div>
-                        <div id="tabSponsor" class="task-tab" onclick="switchTaskTab('sponsor')" style="flex: 1; text-align: center; padding: 10px; border-radius: 25px; cursor: pointer; transition: 0.3s; font-weight: 700; color: #94A3B8;">Sponsor Tasks</div>
+            let iconClass = t.icon || 'fa-solid fa-star';
+            if (!iconClass.includes('fa-')) iconClass = 'fa-solid ' + iconClass;
+            
+            uiHtml += `
+                <div class="task-row cyber-card" id="sponsor-row-${t.id}">
+                    <div class="icon-sq" style="background:rgba(240, 147, 251, 0.1);">
+                        <i class="${iconClass}" style="color:var(--color-magenta);"></i>
                     </div>
-                </div>
-
-                <div id="tasksSwipeContainer" style="overflow-x: hidden; position: relative;">
-                    <div id="taskSwipeArea" style="display: flex; width: 200%; transition: transform 0.3s ease;">
-                        <div id="officialTasksList" style="width: 50%; padding: 0 15px;">
-                            <!-- Daily Earning Top Ad Grid -->
-                <div class="ad-grid" style="grid-template-columns: repeat(3, 1fr);">
-                    <!-- Monetag Ad -->
-                    <div class="ad-card" ${monetagLimitReached ? '' : 'onclick="triggerMonetagAd()"'} style="${monetagLimitReached ? 'opacity: 0.5; cursor: not-allowed;' : ''}">
-                        <i class="fa-brands fa-youtube" style="font-size:3.5rem; color:#EF4444; filter:drop-shadow(0 0 15px rgba(239,68,68,0.6)); margin-bottom:12px; display:inline-block;"></i>
-                        <div style="font-weight:800; font-size:1.1rem; margin-bottom:5px;">Watch Ad</div>
-                        <div style="font-size: 0.8rem; color: #94A3B8; margin-bottom: 5px;">${monetagWatchedToday} / ${monetagLimit}</div>
-                        ${monetagLimitReached 
-                            ? `<div style="color:var(--danger-color); font-weight:700; font-size:0.9rem;">Limit Reached</div>`
-                            : `<div style="color:var(--success-color); font-weight:800; font-size:0.95rem;">+$${appConfig.realMoneyPerAd || 0.05} Cash</div>`
-                        }
+                    <div class="mid">
+                        <h4 style="font-weight:800; font-size:1.1rem; line-height:1.2;">${t.name}</h4>
+                        <!-- Feature 4: Reward Preview -->
+                        <div style="color:var(--success-color); font-weight:700; font-size:0.9rem;">+${t.reward} Gems</div>
+                        <div style="font-size:0.7rem; color:#94A3B8; margin-top:2px;">${t.category || 'Sponsored'}</div>
                     </div>
-                    <!-- Adsgram Ad -->
-                    <div class="ad-card" ${adsgramLimitReached ? '' : 'onclick="triggerAdsgramAd()"'} style="${adsgramLimitReached ? 'opacity: 0.5; cursor: not-allowed;' : ''}">
-                        <i class="fa-solid fa-fire" style="font-size:3.5rem; color:var(--gold-color); filter:drop-shadow(0 0 15px rgba(255,215,0,0.6)); margin-bottom:12px; display:inline-block;"></i>
-                        <div style="font-weight:800; font-size:1.1rem; margin-bottom:5px;">Special Ad</div>
-                        <div style="font-size: 0.8rem; color: #94A3B8; margin-bottom: 5px;">${adsgramWatchedToday} / ${adsgramLimit}</div>
-                        ${adsgramLimitReached 
-                            ? `<div style="color:var(--danger-color); font-weight:700; font-size:0.9rem;">Limit Reached</div>`
-                            : `<div style="color:var(--success-color); font-weight:800; font-size:0.95rem;">+$${appConfig.realMoneyPerAd || 0.05} Cash</div>`
-                        }
-                    </div>
-                    <!-- Adsterra Ad -->
-                    <div class="ad-card" id="adsterra-card" ${adsterraLimitReached ? '' : 'onclick="triggerAdsterraAd()"'} style="${adsterraLimitReached ? 'opacity: 0.5; cursor: not-allowed;' : ''}">
-                        <i class="fa-solid fa-star" style="font-size:3.5rem; color:#10B981; filter:drop-shadow(0 0 15px rgba(16,185,129,0.6)); margin-bottom:12px; display:inline-block;"></i>
-                        <div style="font-weight:800; font-size:1.1rem; margin-bottom:5px;">Premium Ad</div>
-                        <div style="font-size: 0.8rem; color: #94A3B8; margin-bottom: 5px;">${adsterraWatchedToday} / ${adsterraLimit}</div>
-                        ${adsterraLimitReached 
-                            ? `<div style="color:var(--danger-color); font-weight:700; font-size:0.9rem;">Limit Reached</div>`
-                            : `<div id="adsterra-reward-text" style="color:var(--success-color); font-weight:800; font-size:0.95rem;">+$${appConfig.realMoneyPerAd || 0.01} Cash</div>`
-                        }
-                    </div>
-                </div>
-
-                <div class="search-bar">
-                                <i class="fa-solid fa-magnifying-cyber-card" style="color:var(--color-cyan);"></i>
-                                <input type="text" id="taskSearch" placeholder="Search tasks..." oninput="filterTasks(this.value)">
-                            </div>
-                            
-                            <h3 style="margin-bottom: 15px; color: var(--color-cyan);">Official Tasks</h3>
-                            <div id="activeTasksContainer">${activeTasksHtml || '<div style="text-align:center; color:#94A3B8; padding:20px;">No active tasks available.</div>'}</div>
-                            
-                            <div id="completedTasksContainer" style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
-                                <h3 style="margin-bottom: 15px; color: var(--success-color);">Completed Tasks</h3>
-                                ${completedTasksHtml}
-                            </div>
-                        </div>
-                        <div id="sponsorTasksList" style="width: 50%; padding: 0 15px;">
-                            <!-- Sponsor Tasks Progress -->
-                            <div style="background:rgba(0,0,0,0.3); border-radius:15px; padding:15px; margin: 15px 0;">
-                                <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-                                    <span style="color:#94A3B8; font-size:0.9rem; font-weight:700;">Your Progress</span>
-                                    <span style="color:var(--color-magenta); font-weight:800;">${sponsorProgressPct}%</span>
-                                </div>
-                                <div style="width:100%; height:8px; background:rgba(255,255,255,0.1); border-radius:10px; overflow:hidden;">
-                                    <div style="height:100%; width:${sponsorProgressPct}%; background:linear-gradient(90deg, #F093FB, #F5576C); border-radius:10px;"></div>
-                                </div>
-                            </div>
-                            
-                            <!-- Search & Filters -->
-                            <div style="display:flex; gap:10px; margin-bottom:15px;">
-                                <div class="search-bar" style="flex:1; margin-bottom:0;">
-                                    <i class="fa-solid fa-magnifying-glass" style="color:var(--color-magenta);"></i>
-                                    <input type="text" placeholder="Search sponsors..." oninput="filterSponsorTasks(this.value)">
-                                </div>
-                                <select id="sponsorFilter" class="input-field" style="width:110px; margin-bottom:0; background:rgba(0,0,0,0.5); padding-left:10px;" onchange="filterSponsorType(this.value)">
-                                    <option value="all">All</option>
-                                    <option value="auto">Auto</option>
-                                    <option value="manual">Manual</option>
-                                </select>
-                            </div>
-
-                            ${sponsorTasksHtml ? `
-                            <div id="sponsorTasksContainer" style="margin-bottom: 20px;">
-                                <h3 style="margin-bottom: 15px; color: var(--color-magenta); display:flex; align-items:center; gap:8px;">
-                                    <i class="fa-solid fa-star"></i> Active Campaigns
-                                </h3>
-                                ${sponsorTasksHtml}
-                            </div>` : '<div style="text-align:center; color:#94A3B8; padding:30px 20px;">No active campaigns.</div>'}
-
-                            <div id="completedSponsorContainer" style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px; margin-bottom:30px;">
-                                <h3 style="margin-bottom: 15px; color: #94A3B8;"><i class="fa-solid fa-clock-rotate-left"></i> History</h3>
-                                ${completedSponsorHtml || '<div style="text-align:center; color:#64748B; font-size:0.85rem;">No completed tasks yet.</div>'}
-                            </div>
-                        </div>
-                    </div>
+                    ${btnHtml}
                 </div>
             `;
+        });
+    }
+
+    uiHtml += `</div></div>`;
+    c.innerHTML = uiHtml;
+}
+
+window.openSponsorTask = function(btn, taskDataStr) {
+    const task = JSON.parse(taskDataStr.replace(/&apos;/g, "'").replace(/&quot;/g, '"'));
+    currentSponsorTask = task;
+    
+    let iconClass = task.icon || 'fa-solid fa-star';
+    if (!iconClass.includes('fa-')) iconClass = 'fa-solid ' + iconClass;
+    
+    document.getElementById('so-icon').className = iconClass;
+    document.getElementById('so-title').innerText = task.name;
+    document.getElementById('so-reward').innerText = `+${task.reward} Gems`;
+    document.getElementById('so-desc').innerText = task.desc || "Complete this task to earn your reward!";
+    
+    document.getElementById('so-proof-file').value = '';
+    
+    const btnContainer = document.getElementById('so-button-container');
+    
+    if (task.type === 'manual') {
+        document.getElementById('so-manual-proof-section').style.display = 'block';
+        btnContainer.innerHTML = `
+            <button class="btn" style="flex:1; background:linear-gradient(45deg, #8A2BE2, #B026FF); color:white; font-size:1.2rem; padding:18px; font-weight:800; box-shadow:0 0 20px rgba(176,38,255,0.4);" onclick="executeSponsorTask()"><i class="fa-solid fa-arrow-up-right-from-square"></i> Do Task</button>
+            <button id="so-verify-btn" class="btn" style="flex:1; background:linear-gradient(45deg, #FFD700, #F59E0B); color:black; font-size:1.2rem; padding:18px; font-weight:900; box-shadow:0 0 20px rgba(255,215,0,0.4);" onclick="verifySponsorTask()"><i class="fa-solid fa-check-double"></i> Check</button>
+        `;
+    } else {
+        document.getElementById('so-manual-proof-section').style.display = 'none';
+        btnContainer.innerHTML = `
+            <button class="btn" style="flex:1; background:linear-gradient(45deg, #00A8FF, #00F2FE); color:white; font-size:1.2rem; padding:18px; font-weight:800; box-shadow:0 0 20px rgba(0,242,254,0.4);" onclick="executeSponsorTask()"><i class="${iconClass}"></i> Start</button>
+            <button id="so-verify-btn" class="btn" style="flex:1; background:linear-gradient(45deg, #00E676, #10B981); color:white; font-size:1.2rem; padding:18px; font-weight:900; box-shadow:0 0 20px rgba(0,230,118,0.4);" onclick="verifySponsorTask()"><i class="fa-solid fa-circle-check"></i> Check</button>
+        `;
+    }
+
+    document.getElementById('sponsorOverlay').classList.add('open');
+}
+
+window.closeSponsorTask = function() {
+    document.getElementById('sponsorOverlay').classList.remove('open');
+}
+
+window.executeSponsorTask = function() {
+    if (!currentSponsorTask) return;
+    // Mark as started locally
+    window.open(currentSponsorTask.url, '_blank');
+}
+
+window.verifySponsorTask = async function() {
+    if(!currentSponsorTask) return;
+    const btn = document.getElementById('so-verify-btn');
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Checking...';
+    btn.disabled = true;
+
+    try {
+        let endpoint = currentSponsorTask.type === 'manual' ? '/api/sponsor/verify-manual' : '/api/sponsor/verify-auto';
+        let bodyData = { userId, taskId: currentSponsorTask.id };
         
-            // Swipe setup
-            setTimeout(() => {
-                let startX = 0;
-                const swipeArea = document.getElementById('taskSwipeArea');
-                if (swipeArea) {
-                    swipeArea.addEventListener('touchstart', e => startX = e.touches[0].clientX);
-                    swipeArea.addEventListener('touchend', e => {
-                        const endX = e.changedTouches[0].clientX;
-                        if (startX - endX > 50) switchTaskTab('sponsor'); // Swipe left
-                        if (endX - startX > 50) switchTaskTab('official'); // Swipe right
-                    });
-                }
-            }, 100);
-        }
-        
-        window.switchTaskTab = function(tab) {
-            const area = document.getElementById('taskSwipeArea');
-            const btnOff = document.getElementById('tabOfficial');
-            const btnSpon = document.getElementById('tabSponsor');
-            if(!area || !btnOff || !btnSpon) return;
-            
-            if(tab === 'official') {
-                area.style.transform = 'translateX(0)';
-                btnOff.style.background = 'var(--brand-blue)';
-                btnOff.style.color = 'white';
-                btnOff.style.boxShadow = '0 0 15px rgba(0, 168, 255, 0.5)';
-                btnSpon.style.background = 'transparent';
-                btnSpon.style.color = '#94A3B8';
-                btnSpon.style.boxShadow = 'none';
+        if (currentSponsorTask.type === 'manual') {
+            const fileInput = document.getElementById('so-proof-file');
+            if (fileInput && fileInput.files && fileInput.files[0]) {
+                const reader = new FileReader();
+                reader.readAsDataURL(fileInput.files[0]);
+                await new Promise(r => reader.onload = r);
+                bodyData.imageBase64 = reader.result;
             } else {
-                area.style.transform = 'translateX(-50%)';
-                btnSpon.style.background = 'var(--brand-blue)';
-                btnSpon.style.color = 'white';
-                btnSpon.style.boxShadow = '0 0 15px rgba(0, 168, 255, 0.5)';
-                btnOff.style.background = 'transparent';
-                btnOff.style.color = '#94A3B8';
-                btnOff.style.boxShadow = 'none';
-            }
-        };
-
-        function filterTasks(query) {
-            const rows = document.querySelectorAll('#officialTasksList .task-row');
-            const q = query.toLowerCase();
-            rows.forEach(r => {
-                if(r.dataset.name.includes(q)) {
-                    r.style.display = 'flex';
-                } else {
-                    r.style.display = 'none';
-                }
-            });
-        }
-
-        function filterSponsorTasks(query) {
-            const rows = document.querySelectorAll('.sponsor-task-row');
-            const q = query.toLowerCase();
-            const filterType = document.getElementById('sponsorFilter').value;
-            rows.forEach(r => {
-                const matchName = r.dataset.name.includes(q);
-                const matchType = filterType === 'all' || r.dataset.type === filterType;
-                if(matchName && matchType) {
-                    r.style.display = 'flex';
-                } else {
-                    r.style.display = 'none';
-                }
-            });
-        }
-
-        function filterSponsorType(type) {
-            const query = document.querySelector('input[placeholder="Search sponsors..."]').value;
-            filterSponsorTasks(query);
-        }
-
-        function triggerMonetagAd() {
-            const adsWatched = currentUser.dailyAdsWatched || 0;
-            if(adsWatched >= 10) return showToast("Daily limit reached!", "error");
-            
-            try {
-                if(typeof show_41731 === 'function') {
-                    show_41731().then(() => {
-                        fetch(`${API_BASE_URL}/api/watch-ad`, {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({ userId: userId, network: 'monetag' })
-                        }).then(r => r.json()).then(data => {
-                            if (data.success) {
-                                currentUser.realBalance = (currentUser.realBalance || 0) + (appConfig.realMoneyPerAd || 0.05);
-                                currentUser.monetagWatchedToday = (currentUser.monetagWatchedToday || 0) + 1;
-                                updateUI();
-                                showToast(`Earned $${(appConfig.realMoneyPerAd || 0.05).toFixed(2)} Cash from Monetag!`, 'success');
-                            }
-                        });
-                    }).catch(() => {
-                        showToast("Ad blocked or failed to load. Please disable ad-blocker.", "error");
-                    });
-                } else {
-                    showToast("Monetag SDK not loaded.", "error");
-                }
-            } catch(e) { showToast("Ad error occurred.", "error"); }
-        }
-
-        function triggerAdsgramAd() {
-            showAdsgram();
-        }
-
-        let adsterraInterval = null;
-        function triggerAdsterraAd() {
-            if (!appConfig.adsterraLink) return showToast("Adsterra link not configured.", "error");
-            
-            const watchedToday = currentUser.adsterraWatchedToday || 0;
-            const limit = appConfig.adsterraLimit || 10;
-            if(watchedToday >= limit) return showToast("Daily limit reached!", "error");
-            
-            window.open(appConfig.adsterraLink, '_blank');
-            
-            const card = document.getElementById('adsterra-card');
-            const txt = document.getElementById('adsterra-reward-text');
-            if (card) { card.style.pointerEvents = 'none'; card.style.opacity = '0.7'; }
-            
-            let timeLeft = 15;
-            if (txt) txt.innerText = `Watching... ${timeLeft}s`;
-            
-            clearInterval(adsterraInterval);
-            adsterraInterval = setInterval(() => {
-                timeLeft--;
-                if (txt) txt.innerText = `Watching... ${timeLeft}s`;
-                if (timeLeft <= 0) {
-                    clearInterval(adsterraInterval);
-                    if (txt) txt.innerText = "Verifying...";
-                    
-                    fetch(`${API_BASE_URL}/api/adsterra-reward`, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ userId: userId })
-                    }).then(r => r.json()).then(data => {
-                        if (data.success) {
-                            currentUser.realBalance = (currentUser.realBalance || 0) + (appConfig.realMoneyPerAd || 0.01);
-                            currentUser.adsterraWatchedToday = watchedToday + 1;
-                            updateUI();
-                            if(typeof triggerConfetti === 'function') triggerConfetti();
-                            showToast(`Earned $${(appConfig.realMoneyPerAd || 0.01).toFixed(2)} Cash from Premium Ad!`, 'success');
-                            nav('tasks'); // Refresh tasks page to update counter
-                        } else {
-                            showToast(data.error || "Verification failed.", "error");
-                            nav('tasks');
-                        }
-                    }).catch(() => {
-                        showToast("Network Error", "error");
-                        nav('tasks');
-                    });
-                }
-            }, 1000);
-        }
-
-        function startTask(taskId, url, type, channelId, reward) {
-            const finalUrl = url.startsWith('@') ? 'https://t.me/' + url.substring(1) : url;
-            
-            const btn = document.getElementById('task-btn-' + taskId);
-            
-            if (btn && btn.innerHTML.includes('Start')) {
-                window.open(finalUrl, '_blank');
-                btn.innerHTML = 'Check';
-                btn.style.background = 'var(--gold-color)';
-                btn.style.color = '#000';
+                showToast("Please upload screenshot proof", "error");
+                btn.innerHTML = '<i class="fa-solid fa-check-double"></i> Check';
+                btn.disabled = false;
                 return;
             }
-
-            if (type === 'manual') {
-                // Show verification upload modal
-                const overlay = document.createElement('div');
-                overlay.style = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:10000; display:flex; justify-content:center; align-items:center; backdrop-filter:blur(5px);";
-                overlay.innerHTML = `
-                    <div class="card cyber-card" style="width:90%; max-width:400px; padding:20px; text-align:center;">
-                        <h3 style="margin-bottom:15px; color:var(--color-cyan);">Submit Task Proof</h3>
-                        <p style="font-size:0.9rem; color:#A7F3D0; margin-bottom:20px;">Please upload a screenshot showing you completed the task.</p>
-                        <input type="file" id="proofFile" accept="image/*" style="margin-bottom:20px; width:100%; color:#fff;">
-                        <div style="display:flex; gap:10px;">
-                            <button class="btn btn-secondary" style="flex:1;" onclick="this.parentElement.parentElement.parentElement.remove()">Cancel</button>
-                            <button class="btn quantum-btn" style="flex:1;" onclick="submitProof('${taskId}', this)">Submit</button>
-                        </div>
-                    </div>
-                `;
-                document.body.appendChild(overlay);
-            } else if (type === 'auto') {
-                if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Checking...'; }
-                showToast("Verifying membership...", "info");
-                setTimeout(async () => {
-                    try {
-                        const res = await fetch(`${API_BASE_URL}/api/verify-membership`, {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({ userId, taskId, channelId, reward })
-                        });
-                        const data = await res.json();
-                        if (data.success && !data.alreadyClaimed) {
-                            showToast("Task completed!", "success");
-                            currentUser.points = data.points;
-                            if(!currentUser.claimedBonuses) currentUser.claimedBonuses = [];
-                            currentUser.claimedBonuses.push(taskId);
-                            
-                            // DOM Reparenting on Success
-                            const pageHeaderBal = document.getElementById('pageHeaderBal');
-                            if (pageHeaderBal) {
-                                pageHeaderBal.innerText = currentUser.points;
-                            }
-                            const taskRow = document.getElementById('task-row-' + taskId);
-                            const completedContainer = document.getElementById('completedTasksContainer');
-                            if (taskRow && completedContainer) {
-                                completedContainer.appendChild(taskRow);
-                                if(btn) {
-                                    btn.className = 'task-pill-btn done';
-                                    btn.innerHTML = '<i class="fa-solid fa-check"></i> Done';
-                                    btn.disabled = true;
-                                    btn.style.background = '#555';
-                                    btn.style.color = '#ccc';
-                                }
-                            }
-                            
-                            updateUI();
-                        } else if(data.alreadyClaimed) {
-                            showToast("Already claimed!", "info");
-                            const taskRow = document.getElementById('task-row-' + taskId);
-                            const completedContainer = document.getElementById('completedTasksContainer');
-                            if (taskRow && completedContainer) {
-                                completedContainer.appendChild(taskRow);
-                                if(btn) {
-                                    btn.className = 'task-pill-btn done';
-                                    btn.innerHTML = '<i class="fa-solid fa-check"></i> Done';
-                                    btn.disabled = true;
-                                    btn.style.background = '#555';
-                                    btn.style.color = '#ccc';
-                                }
-                            }
-                        } else {
-                            showToast(data.error || "Not Joined. Please try again.", "error");
-                            if (btn) { btn.disabled = false; btn.innerHTML = 'Check'; btn.style.background = 'var(--gold-color)'; btn.style.color = '#000'; }
-                        }
-                    } catch (e) {
-                        showToast("Network Error", "error");
-                        if (btn) { btn.disabled = false; btn.innerHTML = 'Check'; btn.style.background = 'var(--gold-color)'; btn.style.color = '#000'; }
-                    }
-                }, 1500);
-            }
+        } else {
+            bodyData.channelId = currentSponsorTask.channelId;
+            bodyData.reward = currentSponsorTask.reward;
         }
 
-        async function submitProof(taskId, btn) {
-            const fileInput = document.getElementById('proofFile');
-            if(!fileInput.files || fileInput.files.length === 0) return showToast("Please select a screenshot.", "error");
-            
-            btn.innerText = "Uploading...";
-            btn.disabled = true;
-
-            const file = fileInput.files[0];
-            const reader = new FileReader();
-            reader.onload = async function(e) {
-                // Compress image via Canvas
-                const img = new Image();
-                img.onload = async function() {
-                    const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 800;
-                    const scaleSize = MAX_WIDTH / img.width;
-                    canvas.width = MAX_WIDTH;
-                    canvas.height = img.height * scaleSize;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                    const base64 = canvas.toDataURL('image/jpeg', 0.5); // 50% quality
-
-                    try {
-                        const res = await fetch(`${API_BASE_URL}/api/verify/upload`, {
-                            method: 'POST',
-                            headers:{'Content-Type':'application/json'},
-                            body: JSON.stringify({ userId, taskId, imageBase64: base64 })
-                        });
-                        if(res.ok) {
-                            showToast("Proof submitted! Awaiting admin review.", "success");
-                            btn.parentElement.parentElement.parentElement.remove();
-                        } else {
-                            showToast("Failed to submit.", "error");
-                            btn.innerText = "Submit"; btn.disabled = false;
-                        }
-                    } catch(err) {
-                        showToast("Network error.", "error");
-                        btn.innerText = "Submit"; btn.disabled = false;
-                    }
-                };
-                img.src = e.target.result;
-            };
-            reader.readAsDataURL(file);
-        }
-
-        let currentSponsorTask = null;
-
-        function openSponsorTask(btn, taskDataStr) {
-            const task = JSON.parse(taskDataStr.replace(/&apos;/g, "'").replace(/&quot;/g, '"'));
-            currentSponsorTask = task;
-            
-            document.getElementById('so-icon').className = `fa-solid ${task.icon || 'fa-star'}`;
-            document.getElementById('so-title').innerText = task.name;
-            document.getElementById('so-reward').innerText = `+${task.reward} Gems`;
-            document.getElementById('so-desc').innerText = task.desc || "Complete this task to earn your reward!";
-            
-            document.getElementById('so-proof-file').value = '';
-            
-            const btnContainer = document.getElementById('so-button-container');
-            
-            if (task.type === 'manual') {
-                document.getElementById('so-manual-proof-section').style.display = 'block';
-                btnContainer.innerHTML = `
-                    <button class="btn" style="flex:1; background:linear-gradient(45deg, #8A2BE2, #B026FF); color:white; font-size:1.2rem; padding:18px; font-weight:800; box-shadow:0 0 20px rgba(176,38,255,0.4);" onclick="executeSponsorTask()"><i class="fa-solid fa-arrow-up-right-from-square"></i> Do Task</button>
-                    <button id="so-verify-btn" class="btn" style="flex:1; background:linear-gradient(45deg, #FFD700, #F59E0B); color:black; font-size:1.2rem; padding:18px; font-weight:900; box-shadow:0 0 20px rgba(255,215,0,0.4);" onclick="verifySponsorTask()"><i class="fa-solid fa-check-double"></i> Submit</button>
-                `;
+        const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(bodyData)
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+            if(currentSponsorTask.type === 'manual') {
+                showToast("Proof submitted! Pending approval.", 'success');
             } else {
-                document.getElementById('so-manual-proof-section').style.display = 'none';
-                btnContainer.innerHTML = `
-                    <button class="btn" style="flex:1; background:linear-gradient(45deg, #00A8FF, #00F2FE); color:white; font-size:1.2rem; padding:18px; font-weight:800; box-shadow:0 0 20px rgba(0,242,254,0.4);" onclick="executeSponsorTask()"><i class="fa-brands fa-telegram"></i> Join</button>
-                    <button id="so-verify-btn" class="btn" style="flex:1; background:linear-gradient(45deg, #00E676, #10B981); color:white; font-size:1.2rem; padding:18px; font-weight:900; box-shadow:0 0 20px rgba(0,230,118,0.4);" onclick="verifySponsorTask()"><i class="fa-solid fa-circle-check"></i> Check</button>
-                `;
+                showToast(`+${currentSponsorTask.reward} Gems Claimed!`, 'success');
             }
-            
-            document.getElementById('sponsorOverlay').classList.add('open');
-        }
-
-        function closeSponsorTask() {
-            document.getElementById('sponsorOverlay').classList.remove('open');
-            currentSponsorTask = null;
-        }
-
-        function executeSponsorTask() {
-            if (!currentSponsorTask) return;
-            
-            const url = currentSponsorTask.url;
-            const finalUrl = url.startsWith('@') ? 'https://t.me/' + url.substring(1) : url;
-            window.open(finalUrl, '_blank');
-            
-            document.getElementById('so-start-btn').style.display = 'none';
-            document.getElementById('so-verify-btn').style.display = 'block';
-        }
-
-        async function verifySponsorTask() {
-            if (!currentSponsorTask) return;
-            const task = currentSponsorTask;
-            const btn = document.getElementById('so-verify-btn');
-            
-            if (task.type === 'manual') {
-                const fileInput = document.getElementById('so-proof-file');
-                if(!fileInput.files || fileInput.files.length === 0) return showToast("Please select a screenshot proof first.", "error");
-                
-                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading...';
-                btn.disabled = true;
-
-                const file = fileInput.files[0];
-                const reader = new FileReader();
-                reader.onload = async function(e) {
-                    const img = new Image();
-                    img.onload = async function() {
-                        const canvas = document.createElement('canvas');
-                        const MAX_WIDTH = 800;
-                        const scaleSize = MAX_WIDTH / img.width;
-                        canvas.width = MAX_WIDTH;
-                        canvas.height = img.height * scaleSize;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                        const base64 = canvas.toDataURL('image/jpeg', 0.5);
-
-                        try {
-                            const res = await fetch(`${API_BASE_URL}/api/sponsor/verify-manual`, {
-                                method: 'POST',
-                                headers:{'Content-Type':'application/json'},
-                                body: JSON.stringify({ userId, taskId: task.id, imageBase64: base64 })
-                            });
-                            const data = await res.json();
-                            if(data.success) {
-                                showToast("Proof submitted! Awaiting sponsor review.", "success");
-                                if(!currentUser.claimedSponsorTasks) currentUser.claimedSponsorTasks = [];
-                                currentUser.claimedSponsorTasks.push(task.id);
-                                closeSponsorTask();
-                                nav('tasks'); // Refresh tasks page
-                            } else {
-                                showToast(data.error || "Failed to submit.", "error");
-                                btn.innerText = "Check"; btn.disabled = false;
-                            }
-                        } catch(err) {
-                            showToast("Network error.", "error");
-                            btn.innerText = "Check"; btn.disabled = false;
-                        }
-                    };
-                    img.src = e.target.result;
-                };
-                reader.readAsDataURL(file);
-                
-            } else {
-                // Auto Task
-                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Checking...';
-                btn.disabled = true;
-                
-                try {
-                    const res = await fetch(`${API_BASE_URL}/api/sponsor/verify-auto`, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ userId, taskId: task.id, channelId: task.channelId, reward: task.reward })
-                    });
-                    const data = await res.json();
-                    
-                    if (data.success) {
-                        showToast("Task completed!", "success");
-                        currentUser.points = data.points;
-                        if(!currentUser.claimedSponsorTasks) currentUser.claimedSponsorTasks = [];
-                        currentUser.claimedSponsorTasks.push(task.id);
-                        
-                        updateUI();
-                        closeSponsorTask();
-                        nav('tasks'); // Refresh tasks page
-                    } else {
-                        showToast(data.error || "Not Joined. Please try again.", "error");
-                        btn.innerText = 'Check'; btn.disabled = false;
-                    }
-                } catch (e) {
-                    showToast("Network Error", "error");
-                    btn.innerText = 'Check'; btn.disabled = false;
-                }
-            }
-        }
-
-        function renderSettings(c) {
-            const avatarUrl = currentUser.avatarUrl || 'https://ui-avatars.com/api/?name=User&background=B026FF&color=fff';
-            const safeName = currentUser.accountName || currentUser.username || 'User';
-            const joinDate = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }); // Mock join date
-            
-            c.innerHTML = `
-                <!-- Header -->
-                <div style="text-align:center; padding: 30px 0 20px;">
-                    <div style="width: 100px; height: 100px; border-radius: 50%; margin: 0 auto 15px; background: url('${avatarUrl}') center/cover; border: 4px solid var(--color-cyan); box-shadow: 0 0 30px rgba(0, 242, 254, 0.4); position: relative;">
-                        <div style="position: absolute; bottom: 0px; right: 0px; background: linear-gradient(45deg, #00A8FF, #00F2FE); width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.9rem; cursor:pointer;" onclick="showToast('Edit profile picture feature coming soon!', 'info')"><i class="fa-solid fa-camera"></i></div>
-                    </div>
-                    <h2 style="font-family:'Orbitron', sans-serif; font-size:1.8rem; color: #fff; text-shadow: 0 0 15px rgba(255, 255, 255, 0.3); margin-bottom:5px;">${safeName}</h2>
-                    <p style="font-size:0.9rem; color:#94A3B8;">ID: #${currentUser.id || Math.floor(Math.random()*1000000)} • Joined ${joinDate}</p>
-                </div>
-
-                <!-- 1. Account Details & 2. Privacy (Features 1, 2) -->
-                <div class="card cyber-card" style="margin-bottom: 20px; padding: 0;">
-                    <div class="settings-header" style="padding: 15px 20px; background: rgba(0,0,0,0.3); border-bottom: 1px solid rgba(255,255,255,0.05); color: var(--color-cyan); font-weight: 800; font-family: 'Orbitron';"><i class="fa-solid fa-user-shield"></i> Account & Security</div>
-                    <div class="settings-list">
-                        <div class="settings-item" onclick="showToast('UID Copied to clipboard!', 'success')" style="display: flex; justify-content: space-between; padding: 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                            <div><i class="fa-solid fa-id-card" style="width:25px; color:#94A3B8;"></i> Account ID</div>
-                            <div style="color:#94A3B8; font-family: monospace;">${currentUser.id || 'N/A'} <i class="fa-regular fa-copy" style="margin-left: 5px;"></i></div>
-                        </div>
-                        <div class="settings-item" onclick="showToast('Two-Factor Authentication is currently active.', 'success')" style="display: flex; justify-content: space-between; padding: 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                            <div><i class="fa-solid fa-shield-halved" style="width:25px; color:var(--success-color);"></i> Two-Factor Auth (2FA)</div>
-                            <div><i class="fa-solid fa-chevron-right" style="color:rgba(255,255,255,0.2);"></i></div>
-                        </div>
-                        <div class="settings-item" onclick="showToast('Passcode setup initialized...', 'info')" style="display: flex; justify-content: space-between; padding: 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                            <div><i class="fa-solid fa-lock" style="width:25px; color:#F59E0B;"></i> Passcode Lock</div>
-                            <div style="color:#F59E0B; font-size: 0.8rem; background: rgba(245, 158, 11, 0.2); padding: 2px 8px; border-radius: 5px;">OFF</div>
-                        </div>
-                        <div class="settings-item" onclick="showToast('Displaying 1 active session.', 'info')" style="display: flex; justify-content: space-between; padding: 15px 20px;">
-                            <div><i class="fa-solid fa-mobile-screen" style="width:25px; color:#94A3B8;"></i> Active Sessions</div>
-                            <div style="color:var(--color-cyan);">1 Device <i class="fa-solid fa-chevron-right" style="margin-left: 5px; color:rgba(255,255,255,0.2);"></i></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Preferences (Features 5-9) -->
-                <div class="card cyber-card" style="margin-bottom: 20px; padding: 0;">
-                    <div class="settings-header" style="padding: 15px 20px; background: rgba(0,0,0,0.3); border-bottom: 1px solid rgba(255,255,255,0.05); color: var(--color-magenta); font-weight: 800; font-family: 'Orbitron';"><i class="fa-solid fa-sliders"></i> Preferences</div>
-                    <div class="settings-list">
-                        <div class="settings-item" style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                            <div><i class="fa-solid fa-volume-high" style="width:25px; color:#94A3B8;"></i> Sound Effects</div>
-                            <label class="switch"><input type="checkbox" checked onchange="showToast(this.checked ? 'Sounds Enabled' : 'Sounds Muted', 'info')"><span class="slider round"></span></label>
-                        </div>
-                        <div class="settings-item" style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                            <div><i class="fa-solid fa-wave-square" style="width:25px; color:#94A3B8;"></i> Haptic Feedback</div>
-                            <label class="switch"><input type="checkbox" checked onchange="showToast(this.checked ? 'Haptics ON' : 'Haptics OFF', 'info')"><span class="slider round"></span></label>
-                        </div>
-                        <div class="settings-item" style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                            <div><i class="fa-solid fa-moon" style="width:25px; color:#94A3B8;"></i> Dark Mode</div>
-                            <label class="switch"><input type="checkbox" checked onchange="showToast('Dark Mode locked for premium feel.', 'warning')"><span class="slider round"></span></label>
-                        </div>
-                        <div class="settings-item" style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                            <div><i class="fa-solid fa-bell" style="width:25px; color:#94A3B8;"></i> Push Notifications</div>
-                            <label class="switch"><input type="checkbox" checked onchange="showToast(this.checked ? 'Notifications Enabled' : 'Notifications Disabled', 'info')"><span class="slider round"></span></label>
-                        </div>
-                        <div class="settings-item" onclick="showToast('Language settings opened.', 'info')" style="display: flex; justify-content: space-between; padding: 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                            <div><i class="fa-solid fa-language" style="width:25px; color:#94A3B8;"></i> Language</div>
-                            <div style="color:#94A3B8;">English <i class="fa-solid fa-chevron-right" style="margin-left: 5px; color:rgba(255,255,255,0.2);"></i></div>
-                        </div>
-                        <div class="settings-item" onclick="showToast('Currency display settings opened.', 'info')" style="display: flex; justify-content: space-between; padding: 15px 20px;">
-                            <div><i class="fa-solid fa-coins" style="width:25px; color:#94A3B8;"></i> Currency Display</div>
-                            <div style="color:#94A3B8;">Gems & ${appConfig.currencyName || 'Cash'} <i class="fa-solid fa-chevron-right" style="margin-left: 5px; color:rgba(255,255,255,0.2);"></i></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Support & About (Features 13-16) -->
-                <div class="card cyber-card" style="margin-bottom: 20px; padding: 0;">
-                    <div class="settings-header" style="padding: 15px 20px; background: rgba(0,0,0,0.3); border-bottom: 1px solid rgba(255,255,255,0.05); color: #10B981; font-weight: 800; font-family: 'Orbitron';"><i class="fa-solid fa-circle-info"></i> Support & About</div>
-                    <div class="settings-list">
-                        <div class="settings-item" onclick="window.open('https://t.me/beshbesh_bot')" style="display: flex; justify-content: space-between; padding: 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                            <div><i class="fa-solid fa-headset" style="width:25px; color:#94A3B8;"></i> Help Center</div>
-                            <div><i class="fa-solid fa-chevron-right" style="color:rgba(255,255,255,0.2);"></i></div>
-                        </div>
-                        <div class="settings-item" onclick="showToast('Loading FAQs...', 'info')" style="display: flex; justify-content: space-between; padding: 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                            <div><i class="fa-solid fa-circle-question" style="width:25px; color:#94A3B8;"></i> FAQ</div>
-                            <div><i class="fa-solid fa-chevron-right" style="color:rgba(255,255,255,0.2);"></i></div>
-                        </div>
-                        <div class="settings-item" onclick="showToast('Opening Terms of Service...', 'info')" style="display: flex; justify-content: space-between; padding: 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                            <div><i class="fa-solid fa-file-contract" style="width:25px; color:#94A3B8;"></i> Terms of Service</div>
-                            <div><i class="fa-solid fa-chevron-right" style="color:rgba(255,255,255,0.2);"></i></div>
-                        </div>
-                        <div class="settings-item" onclick="showToast('Opening Privacy Policy...', 'info')" style="display: flex; justify-content: space-between; padding: 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                            <div><i class="fa-solid fa-shield-virus" style="width:25px; color:#94A3B8;"></i> Privacy Policy</div>
-                            <div><i class="fa-solid fa-chevron-right" style="color:rgba(255,255,255,0.2);"></i></div>
-                        </div>
-                        <div class="settings-item" style="display: flex; justify-content: space-between; padding: 15px 20px;">
-                            <div><i class="fa-solid fa-code-branch" style="width:25px; color:#94A3B8;"></i> App Version</div>
-                            <div style="color:var(--success-color); font-weight:700;">v2.0 (Premium)</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Danger Zone (Features 17-20) -->
-                <div class="card cyber-card" style="margin-bottom: 40px; padding: 0; border: 1px solid rgba(239, 68, 68, 0.3);">
-                    <div class="settings-header" style="padding: 15px 20px; background: rgba(239, 68, 68, 0.1); border-bottom: 1px solid rgba(239, 68, 68, 0.2); color: #EF4444; font-weight: 800; font-family: 'Orbitron';"><i class="fa-solid fa-triangle-exclamation"></i> Advanced Options</div>
-                    <div class="settings-list">
-                        <div class="settings-item" onclick="showToast('Cache cleared successfully. Freed 12MB.', 'success')" style="display: flex; justify-content: space-between; padding: 15px 20px; border-bottom: 1px solid rgba(239, 68, 68, 0.1);">
-                            <div><i class="fa-solid fa-broom" style="width:25px; color:#94A3B8;"></i> Clear Cache</div>
-                            <div><i class="fa-solid fa-chevron-right" style="color:rgba(255,255,255,0.2);"></i></div>
-                        </div>
-                        <div class="settings-item" onclick="showToast('Developer mode unlocked.', 'success')" style="display: flex; justify-content: space-between; padding: 15px 20px; border-bottom: 1px solid rgba(239, 68, 68, 0.1);">
-                            <div><i class="fa-solid fa-terminal" style="width:25px; color:#94A3B8;"></i> Developer Diagnostics</div>
-                            <div><i class="fa-solid fa-chevron-right" style="color:rgba(255,255,255,0.2);"></i></div>
-                        </div>
-                        <div class="settings-item" onclick="showToast('Are you sure? Contact support to delete account.', 'error')" style="display: flex; justify-content: space-between; padding: 15px 20px;">
-                            <div style="color:#EF4444; font-weight: 700;"><i class="fa-solid fa-trash" style="width:25px;"></i> Delete Account</div>
-                            <div><i class="fa-solid fa-chevron-right" style="color:rgba(239, 68, 68, 0.5);"></i></div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            // Add CSS for settings items if not already present
-            if(!document.getElementById('settings-styles')) {
-                const style = document.createElement('style');
-                style.id = 'settings-styles';
-                style.innerHTML = `
-                    .settings-item { cursor: pointer; transition: background 0.2s; }
-                    .settings-item:hover { background: rgba(255,255,255,0.05); }
-                    .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
-                    .switch input { opacity: 0; width: 0; height: 0; }
-                    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; }
-                    .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; }
-                    input:checked + .slider { background-color: var(--color-cyan); box-shadow: 0 0 10px var(--color-cyan); }
-                    input:focus + .slider { box-shadow: 0 0 1px var(--color-cyan); }
-                    input:checked + .slider:before { transform: translateX(20px); }
-                    .slider.round { border-radius: 34px; }
-                    .slider.round:before { border-radius: 50%; }
-                `;
-                document.head.appendChild(style);
-            }
-        }
-
-        async function renderReferrals(c) {
-            const botLink = (typeof appConfig !== 'undefined' && appConfig.telegramBotLink) ? appConfig.telegramBotLink : 'https://t.me/beshbesh_bot';
-            const shortname = (typeof appConfig !== 'undefined' && appConfig.miniAppShortname) ? appConfig.miniAppShortname : 'earn';
-            const refLink = `${botLink}/${shortname}?startapp=ref${userId}`;
-            
-            c.innerHTML = `
-                <div class="card cyber-card" style="text-align:center; padding:30px 20px; position:relative; overflow:hidden;">
-                    <!-- Ambient Glow -->
-                    <div style="position:absolute; top:-50px; left:-50px; width:150px; height:150px; background:var(--color-cyan); filter:blur(60px); opacity:0.3; border-radius:50%;"></div>
-                    
-                    <div class="hero-floating-icon" style="margin-bottom:15px; font-size:4rem; color:var(--color-cyan); text-shadow:0 0 20px rgba(0,242,254,0.6);">
-                        <i class="fa-solid fa-user-astronaut"></i>
-                    </div>
-                    <h2 style="font-size:1.8rem; margin-bottom:5px; background:var(--gradient-main); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">Invite & Earn</h2>
-                    <div style="color:#94A3B8; font-size:0.95rem; margin-bottom:25px; font-weight:600;">Earn $${appConfig.referralBonusReferrer || 0} Cash for every friend you invite!</div>
-                    
-                    <div class="qr-glow-box" style="display:flex; justify-content:center; align-items:center; margin:0 auto 20px auto; width:150px; height:150px;">
-                        <div id="qrCodeContainer"></div>
-                    </div>
-
-                    <div style="background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.1); padding:15px; border-radius:10px; font-family:monospace; font-size:0.85rem; word-break:break-all; margin-bottom:20px; color:#E2E8F0;">
-                        ${refLink}
-                    </div>
-
-                    <div style="display:flex; gap:10px;">
-                        <button class="btn btn-secondary" style="flex:1;" onclick="copyRefLink('${refLink}')"><i class="fa-solid fa-copy"></i> Copy</button>
-                        <button class="btn quantum-btn" style="flex:1;" onclick="shareRefLink('${refLink}')"><i class="fa-solid fa-share-nodes"></i> Share</button>
-                    </div>
-                </div>
-
-                <div class="card cyber-card" style="margin-top:20px;">
-                    <h3 style="margin-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px; display:flex; justify-content:space-between;">
-                        <span><i class="fa-solid fa-users" style="color:var(--color-purple);"></i> My Network</span>
-                        <span style="color:var(--color-cyan); font-weight:900;">${currentUser.referredUsers?.length || 0}</span>
-                    </h3>
-                    <div id="invitesList" style="max-height:300px; overflow-y:auto; padding-right:5px;">
-                        <div style="text-align:center; padding:20px; color:#94A3B8;"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</div>
-                    </div>
-                </div>
-            `;
-
-            // Generate QR Code
+            const uRes = await fetch(`${API_BASE_URL}/api/user/${userId}`);
+            currentUser = await uRes.json();
+            closeSponsorTask();
+            updateTasksUI(document.getElementById('content-area'));
+        } else {
+            showToast(data.error || "Verification failed. Did you complete the task?", "error");
+            btn.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> Check Failed';
             setTimeout(() => {
-                new QRCode(document.getElementById("qrCodeContainer"), {
-                    text: refLink,
-                    width: 130,
-                    height: 130,
-                    colorDark : "#000000",
-                    colorLight : "#ffffff",
-                    correctLevel : QRCode.CorrectLevel.H
-                });
-            }, 100);
-
-            // Fetch Referrals
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/referrer/${userId}`);
-                const refs = await res.json();
-                const list = document.getElementById('invitesList');
-                if (!list) return;
-                if(refs.length === 0) {
-                    list.innerHTML = `
-                        <div style="text-align:center; padding:30px 10px;">
-                            <i class="fa-solid fa-ghost" style="font-size:3rem; color:rgba(255,255,255,0.1); margin-bottom:15px; filter:drop-shadow(0 0 10px rgba(255,255,255,0.2));"></i>
-                            <div style="color:#94A3B8; font-weight:600;">No invites yet. Start sharing your link!</div>
-                        </div>
-                    `;
-                } else {
-                    list.innerHTML = refs.map(r => `
-                        <div class="referral-list-item cyber-card" style="display:flex; align-items:center; padding:15px; border-radius:15px; margin-bottom:10px; gap:15px;">
-                            <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(r.accountName||'U')}&background=random&color=fff" style="width:45px; height:45px; border-radius:50%; border:2px solid var(--color-purple);">
-                            <div class="mid" style="flex:1; text-align:left;">
-                                <div style="font-weight:800; font-size:1rem; color:white;">${r.accountName}</div>
-                                <div style="font-size:0.75rem; color:#94A3B8;">${new Date(r.createdAt).toLocaleDateString()}</div>
-                            </div>
-                            <div style="color:var(--success-color); font-weight:900; font-size:1rem; text-shadow:0 0 10px var(--success-color);">+$${appConfig.referralBonusReferrer || 0} <i class='fa-solid fa-check'></i></div>
-                        </div>
-                    `).join('');
-                }
-            } catch(e) {}
-        }
-
-        function copyRefLink(link) {
-            navigator.clipboard.writeText(link);
-            showToast("Copied to clipboard!", "success");
-        }
-
-        function shareRefLink(link) {
-            if(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openTelegramLink) {
-                const text = encodeURIComponent(`Join me on MYFA BIRR and let's earn Gems together! 🚀`);
-                window.Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${text}`);
-            } else {
-                window.open(`https://t.me/share/url?url=${encodeURIComponent(link)}`, '_blank');
-            }
-        }
-
-        // --- AD NETWORK LOGIC ---
-        let AdController = null;
-
-        function showAdsgram() {
-            if (!window.Adsgram) {
-                return showToast("Ad system loading... Please wait a few seconds.", "info");
-            }
-            if (AdController === null) {
-                try {
-                    AdController = window.Adsgram.init({ blockId: "41731" });
-                } catch (e) {
-                    return showToast("Failed to connect to Ad Server.", "error");
-                }
-            }
-            
-            AdController.show().then((result) => {
-                setTimeout(() => {
-                    fetch(`${API_BASE_URL}/api/user/${userId}`)
-                    .then(r => r.json())
-                    .then(data => {
-                        currentUser = data;
-                        updateUI();
-                        nav('tasks');
-                        if (typeof triggerConfetti === 'function') triggerConfetti();
-                        showToast("Ad Verified! Real Money added.", "success");
-                    });
-                }, 1500);
-            }).catch((err) => {
-                const desc = String(err?.description || err?.error || '').toLowerCase();
-                if (desc.includes('ad closed') || err?.done === false) {
-                    showToast("You closed the ad early! No reward.", "error");
-                } else if (desc.includes('no ads available')) {
-                    showToast("No ads available right now. Try again later!", "info");
-                } else {
-                    showToast("Ad system is currently pending/inactive.", "error");
-                }
-            });
-        }
-
-
-
-        function renderWithdraw(c) {
-            const realBal = currentUser.realBalance || 0;
-            const curInvites = currentUser.referredUsers ? currentUser.referredUsers.length : 0;
-            const curAds = currentUser.totalAdsWatchedLifetime || 0;
-            const curTasks = currentUser.claimedBonuses ? currentUser.claimedBonuses.length : 0;
-            
-            const wCount = currentUser.withdrawCount || 0;
-            const multiplier = wCount + 1; 
-            
-            const reqInvites = (appConfig.reqReferrals || 5) * multiplier;
-            const reqAds = (appConfig.reqAds || 50) * multiplier;
-            const reqTasks = (appConfig.reqTasks || 3) * multiplier;
-            
-            const req1Done = curInvites >= reqInvites;
-            const req2Done = curAds >= reqAds;
-            const req3Done = curTasks >= reqTasks;
-            const allReqsMet = req1Done && req2Done && req3Done;
-            
-            const currName = appConfig.currencyName || 'Cash';
-            const avatarUrl = currentUser.avatarUrl || 'https://ui-avatars.com/api/?name=User&background=B026FF&color=fff';
-            const safeName = currentUser.accountName || currentUser.username || 'User';
-
-            c.innerHTML = `
-                <div style="text-align:center; padding: 30px 0 10px;">
-                    <div style="width: 100px; height: 100px; border-radius: 50%; margin: 0 auto 15px; background: url('${avatarUrl}') center/cover; border: 4px solid #F59E0B; box-shadow: 0 0 30px rgba(245, 158, 11, 0.4); position: relative;">
-                        <div style="position: absolute; bottom: -5px; right: -5px; background: var(--success-color); width: 25px; height: 25px; border-radius: 50%; border: 3px solid var(--deep-space); display: flex; align-items: center; justify-content: center; color: black; font-size: 0.7rem;"><i class="fa-solid fa-check"></i></div>
-                    </div>
-                    <h2 style="font-family:'Orbitron', sans-serif; font-size:1.8rem; color: #F59E0B; text-shadow: 0 0 15px rgba(245, 158, 11, 0.3); margin-bottom:5px;">${safeName}</h2>
-                    <p style="font-size:0.9rem; color:#94A3B8; letter-spacing: 1px; text-transform: uppercase;">Premium Withdrawal Gateway</p>
-                </div>
-                
-                <!-- Balances Section -->
-                <div class="card cyber-card" style="margin-bottom:25px; padding:30px 20px; background: linear-gradient(145deg, rgba(21,21,43,0.9), rgba(10,10,31,0.9)); border: 1px solid rgba(245, 158, 11, 0.2); box-shadow: 0 10px 40px rgba(0,0,0,0.6);">
-                    <div style="display:grid; grid-template-columns:1fr 1px 1fr; gap:15px; text-align:center; margin-bottom:30px;">
-                        <div>
-                            <div style="font-size:0.8rem; color:#94A3B8; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">Gems Balance</div>
-                            <div style="color:var(--color-cyan); font-weight:900; font-size:1.8rem; text-shadow: 0 0 15px rgba(0,242,254,0.4);"><i class="fa-solid fa-gem"></i> <span id="exchangeGemsBal">${currentUser.points}</span></div>
-                        </div>
-                        <div style="background:linear-gradient(to bottom, transparent, rgba(245, 158, 11, 0.3), transparent);"></div>
-                        <div>
-                            <div style="font-size:0.8rem; color:#94A3B8; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">${currName} Balance</div>
-                            <div style="color:#F59E0B; font-weight:900; font-size:1.8rem; text-shadow: 0 0 15px rgba(245, 158, 11, 0.4);"><i class="fa-solid fa-money-bill-wave"></i> <span id="exchangeRealBal">${realBal.toFixed(2)}</span></div>
-                        </div>
-                    </div>
-
-                    <h3 style="margin-bottom:15px; font-size:1.1rem; color: #E2E8F0;"><i class="fa-solid fa-right-left" style="color:var(--color-magenta);"></i> Quick Exchange</h3>
-                    <div style="display:flex; justify-content:space-between; gap:10px; margin-bottom:20px; background:rgba(0,0,0,0.4); padding:6px; border-radius:12px; border: 1px solid rgba(255,255,255,0.05);">
-                        <button id="btnGemsToCash" class="btn" style="flex:1; padding:10px; font-size:0.9rem; background:linear-gradient(45deg, #F59E0B, #D97706); color:white; border:none; box-shadow: 0 4px 15px rgba(245,158,11,0.3);" onclick="setExchangeMode('gemsToCash')">Gems <i class="fa-solid fa-arrow-right"></i> Cash</button>
-                        <button id="btnCashToGems" class="btn" style="flex:1; padding:10px; font-size:0.9rem; background:transparent; border:1px solid rgba(255,255,255,0.1); color:#94A3B8;" onclick="setExchangeMode('cashToGems')">Cash <i class="fa-solid fa-arrow-right"></i> Gems</button>
-                    </div>
-
-                    <div style="font-size:0.8rem; color:#94A3B8; margin-bottom:15px; font-weight:600; text-align: center;">Live Exchange Rate: <span id="exchangeRateLabel" style="color: #00F2FE;">100 Gems = 1.00 ${currName}</span></div>
-                    
-                    <div style="position:relative; margin-bottom:20px;">
-                        <input type="number" id="exchangeAmount" class="input-field" style="padding:15px 15px 15px 45px; margin-bottom:0; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: white; font-size: 1.1rem;" placeholder="Amount to Convert" min="1" oninput="updateExchangePreview()">
-                        <i id="exchangeIcon" class="fa-solid fa-gem" style="position:absolute; left:18px; top:50%; transform:translateY(-50%); color:var(--color-cyan); font-size: 1.2rem;"></i>
-                    </div>
-                    
-                    <div style="display:flex; justify-content:space-between; align-items:center; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 10px;">
-                        <div style="font-size:0.9rem; color:#94A3B8; font-weight:700;">You receive: <br><span style="color:var(--success-color); font-size:1.3rem;"><span id="exchangePreview">0.00</span> <span id="exchangeReceiveLabel" style="font-size:1rem;">${currName}</span></span></div>
-                        <button class="btn" style="width:auto; padding:12px 25px; background: linear-gradient(45deg, #00A8FF, #00F2FE); box-shadow: 0 4px 15px rgba(0,168,255,0.4);" onclick="processExchange()"><i class="fa-solid fa-rotate"></i> Convert</button>
-                    </div>
-                </div>
-
-                <!-- Withdrawal Requirements Checklist -->
-                <div class="card cyber-card" style="margin-bottom:25px; background: rgba(21,21,43,0.6); border-left:4px solid ${allReqsMet ? 'var(--success-color)' : 'var(--danger-color)'};">
-                    <h3 style="margin-bottom:15px; font-size:1.1rem;"><i class="fa-solid fa-unlock-keyhole" style="color:${allReqsMet ? 'var(--success-color)' : 'var(--danger-color)'};"></i> Security Clearance</h3>
-                    <div style="display:flex; flex-direction:column; gap:12px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.05);">
-                            <span style="color:${req1Done ? 'var(--success-color)' : '#94A3B8'}; font-weight:600;"><i class="fa-solid ${req1Done ? 'fa-circle-check' : 'fa-circle'}"></i> 1. Network Referrals</span>
-                            <span style="font-weight:800; color:${req1Done ? 'var(--success-color)' : 'white'}; background:rgba(0,0,0,0.3); padding:4px 10px; border-radius:6px; font-family:'Orbitron';">${curInvites} / ${reqInvites}</span>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.05);">
-                            <span style="color:${req2Done ? 'var(--success-color)' : '#94A3B8'}; font-weight:600;"><i class="fa-solid ${req2Done ? 'fa-circle-check' : 'fa-circle'}"></i> 2. Ad Impressions</span>
-                            <span style="font-weight:800; color:${req2Done ? 'var(--success-color)' : 'white'}; background:rgba(0,0,0,0.3); padding:4px 10px; border-radius:6px; font-family:'Orbitron';">${curAds} / ${reqAds}</span>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <span style="color:${req3Done ? 'var(--success-color)' : '#94A3B8'}; font-weight:600;"><i class="fa-solid ${req3Done ? 'fa-circle-check' : 'fa-circle'}"></i> 3. Completed Missions</span>
-                            <span style="font-weight:800; color:${req3Done ? 'var(--success-color)' : 'white'}; background:rgba(0,0,0,0.3); padding:4px 10px; border-radius:6px; font-family:'Orbitron';">${curTasks} / ${reqTasks}</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Withdrawal Form -->
-                <div class="card cyber-card" style="position:relative; overflow:hidden; background: linear-gradient(180deg, rgba(21,21,43,0.9), rgba(10,10,31,0.95)); border: 1px solid rgba(0, 242, 254, 0.2); box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
-                    ${!allReqsMet ? `
-                        <div style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(10,10,31,0.85); backdrop-filter:blur(10px); z-index:10; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;">
-                            <i class="fa-solid fa-lock" style="font-size:3.5rem; color:rgba(239, 68, 68, 0.8); margin-bottom:20px; filter: drop-shadow(0 0 15px rgba(239,68,68,0.4));"></i>
-                            <div style="font-weight:800; color:white; font-size: 1.2rem; font-family: 'Orbitron'; margin-bottom: 10px;">GATE LOCKED</div>
-                            <div style="color: #94A3B8; font-size: 0.9rem; padding: 0 20px;">Complete all security clearances above to access the withdrawal terminal.</div>
-                        </div>
-                    ` : ''}
-                    
-                    <h3 style="margin-bottom:25px; font-size:1.3rem; color: #00F2FE; display: flex; align-items: center; gap: 10px;"><i class="fa-solid fa-money-bill-transfer"></i> Telebirr Payout</h3>
-                    
-                    <div style="background: rgba(0,242,254,0.05); border: 1px solid rgba(0,242,254,0.2); border-radius: 12px; padding: 15px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center;">
-                        <div style="width: 50px; height: 50px; background: url('https://play-lh.googleusercontent.com/N741-pZ0B3z6B1qO_4U7v4Yh8_LqH_H9300H4aZ79T6J8g7Q3w9m5X0R6_x0_R8g=w240-h480-rw') center/cover; border-radius: 10px; border: 1px solid #00F2FE;"></div>
-                        <div>
-                            <div style="color: white; font-weight: 800; font-family: 'Orbitron'; font-size: 1.1rem;">Telebirr</div>
-                            <div style="color: #00F2FE; font-size: 0.8rem;"><i class="fa-solid fa-bolt"></i> Auto-Processing in 5 Mins</div>
-                        </div>
-                    </div>
-                    <input type="hidden" id="wdBank" value="Telebirr">
-
-                    <div style="margin-bottom:20px;">
-                        <label style="font-size:0.85rem; color:#94A3B8; font-weight:700; margin-bottom:8px; display:block;">Telebirr Account Number</label>
-                        <div style="position:relative;">
-                            <input type="text" id="wdAccount" class="input-field" style="padding: 15px 15px 15px 45px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: white; font-size: 1.1rem;" placeholder="09...">
-                            <i class="fa-solid fa-phone" style="position:absolute; left:18px; top:50%; transform:translateY(-50%); color:#94A3B8;"></i>
-                        </div>
-                    </div>
-
-                    <div style="margin-bottom:20px;">
-                        <label style="font-size:0.85rem; color:#94A3B8; font-weight:700; margin-bottom:8px; display:block;">Full Account Name</label>
-                        <div style="position:relative;">
-                            <input type="text" id="wdName" class="input-field" style="padding: 15px 15px 15px 45px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: white; font-size: 1.1rem;" placeholder="Exact Name on Telebirr">
-                            <i class="fa-solid fa-user" style="position:absolute; left:18px; top:50%; transform:translateY(-50%); color:#94A3B8;"></i>
-                        </div>
-                    </div>
-
-                    <div style="margin-bottom:30px;">
-                        <label style="font-size:0.85rem; color:#94A3B8; font-weight:700; margin-bottom:8px; display:block;">Withdrawal Amount (${currName})</label>
-                        <div style="position:relative;">
-                            <input type="number" id="wdAmount" class="input-field" style="padding: 15px 15px 15px 45px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: var(--success-color); font-size: 1.2rem; font-weight: 800; font-family: 'Orbitron';" placeholder="0.00" max="${realBal}">
-                            <i class="fa-solid fa-money-bill-wave" style="position:absolute; left:18px; top:50%; transform:translateY(-50%); color:var(--success-color);"></i>
-                        </div>
-                        <div style="text-align: right; margin-top: 5px; font-size: 0.8rem; color: #94A3B8;">Min: ${appConfig.minWithdraw||2} ${currName} | Max: ${appConfig.maxWithdraw||50} ${currName}</div>
-                    </div>
-
-                    <button class="btn" style="width:100%; padding: 18px; background: linear-gradient(90deg, #F59E0B, #D97706); box-shadow: 0 5px 20px rgba(245, 158, 11, 0.4); font-size: 1.2rem; border-radius: 12px;" onclick="submitWithdraw()" ${!allReqsMet ? 'disabled' : ''}><i class="fa-solid fa-bolt"></i> INITIATE PAYOUT</button>
-                </div>
-            `;
-        }
-
-        async function submitWithdraw() {
-            const method = document.getElementById('wdBank').value;
-            const account = document.getElementById('wdAccount').value;
-            const accountName = document.getElementById('wdName').value;
-            const amount = parseFloat(document.getElementById('wdAmount').value);
-
-            if(!account || !accountName || !amount) return showToast('Please fill all fields', 'error');
-            if(amount > (currentUser.realBalance||0)) return showToast('Insufficient funds', 'error');
-            if(amount <= 0) return showToast('Invalid amount', 'error');
-
-            const btn = document.querySelector('button[onclick="submitWithdraw()"]');
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Submitting...';
-            btn.disabled = true;
-
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/request-withdrawal`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ userId, amount, method, account, accountName })
-                });
-                const data = await res.json();
-                if(data.success) {
-                    showToast('Withdrawal submitted successfully!', 'success');
-                    const uRes = await fetch(`${API_BASE_URL}/api/user/${userId}`);
-                    currentUser = await uRes.json();
-                    nav('withdraw');
-                } else {
-                    showToast('Withdrawal failed', 'error');
-                    btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Submit Request';
-                    btn.disabled = false;
-                }
-            } catch(e) {
-                showToast('Network error', 'error');
-                btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Submit Request';
+                btn.innerHTML = '<i class="fa-solid fa-circle-check"></i> Check';
                 btn.disabled = false;
-            }
+            }, 3000);
         }
+    } catch(e) {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Try Again'; }
+        showToast("Network error. Try again.", "error");
+    }
+}
 
-        window.currentExchangeMode = 'gemsToCash';
-        
-        window.setExchangeMode = function(mode) {
-            window.currentExchangeMode = mode;
-            const btnG2C = document.getElementById('btnGemsToCash');
-            const btnC2G = document.getElementById('btnCashToGems');
-            const input = document.getElementById('exchangeAmount');
-            const icon = document.getElementById('exchangeIcon');
-            const rateLabel = document.getElementById('exchangeRateLabel');
-            const recLabel = document.getElementById('exchangeReceiveLabel');
-            
-            const currName = (typeof appConfig !== 'undefined' && appConfig.currencyName) ? appConfig.currencyName : 'Cash';
-            const rate = (typeof appConfig !== 'undefined' && appConfig.exchangeRate) ? appConfig.exchangeRate : 100;
-            
-            if(mode === 'gemsToCash') {
-                btnG2C.className = 'btn quantum-btn';
-                btnG2C.style.background = '';
-                btnG2C.style.border = 'none';
-                
-                btnC2G.className = 'btn';
-                btnC2G.style.background = 'transparent';
-                btnC2G.style.border = '1px solid rgba(255,255,255,0.1)';
-                
-                input.placeholder = "Gems to Exchange";
-                icon.className = "fa-solid fa-gem";
-                icon.style.color = "var(--color-cyan)";
-                rateLabel.innerText = `${rate} Gems = 1.00 ${currName}`;
-                recLabel.innerText = currName;
-            } else {
-                btnC2G.className = 'btn quantum-btn';
-                btnC2G.style.background = '';
-                btnC2G.style.border = 'none';
-                
-                btnG2C.className = 'btn';
-                btnG2C.style.background = 'transparent';
-                btnG2C.style.border = '1px solid rgba(255,255,255,0.1)';
-                
-                input.placeholder = `${currName} to Exchange`;
-                icon.className = "fa-solid fa-money-bill-wave";
-                icon.style.color = "var(--success-color)";
-                rateLabel.innerText = `1.00 ${currName} = ${rate} Gems`;
-                recLabel.innerText = "Gems";
-            }
-            input.value = '';
-            document.getElementById('exchangePreview').innerText = '0.00';
-        };
-
-        window.updateExchangePreview = function() {
-            const input = document.getElementById('exchangeAmount');
-            const val = parseFloat(input.value) || 0;
-            const rate = (typeof appConfig !== 'undefined' && appConfig.exchangeRate) ? appConfig.exchangeRate : 100;
-            const taxCashGems = (typeof appConfig !== 'undefined' && appConfig.cashToGemsTaxRate) ? appConfig.cashToGemsTaxRate : 0;
-            const taxGemsCash = (typeof appConfig !== 'undefined' && appConfig.taxRate) ? appConfig.taxRate : 0;
-            
-            if(window.currentExchangeMode === 'gemsToCash') {
-                let rec = val / rate;
-                if(taxGemsCash > 0) rec = (val - (val * (taxGemsCash / 100))) / rate;
-                document.getElementById('exchangePreview').innerText = rec.toFixed(2);
-            } else {
-                let rec = val * rate;
-                if(taxCashGems > 0) rec = (val - (val * (taxCashGems / 100))) * rate;
-                document.getElementById('exchangePreview').innerText = Math.floor(rec);
-            }
-        };
-
-        async function processExchange() {
-            const amt = parseFloat(document.getElementById('exchangeAmount').value);
-            if (!amt || amt <= 0) return showToast('Enter a valid amount', 'error');
-            
-            if (window.currentExchangeMode === 'gemsToCash' && amt > currentUser.points) return showToast('Not enough gems!', 'error');
-            if (window.currentExchangeMode === 'cashToGems' && amt > (currentUser.realBalance || 0)) return showToast('Not enough cash!', 'error');
-
-            const btn = document.querySelector('button[onclick="processExchange()"]');
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
-            btn.disabled = true;
-
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/exchange`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ userId, amount: amt, mode: window.currentExchangeMode })
-                });
-                const data = await res.json();
-                
-                if (data.success) {
-                    showToast('Success! Exchange complete.', 'success');
-                    const uRes = await fetch(`${API_BASE_URL}/api/user/${userId}`);
-                    currentUser = await uRes.json();
-                    nav('withdraw');
-                } else {
-                    showToast(data.error || 'Exchange failed', 'error');
-                    btn.innerHTML = '<i class="fa-solid fa-coins"></i> Convert';
-                    btn.disabled = false;
-                }
-            } catch (e) {
-                showToast('Network error', 'error');
-                btn.innerHTML = '<i class="fa-solid fa-coins"></i> Convert';
-                btn.disabled = false;
-            }
-        }
-           async function renderLeaderboard(c) {
-            c.innerHTML = `
-                <style>
-                    /* Leaderboard Custom CSS */
-                    .skeleton-row {
-                        height: 60px;
-                        background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0.05) 75%);
-                        background-size: 200% 100%;
-                        animation: shimmer 1.5s infinite;
-                        border-radius: 16px;
-                        margin-bottom: 8px;
-                    }
-                    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-                    
-                    .podium-container {
-                        display: flex;
-                        align-items: flex-end;
-                        justify-content: center;
-                        gap: 15px;
-                        margin-bottom: 30px;
-                        margin-top: 40px;
-                    }
-                    
-                    .podium-tier {
-                        display: flex;
-                        flex-direction: column;
-                        align-items: center;
-                        text-align: center;
-                    }
-                    
-                    .podium-avatar {
-                        border-radius: 50%;
-                        object-fit: cover;
-                        background: var(--bg-color);
-                        z-index: 2;
-                        position: relative;
-                    }
-                    
-                    /* Gold - Rank 1 */
-                    .podium-tier.rank-1 .podium-avatar {
-                        width: 80px; height: 80px;
-                        border: 4px solid #FFD700;
-                        box-shadow: 0 0 25px rgba(255, 215, 0, 0.6);
-                    }
-                    /* Silver - Rank 2 */
-                    .podium-tier.rank-2 .podium-avatar {
-                        width: 65px; height: 65px;
-                        border: 3px solid #C0C0C0;
-                        box-shadow: 0 0 15px rgba(192, 192, 192, 0.6);
-                    }
-                    /* Bronze - Rank 3 */
-                    .podium-tier.rank-3 .podium-avatar {
-                        width: 65px; height: 65px;
-                        border: 3px solid #CD7F32;
-                        box-shadow: 0 0 15px rgba(205, 127, 50, 0.6);
-                    }
-                    
-                    .podium-crown { font-size: 1.5rem; margin-bottom: -15px; z-index: 3; position: relative; }
-                    .rank-1 .podium-crown { color: #FFD700; filter: drop-shadow(0 0 10px #FFD700); font-size: 2rem; margin-bottom: -20px; }
-                    .rank-2 .podium-crown { color: #C0C0C0; filter: drop-shadow(0 0 8px #C0C0C0); }
-                    .rank-3 .podium-crown { color: #CD7F32; filter: drop-shadow(0 0 8px #CD7F32); }
-                    
-                    .podium-name {
-                        font-weight: 800; color: white;
-                        margin-top: 10px;
-                        max-width: 90px;
-                        text-overflow: ellipsis; white-space: nowrap; overflow: hidden;
-                    }
-                    .rank-1 .podium-name { font-size: 1.1rem; max-width: 110px; }
-                    
-                    .podium-gems { font-size: 0.9rem; font-weight: 900; margin-top: 5px; display:flex; align-items:center; justify-content:center; gap:5px;}
-                    .rank-1 .podium-gems { color: #FFD700; text-shadow: 0 0 10px rgba(255,215,0,0.8); }
-                    .rank-2 .podium-gems { color: #C0C0C0; }
-                    .rank-3 .podium-gems { color: #CD7F32; }
-
-                    .lb-list-item {
-                        display: flex; align-items: center; justify-content: space-between;
-                        background: rgba(255, 255, 255, 0.05);
-                        border: 1px solid rgba(255, 255, 255, 0.1);
-                        border-radius: 16px; margin-bottom: 8px; padding: 10px 15px;
-                        backdrop-filter: blur(16px);
-                    }
-                    
-                    .lb-badge {
-                        width: 25px; height: 25px; border-radius: 50%;
-                        background: rgba(255,255,255,0.1);
-                        display: flex; align-items: center; justify-content: center;
-                        font-size: 0.8rem; font-weight: bold; color: #94A3B8;
-                        margin-right: 12px;
-                    }
-                    
-                    .lb-avatar {
-                        width: 45px; height: 45px; border-radius: 50%; object-fit: cover;
-                        margin-right: 12px;
-                    }
-                    
-                    .lb-name {
-                        flex: 1; font-weight: 800; color: white;
-                        text-overflow: ellipsis; white-space: nowrap; overflow: hidden;
-                    }
-                    
-                    .lb-gems {
-                        font-weight: 900; color: var(--color-cyan);
-                        display: flex; align-items: center; gap: 5px;
-                    }
-                    
-                    .lb-sticky-footer {
-                        position: fixed; bottom: 80px; left: 0; right: 0; z-index: 90;
-                        background: rgba(10, 10, 10, 0.7);
-                        backdrop-filter: blur(16px);
-                        border-top: 2px solid transparent;
-                        border-image: linear-gradient(90deg, #00F2FE, #4FACFE, #F093FB) 1;
-                        padding: 10px 20px;
-                        display: flex; justify-content: space-between; align-items: center;
-                    }
-                </style>
-                <div style="text-align:center; padding: 20px 0;">
-                    <h2><i class="fa-solid fa-trophy" style="color:var(--gold-color); font-size: 2rem; margin-bottom: 10px; display:inline-block; filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.5));"></i><br>Top 100 Players</h2>
-                    <p style="font-size:0.85rem; color:#94A3B8;">The best of the best.</p>
-                </div>
-                
-                <div id="leaderboardLoading" style="padding: 0 15px;">
-                    <div class="skeleton-row"></div>
-                    <div class="skeleton-row"></div>
-                    <div class="skeleton-row"></div>
-                    <div class="skeleton-row"></div>
-                    <div class="skeleton-row"></div>
-                </div>
-                
-                <div id="podiumContainer" class="podium-container" style="display:none;"></div>
-                <div id="leaderboardList" style="padding: 0 15px; margin-bottom: 140px; display:none;"></div>
-                <div id="leaderboardFooter" class="lb-sticky-footer" style="display:none;"></div>
-            `;
-            
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/leaderboard/${userId}`);
-                const data = await res.json();
-                
-                const loader = document.getElementById('leaderboardLoading');
-                if (loader) loader.style.display = 'none';
-
-                const listContainer = document.getElementById('leaderboardList');
-                if (!listContainer) return; // user navigated away
-
-                if (data.frozen) {
-                    const banner = document.createElement('div');
-                    banner.style = "background:var(--danger-color); color:white; text-align:center; padding:10px; font-weight:bold; position:sticky; top:0; z-index:99; margin-bottom:15px;";
-                    banner.innerHTML = "🏆 Leaderboard is Currently Frozen for Payouts";
-                    listContainer.parentNode.insertBefore(banner, document.getElementById('podiumContainer'));
-                }
-                
-                const top100 = data.byPoints || [];
-                
-                // --- PODIUM (Top 3) ---
-                const podiumCont = document.getElementById('podiumContainer');
-                const top3 = top100.slice(0, 3);
-                
-                if (top3.length > 0) {
-                    // Order for layout: 2nd, 1st, 3rd
-                    const order = [1, 0, 2];
-                    let podiumHtml = '';
-                    
-                    order.forEach(idx => {
-                        const u = top3[idx];
-                        if(!u) return;
-                        
-                        const rank = idx + 1;
-                        const realName = u.accountName || u.username || 'Anonymous';
-                        const fbUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(realName)}&background=B026FF&color=fff`;
-                        const avatarUrl = u.id ? `${API_BASE_URL}/api/avatar/${u.id}` : fbUrl;
-                        
-                        podiumHtml += `
-                            <div class="podium-tier rank-${rank}">
-                                <div class="podium-crown"><i class="fa-solid fa-crown"></i></div>
-                                <img src="${avatarUrl}" class="podium-avatar" loading="lazy" onerror="this.onerror=null; this.src='${fbUrl}';">
-                                <div class="podium-name">${realName}</div>
-                                <div class="podium-gems"><i class="fa-solid fa-gem"></i> ${Number(u.points || 0).toLocaleString()}</div>
-                            </div>
-                        `;
-                    });
-                    podiumCont.innerHTML = podiumHtml;
-                    podiumCont.style.display = 'flex';
-                }
-
-                // --- LIST (4 to 100) ---
-                let listHtml = '';
-                for (let i = 3; i < top100.length; i++) {
-                    const u = top100[i];
-                    const rank = i + 1;
-                    const realName = u.accountName || u.username || 'Anonymous';
-                    const fbUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(realName)}&background=B026FF&color=fff`;
-                    const avatarUrl = u.id ? `${API_BASE_URL}/api/avatar/${u.id}` : fbUrl;
-                    
-                    listHtml += `
-                        <div class="lb-list-item">
-                            <div class="lb-badge">${rank}</div>
-                            <img src="${avatarUrl}" class="lb-avatar" loading="lazy" onerror="this.onerror=null; this.src='${fbUrl}';">
-                            <div class="lb-name">${realName}</div>
-                            <div class="lb-gems">${Number(u.points || 0).toLocaleString()} <i class="fa-solid fa-gem"></i></div>
-                        </div>
-                    `;
-                }
-                listContainer.innerHTML = listHtml;
-                listContainer.style.display = 'block';
-
-                // --- STICKY FOOTER (99+) ---
-                const footer = document.getElementById('leaderboardFooter');
-                const userRank = data.userRankPoints;
-                
-                let myName = currentUser.accountName || currentUser.username || 'Anonymous';
-                let myAvatar = currentUser.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(myName)}&background=B026FF&color=fff`;
-                
-                let displayRank = (userRank && userRank >= 1 && userRank <= 100) ? userRank : '99+';
-                let rankColor = displayRank === '99+' ? 'var(--color-magenta)' : 'white';
-
-                footer.innerHTML = `
-                    <div style="display:flex; align-items:center; gap:10px; max-width: 45%;">
-                        <img src="${myAvatar}" style="width:40px; height:40px; border-radius:50%; border:2px solid var(--color-cyan);">
-                        <div style="text-overflow: ellipsis; white-space: nowrap; overflow: hidden; max-width: 100%;">
-                            <div style="font-weight:800; font-size:1rem; color:white; text-overflow: ellipsis; white-space: nowrap; overflow: hidden;">${myName}</div>
-                        </div>
-                    </div>
-                    <div style="text-align:center;">
-                        <div style="font-weight:bold; font-size:0.75rem; color:#94A3B8;">Rank</div>
-                        <div style="font-weight:900; font-size:1.1rem; color:${rankColor};">${displayRank === '99+' ? displayRank : '#' + displayRank}</div>
-                    </div>
-                    <div style="text-align:right;">
-                        <div style="font-weight:bold; font-size:0.75rem; color:#94A3B8;">Gems</div>
-                        <div style="font-weight:900; font-size:1.1rem; color:var(--color-cyan); display:flex; align-items:center; gap:5px; justify-content:flex-end;">
-                            ${Number(currentUser.points).toLocaleString()} <i class="fa-solid fa-gem"></i>
-                        </div>
-                    </div>
-                `;
-                footer.style.display = 'flex';
-                
-            } catch(e) {
-                const loader = document.getElementById('leaderboardLoading');
-                if (loader) loader.innerHTML = "<div style='color:var(--danger-color); padding: 20px;'>Failed to load leaderboard.</div>";
-            }
-        }
-
-    </script>
-
-    <!-- Official Channel Overlay -->
-    <div id="channelOverlay" class="side-panel left cyber-card" style="padding: 20px; display: flex; flex-direction: column;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
-            <h2 style="margin:0;"><i class="fa-solid fa-bullhorn" style="color:var(--color-magenta);"></i> Official Channel</h2>
-            <button class="panel-toggle-btn" style="background:transparent; border:none; color:white; font-size:1.5rem; cursor:pointer;" onclick="document.getElementById('channelOverlay').classList.remove('open')"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-        <div id="channelPostsContainer" style="overflow-y: auto; flex: 1; padding-bottom: 50px;">
-            <!-- Posts will go here -->
-        </div>
-    </div>
-
-    <script>
-        // Store last seen post to show badge
-        let lastSeenPostId = localStorage.getItem('lastSeenPostId');
-
-        async function loadOfficialChannelPosts() {
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/channel/posts`);
-                const posts = await res.json();
-                
-                if (posts.length > 0 && posts[0].id !== lastSeenPostId) {
-                    const badge = document.getElementById('channelBadge');
-                    if(badge) badge.style.display = 'flex';
-                }
-
-                const container = document.getElementById('channelPostsContainer');
-                if(!container) return;
-                
-                container.innerHTML = posts.map(p => {
-                    const r = p.reactions || {};
-                    const defaultEmojis = ['👍', '❤️', '🔥'];
-                    defaultEmojis.forEach(e => { if(r[e] === undefined) r[e] = 0; });
-                    
-                    const reactHtml = Object.keys(r).map(emoji => `
-                        <div onclick="reactToPost('${p.id}', '${emoji}')" style="display:inline-flex; align-items:center; gap:6px; background:linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01)); padding: 6px 14px; border-radius: 20px; font-size: 0.9rem; font-weight: 800; color: white; cursor: pointer; transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1); border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 2px 10px rgba(0,0,0,0.2);" onmouseover="this.style.transform='scale(1.05)'; this.style.borderColor='var(--color-magenta)';" onmouseout="this.style.transform='scale(1)'; this.style.borderColor='rgba(255,255,255,0.1)';">
-                            <span style="filter:drop-shadow(0 0 5px rgba(255,255,255,0.3));">${emoji}</span> <span style="color:var(--color-cyan); text-shadow:0 0 5px var(--color-cyan);">${(r[emoji]||0).toLocaleString()}</span>
-                        </div>
-                    `).join('');
-
-                    return `
-                    <div class="cyber-card" style="border-radius: 15px; padding: 18px; margin-bottom: 20px; border-top: 1px solid rgba(255,255,255,0.2); border-left: 4px solid var(--color-magenta); box-shadow: 0 8px 32px rgba(0,0,0,0.3); backdrop-filter: blur(16px); position: relative; overflow: hidden;">
-                        <div style="position:absolute; top:-50px; right:-50px; width:100px; height:100px; background:var(--color-magenta); filter:blur(50px); opacity:0.2; border-radius:50%;"></div>
-                        <div style="display:flex; justify-content:space-between; margin-bottom: 12px; align-items:center;">
-                            <span style="font-weight: 900; color: white; font-size: 1.1rem; display:flex; align-items:center; gap:5px;"><i class="fa-solid fa-certificate" style="color:var(--color-magenta); font-size:1.2rem;"></i> Official</span>
-                            <span style="font-size: 0.75rem; color: #94A3B8; font-weight:600; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:10px;">${new Date(p.date).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</span>
-                        </div>
-                        <div style="font-size: 0.95rem; line-height: 1.6; color: #E2E8F0; margin-bottom: 18px; white-space: pre-wrap; font-weight:500;">${p.text}</div>
-                        <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                            ${reactHtml}
-                        </div>
-                    </div>
-                `}).join('') || '<div style="text-align:center; padding: 30px; color:#94A3B8; font-weight:600;"><i class="fa-solid fa-ghost" style="font-size:3rem; margin-bottom:15px; display:block; opacity:0.5;"></i>No news yet</div>';
-
-            } catch (e) {}
-        }
-        
-        async function reactToPost(postId, emoji) {
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/channel/react`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ postId, emoji })
-                });
-                if(res.ok) loadOfficialChannelPosts();
-            } catch(e) {}
-        }
-
-        // Refresh periodically
-        setInterval(loadOfficialChannelPosts, 15000);
-
-        async function claimPromo() {
-            const codeInput = document.getElementById('promoCodeInput');
-            if(!codeInput) return;
-            const code = codeInput.value.trim();
-            if(!code) return showToast("Enter a promo code", "error");
-            
-            const btn = document.getElementById('claimPromoBtn');
-            if(btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
-            
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/claim-promo`, {
-                    method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ userId: currentUser.id || userId, code })
-                });
-                const data = await res.json();
-                if(data.success) {
-                    currentUser.points = data.newBal;
-                    
-                    const pageHeaderBal = document.getElementById('pageHeaderBal');
-                    if (pageHeaderBal) {
-                        pageHeaderBal.innerText = currentUser.points;
-                    }
-                    updateUI();
-                    triggerConfetti();
-                    showToast(`Promo Claimed! +${data.reward} Gems`, "success");
-                    codeInput.value = '';
-                } else {
-                    showToast(data.error || "Failed to claim", "error");
-                }
-            } catch(e) {
-                showToast("Network error", "error");
-            } finally {
-                if(btn) { btn.disabled = false; btn.innerHTML = 'Claim'; }
-            }
-        }
-
-        async function checkGate() {
-            const btn = document.getElementById('verifyGateBtn');
-            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Checking...'; }
-            showToast("Checking membership...", "info");
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/verify-gate`, {
-                    method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ userId: currentUser.id || userId })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    triggerConfetti();
-                    const gate = document.getElementById('gate-overlay');
-                    gate.style.transition = 'opacity 0.5s ease';
-                    gate.style.opacity = '0';
-                    setTimeout(() => { gate.style.display = 'none'; typeof setupApp === 'function' ? setupApp() : nav('home'); }, 500);
-                } else {
-                    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Try Again'; }
-                    showToast(data.message || "You must join all channels to continue!", "error");
-                }
-            } catch(e) {
-                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Try Again'; }
-                showToast("Network error. Try again.", "error");
-            }
-        }
     </script>
 </body>
 </html>

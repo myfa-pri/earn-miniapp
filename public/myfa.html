@@ -146,6 +146,9 @@
                         <label class="toggle-label">23. VPN/Proxy Blocker <input type="checkbox" id="cfg_vpn"></label>
                         <label class="toggle-label">25. Default Sound Effects <input type="checkbox" id="cfg_sound"></label>
                         <label class="toggle-label">26. Default Night Theme <input type="checkbox" id="cfg_night"></label>
+                        <label class="toggle-label">Auto Withdraw Enabled <input type="checkbox" id="cfg_auto_withdraw"></label>
+                        <label class="toggle-label">Enable Receipt Generation <input type="checkbox" id="cfg_receipt_gen"></label>
+                        <label class="toggle-label">Enable Telegram Notification <input type="checkbox" id="cfg_tg_notif"></label>
                     </div>
 
                     <!-- Limits & Security -->
@@ -200,6 +203,13 @@
                     <div class="input-group"><label>19. Support Channel URL</label><input type="text" id="cfg_support"></div>
                     <div class="input-group"><label>20. Admin Chat ID (Alerts)</label><input type="text" id="cfg_admin_chat"></div>
                     <div class="input-group"><label>20b. Admin Telegram IDs (Comma Separated)</label><input type="text" id="cfg_admin_telegram_ids" placeholder="e.g. 1234567,9876543"></div>
+                    
+                    <!-- Auto Withdraw Fields -->
+                    <div class="input-group"><label>Payment API URL</label><input type="text" id="cfg_payment_api_url" placeholder="https://api.telebirr.com/..."></div>
+                    <div class="input-group"><label>Processing Delay (mins)</label><input type="number" id="cfg_auto_withdraw_delay" value="5"></div>
+                    <div class="input-group"><label>Notification Channel ID</label><input type="text" id="cfg_withdraw_channel_id" placeholder="-100xxxxxxx"></div>
+                    <div class="input-group"><label>Notification Channel Username</label><input type="text" id="cfg_withdraw_channel_username" placeholder="@channel"></div>
+                    <button class="action-btn" style="margin-top: 10px;" onclick="testChannelConnection()"><i class="fa-solid fa-satellite-dish"></i> Test Channel</button>
                 </div>
 
                 <button class="action-btn" style="width:100%; margin-top:20px;" onclick="saveMasterConfig()"><i class="fa-solid fa-cloud-arrow-up"></i> Push Config to Firebase</button>
@@ -615,6 +625,13 @@
 document.getElementById('cfg_support').value = c.supportChannel || '';
             document.getElementById('cfg_admin_chat').value = c.telegramChatId || '';
             document.getElementById('cfg_admin_telegram_ids').value = c.adminTelegramIds || '';
+            document.getElementById('cfg_auto_withdraw').checked = !!c.autoWithdrawEnabled;
+            document.getElementById('cfg_receipt_gen').checked = !!c.receiptGenEnabled;
+            document.getElementById('cfg_tg_notif').checked = !!c.telegramNotifEnabled;
+            document.getElementById('cfg_payment_api_url').value = c.paymentApiUrl || '';
+            document.getElementById('cfg_auto_withdraw_delay').value = c.autoWithdrawDelay || 5;
+            document.getElementById('cfg_withdraw_channel_id').value = c.withdrawChannelId || '';
+            document.getElementById('cfg_withdraw_channel_username').value = c.withdrawChannelUsername || '';
         }
 
         let officialChannels = [];
@@ -698,7 +715,14 @@ document.getElementById('cfg_support').value = c.supportChannel || '';
                 spinRewardText: document.getElementById('cfg_spin_reward').value,
                 scratchMin: parseFloat(document.getElementById('cfg_scratch_min').value) || 10,
                 scratchMax: document.getElementById('cfg_scratch_max').value,
-                airdropDate: document.getElementById('cfg_airdrop').value
+                airdropDate: document.getElementById('cfg_airdrop').value,
+                autoWithdrawEnabled: document.getElementById('cfg_auto_withdraw').checked,
+                receiptGenEnabled: document.getElementById('cfg_receipt_gen').checked,
+                telegramNotifEnabled: document.getElementById('cfg_tg_notif').checked,
+                paymentApiUrl: document.getElementById('cfg_payment_api_url').value,
+                autoWithdrawDelay: document.getElementById('cfg_auto_withdraw_delay').value,
+                withdrawChannelId: document.getElementById('cfg_withdraw_channel_id').value,
+                withdrawChannelUsername: document.getElementById('cfg_withdraw_channel_username').value
             };
 
             fetch('/api/admin/config-update', {
@@ -1119,3 +1143,25 @@ document.getElementById('cfg_support').value = c.supportChannel || '';
     </script>
 </body>
 </html>
+
+<script>
+async function testChannelConnection() {
+    const channelId = document.getElementById('cfg_withdraw_channel_id').value;
+    if (!channelId) return alert('Please enter a Channel ID first.');
+    try {
+        const res = await fetch('/api/admin/test-channel', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ secret: SECRET, channelId })
+        });
+        const data = await res.json();
+        if(data.success) {
+            alert('Success! Bot can post to this channel.');
+        } else {
+            alert('Failed: ' + (data.error || 'Check bot permissions.'));
+        }
+    } catch(e) {
+        alert('Failed to connect to API.');
+    }
+}
+</script>

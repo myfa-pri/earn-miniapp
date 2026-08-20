@@ -206,36 +206,36 @@ body {
 .hologram-ring {
     position: absolute;
     border-radius: 50%;
-    border: 2px solid transparent;
+    border: 3px solid transparent;
 }
 .ring1 {
     width: 140px; height: 140px;
-    border-top: 2px solid var(--brand-blue); border-bottom: 2px solid var(--brand-blue);
-    animation: hologramSpin 3s linear infinite;
+    border-top: 3px solid #ff007f; border-bottom: 3px solid #ff007f;
+    animation: hologramSpin 3s linear infinite, colorShift1 5s linear infinite;
 }
 .ring2 {
     width: 110px; height: 110px;
-    border-left: 2px solid var(--brand-green); border-right: 2px solid var(--brand-green);
-    animation: hologramSpin 2s linear infinite reverse;
+    border-left: 3px solid #00f2fe; border-right: 3px solid #00f2fe;
+    animation: hologramSpin 2s linear infinite reverse, colorShift2 4s linear infinite;
 }
 .ring3 {
     width: 80px; height: 80px;
-    border-top: 2px solid var(--brand-orange); border-bottom: 2px solid var(--brand-orange);
-    animation: hologramSpin 1.5s linear infinite;
+    border-top: 3px solid #00ff88; border-bottom: 3px solid #00ff88;
+    animation: hologramSpin 1.5s linear infinite, colorShift3 3s linear infinite;
 }
 
 .hologram-core {
     width: 40px; height: 40px; border-radius: 50%;
-    background: radial-gradient(circle, var(--brand-blue) 0%, transparent 70%);
-    box-shadow: 0 0 20px var(--brand-blue);
-    animation: corePulse 1.5s ease-in-out infinite alternate;
+    background: radial-gradient(circle, #b026ff 0%, transparent 70%);
+    box-shadow: 0 0 20px #b026ff;
+    animation: corePulse 1.5s ease-in-out infinite alternate, colorShiftCore 4s infinite alternate;
 }
 
 .hologram-text {
     margin-top: 30px; font-family: 'Orbitron', sans-serif; font-weight: 800; font-size: 1.2rem;
-    color: var(--brand-green); letter-spacing: 2px;
-    text-shadow: 0 0 10px var(--brand-green);
-    animation: corePulse 1s ease-in-out infinite alternate;
+    color: #00ff88; letter-spacing: 2px;
+    text-shadow: 0 0 10px #00ff88;
+    animation: corePulse 1s ease-in-out infinite alternate, textGlowShift 3s infinite alternate;
 }
 
 @keyframes hologramSpin {
@@ -245,6 +245,34 @@ body {
 @keyframes corePulse {
     0% { opacity: 0.5; transform: scale(0.9); }
     100% { opacity: 1; transform: scale(1.1); }
+}
+@keyframes colorShift1 {
+    0% { border-color: #ff007f transparent #ff007f transparent; }
+    33% { border-color: #00f2fe transparent #00f2fe transparent; }
+    66% { border-color: #ffaa00 transparent #ffaa00 transparent; }
+    100% { border-color: #ff007f transparent #ff007f transparent; }
+}
+@keyframes colorShift2 {
+    0% { border-color: transparent #00f2fe transparent #00f2fe; }
+    33% { border-color: transparent #b026ff transparent #b026ff; }
+    66% { border-color: transparent #00ff88 transparent #00ff88; }
+    100% { border-color: transparent #00f2fe transparent #00f2fe; }
+}
+@keyframes colorShift3 {
+    0% { border-color: #00ff88 transparent #00ff88 transparent; }
+    33% { border-color: #ff007f transparent #ff007f transparent; }
+    66% { border-color: #b026ff transparent #b026ff transparent; }
+    100% { border-color: #00ff88 transparent #00ff88 transparent; }
+}
+@keyframes colorShiftCore {
+    0% { background: radial-gradient(circle, #b026ff 0%, transparent 70%); box-shadow: 0 0 20px #b026ff; }
+    50% { background: radial-gradient(circle, #00f2fe 0%, transparent 70%); box-shadow: 0 0 20px #00f2fe; }
+    100% { background: radial-gradient(circle, #ff007f 0%, transparent 70%); box-shadow: 0 0 20px #ff007f; }
+}
+@keyframes textGlowShift {
+    0% { color: #00ff88; text-shadow: 0 0 10px #00ff88; }
+    50% { color: #00f2fe; text-shadow: 0 0 10px #00f2fe; }
+    100% { color: #ffaa00; text-shadow: 0 0 10px #ffaa00; }
 }
 
 

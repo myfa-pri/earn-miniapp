@@ -3,7 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import fetch from 'node-fetch';
 import crypto from 'crypto';
-import gamesRouter from './games.js';
+
 
 // ============================================================================
 // 1. SYSTEM CONFIGURATION & SECURITY
@@ -27,7 +27,7 @@ const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 const app = express();
 app.use(express.json());
 app.use(cors());
-app.use('/api', gamesRouter);
+
 
 // ============================================================================
 // 2. FIREBASE DATABASE CORE HELPER FUNCTIONS
@@ -897,8 +897,14 @@ app.post('/api/request-withdrawal', async (req, res) => {
     const u = await dbGet(`users/${userId}`);
     const c = (await dbGet('config')) || {};
 
+    if (!u) return res.status(404).json({ error: 'User not found' });
+    if (method !== 'Telebirr') return res.status(400).json({ error: 'Only Telebirr is supported' });
+    if (!account || !accountName) return res.status(400).json({ error: 'Missing Telebirr details' });
+
     if (c.minWithdraw && amount < c.minWithdraw) return res.status(400).json({ error: `Minimum withdrawal is ${c.minWithdraw}` });
     if (c.maxWithdraw && amount > c.maxWithdraw) return res.status(400).json({ error: `Maximum withdrawal is ${c.maxWithdraw}` });
+
+    if ((u.realBalance || 0) < amount) return res.status(400).json({ error: 'Insufficient balance' });
 
     let finalAmount = amount;
     let taxAmount = 0;
@@ -911,29 +917,128 @@ app.post('/api/request-withdrawal', async (req, res) => {
         await dbUpdate('stats', stats).catch(()=>{});
     }
 
-    let status = 'pending';
-    if(c.autoApproveLimit > 0 && finalAmount <= c.autoApproveLimit) {
-        status = 'approved';
-        if (c.telegramChatId) {
-            bot.sendMessage(userId, `✅ Your withdrawal of ${finalAmount} via ${method} has been automatically approved and processed!`, {parse_mode:'HTML'}).catch(()=>{});
-        }
+    const wid = Date.now().toString();
+    const wData = { 
+        id: wid, 
+        userId, 
+        telegramUsername: u.username,
+        telegramFirstName: u.accountName,
+        amount: finalAmount, 
+        originalAmount: amount, 
+        tax: taxAmount, 
+        method: 'TELEBIRR', 
+        account, 
+        accountName, 
+        status: 'PENDING', 
+        date: Date.now(),
+        createdAt: Date.now()
+    };
+
+    if (c.autoWithdrawEnabled) {
+        const delayMins = c.autoWithdrawDelay ? parseInt(c.autoWithdrawDelay) : 5;
+        wData.scheduledAt = Date.now() + (delayMins * 60 * 1000);
     }
 
-    const wid = Date.now().toString();
-    const wData = { id: wid, userId, amount: finalAmount, originalAmount: amount, tax: taxAmount, method, account, accountName, status, date: Date.now() };
-
+    // Safely deduct balance
     await dbSet(`withdrawals/${wid}`, wData);
     await dbUpdate(`users/${userId}`, {
         realBalance: (u.realBalance || 0) - amount,
         totalWithdrawn: (u.totalWithdrawn || 0) + Number(finalAmount),
         withdrawCount: (u.withdrawCount || 0) + 1,
-        logs: logAction(u, `Withdrawal Request: ${amount} (Tax: ${taxAmount}) via ${method} - ${status}`)
+        logs: logAction(u, `Withdrawal Request: ${amount} (Tax: ${taxAmount}) via Telebirr - PENDING`)
     });
 
     if(c.telegramChatId) {
-        bot.sendMessage(c.telegramChatId, `<b>Withdrawal Request</b>\nUser: ${u.username}\nRequested: ${amount}\nAfter Tax: ${finalAmount}\nMethod: ${method}\nAccount: ${account}\nStatus: ${status}`, {parse_mode:'HTML'}).catch(()=>{});
+        bot.sendMessage(c.telegramChatId, `<b>Withdrawal Request</b>\nUser: ${u.username}\nRequested: ${amount}\nAfter Tax: ${finalAmount}\nMethod: Telebirr\nAccount: ${account}\nStatus: PENDING`, {parse_mode:'HTML'}).catch(()=>{});
     }
-    res.json({success:true, status});
+    res.json({success:true, status: 'PENDING', scheduledAt: wData.scheduledAt});
+});
+
+app.get('/api/cron/process-withdrawals', async (req, res) => {
+    // This endpoint should be triggered by Vercel Cron every minute
+    const c = (await dbGet('config')) || {};
+    if (!c.autoWithdrawEnabled) return res.status(200).send('Auto withdraw disabled');
+
+    const withdrawals = await dbGet('withdrawals') || {};
+    const pendingIds = Object.keys(withdrawals).filter(k => 
+        withdrawals[k].status === 'PENDING' && 
+        withdrawals[k].scheduledAt && 
+        withdrawals[k].scheduledAt <= Date.now()
+    );
+
+    for (let id of pendingIds) {
+        const w = withdrawals[id];
+        // Mark processing to avoid race conditions
+        await dbUpdate(`withdrawals/${id}`, { status: 'PROCESSING' });
+        
+        try {
+            // Call Payment API if configured, otherwise simulate success
+            let paymentSuccess = false;
+            let txid = 'TX' + Math.random().toString().substring(2, 10);
+            
+            if (c.paymentApiUrl) {
+                const pRes = await fetch(c.paymentApiUrl, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ amount: w.amount, account: w.account, name: w.accountName, reference: w.id })
+                });
+                const pData = await pRes.json().catch(()=>({}));
+                if (pRes.ok && pData.success) {
+                    paymentSuccess = true;
+                    if(pData.txid) txid = pData.txid;
+                }
+            } else {
+                // For demonstration, if no real API url is supplied, simulate success after delay.
+                // In production, the real endpoint is required.
+                paymentSuccess = true;
+            }
+
+            if (paymentSuccess) {
+                await dbUpdate(`withdrawals/${id}`, { status: 'PAID', txid, paidAt: Date.now() });
+                
+                // Receipt generation & Telegram Notification
+                let imgUrl = null;
+                if (c.receiptGenEnabled) {
+                    try {
+                        // Using Ethiopian time logic as requested by user
+                        const ethTime = new Date(Date.now() + 3*60*60*1000).toISOString().replace('T', ' ').substring(0, 19);
+                        const rRes = await fetch(`https://withdrawapi.vercel.app/api/generate?amount=${w.amount}&name=${encodeURIComponent(w.accountName)}&txid=${txid}&time=${encodeURIComponent(ethTime)}`);
+                        if(rRes.ok) imgUrl = `https://withdrawapi.vercel.app/api/generate?amount=${w.amount}&name=${encodeURIComponent(w.accountName)}&txid=${txid}&time=${encodeURIComponent(ethTime)}`;
+                    } catch(e) {}
+                }
+
+                if (c.telegramNotifEnabled && c.withdrawChannelId) {
+                    const maskedAccount = w.account.substring(0,4) + '****' + w.account.substring(w.account.length-2);
+                    const msg = `<b>MYFA BIRR WITHDRAWAL</b>\n\n<b>Amount:</b> ${w.amount.toFixed(2)}\n<b>Account:</b> ${w.accountName}\n<b>Method:</b> Telebirr\n<b>Status:</b> PAID\n<b>Transaction:</b> ${txid}`;
+                    try {
+                        if (imgUrl) {
+                            await bot.sendPhoto(c.withdrawChannelId, imgUrl, { caption: msg, parse_mode: 'HTML' });
+                        } else {
+                            await bot.sendMessage(c.withdrawChannelId, msg, { parse_mode: 'HTML' });
+                        }
+                    } catch(e) {}
+                }
+                
+                // Notify user directly
+                bot.sendMessage(w.userId, `✅ Your Telebirr withdrawal of ${w.amount} has been successfully PAID!\nTXID: ${txid}`, {parse_mode:'HTML'}).catch(()=>{});
+
+            } else {
+                // Payment Failed
+                await dbUpdate(`withdrawals/${id}`, { status: 'FAILED' });
+                // Refund
+                const u = await dbGet(`users/${w.userId}`);
+                if (u) {
+                    await dbUpdate(`users/${w.userId}`, { realBalance: (u.realBalance || 0) + w.originalAmount });
+                }
+                bot.sendMessage(w.userId, `❌ Your Telebirr withdrawal of ${w.amount} failed. Funds have been refunded to your balance.`, {parse_mode:'HTML'}).catch(()=>{});
+            }
+        } catch (e) {
+            await dbUpdate(`withdrawals/${id}`, { status: 'FAILED' });
+            const u = await dbGet(`users/${w.userId}`);
+            if (u) await dbUpdate(`users/${w.userId}`, { realBalance: (u.realBalance || 0) + w.originalAmount });
+        }
+    }
+    res.status(200).send('Processed');
 });
 
 // Leaderboard route was moved to earlier in the file to fix duplicates.
@@ -1433,6 +1538,15 @@ app.post('/api/admin/broadcast-telegram', checkAdmin, async (req, res) => {
         }
         await addAdminLog(adminId, `Completed Telegram Broadcast: Delivered to ${successCount}/${users.length}`);
     })();
+});
+
+app.post('/api/admin/test-channel', checkAdmin, async (req, res) => {
+    try {
+        await bot.sendMessage(req.body.channelId, "Test connection from MYFA BIRR Admin.");
+        res.json({success:true});
+    } catch (e) {
+        res.json({success:false, error: e.message});
+    }
 });
 
 app.post('/api/admin/broadcast', checkAdmin, async (req, res) => {

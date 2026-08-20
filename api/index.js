@@ -1185,15 +1185,6 @@ app.post('/api/aviator/cashout', async (req, res) => {
 // Deprecated duplicate spin route removed.
 
 
-    const winnings = betAmount * numBots;
-    
-    await dbUpdate(`users/${userId}`, { 
-        points: (user.points || 0) + winnings,
-        logs: logAction(user, `Won Ludo Game! (Bet: ${betAmount}, Bots: ${numBots}, Won: ${winnings})`)
-    });
-
-    res.json({ success: true, newPoints: user.points + winnings, winnings });
-});
 
 app.post('/api/combo', async (req, res) => {
     const { userId, combination } = req.body;
@@ -1606,3 +1597,4 @@ app.post('/api/admin/css-inject', checkAdmin, async (req, res) => {
 });
 
 export default app;
+

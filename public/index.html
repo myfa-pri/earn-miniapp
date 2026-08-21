@@ -666,7 +666,7 @@ function applyTranslation() {
                 if(page === 'withdraw') renderWithdraw(activePage);
                 if(page === 'tasks') renderTasks(activePage);
                 if(page === 'referrals') renderReferrals(activePage);
-                if(page === 'games') renderHome(activePage); // Fallback for games if hub is in home
+                if(page === 'games') renderGames(activePage);
             } else if (activePage) {
                 // Update specific elements if cached
                 if(page === 'home') {
@@ -1507,18 +1507,6 @@ function applyTranslation() {
                         <div class="mid">
                             <h3>Scratch Card</h3>
                             <p>Instant win scratch tickets.</p>
-                        </div>
-                        <button class="game-play-btn">Play</button>
-                    </div>
-                                            <div class="mid">
-                            <h3>Ludo</h3>
-                            <p>Multiplayer board game.</p>
-                        </div>
-                        <button class="game-play-btn">Play</button>
-                    </div>
-                                            <div class="mid">
-                            <h3>Chicken Road</h3>
-                            <p>Dodge Traffic, Multiply Cash.</p>
                         </div>
                         <button class="game-play-btn">Play</button>
                     </div>
@@ -3364,3 +3352,4 @@ function applyTranslation() {
     </script>
 </body>
 </html>
+

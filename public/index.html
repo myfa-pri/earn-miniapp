@@ -695,6 +695,19 @@ function applyTranslation() {
             }
         }
         
+        window.claimEnkutatash = function() {
+            if(localStorage.getItem('enkutatash_claimed')) {
+                showToast('You already claimed your Enkutatash gift!', 'error');
+                return;
+            }
+            if(typeof triggerConfetti === 'function') triggerConfetti();
+            localStorage.setItem('enkutatash_claimed', 'true');
+            currentUser.points += 1000;
+            currentUser.realBalance = (currentUser.realBalance || 0) + 0.50;
+            updateUI();
+            showToast('Happy New Year! +1000 Gems & +$0.50 added!', 'success');
+        };
+
         function renderHome(c) {
             const avatarUrl = window.Telegram.WebApp.initDataUnsafe?.user?.photo_url || currentUser.avatarUrl || `https://ui-avatars.com/api/?name=${currentUser.username}&background=00F2FE&color=fff`;
             
@@ -711,20 +724,6 @@ function applyTranslation() {
                     </div>
                     <div><i class="fa-solid fa-chevron-right" style="color:#FFD700;"></i></div>
                 </div>
-                <script>
-                    window.claimEnkutatash = function() {
-                        if(localStorage.getItem('enkutatash_claimed')) {
-                            showToast('You already claimed your Enkutatash gift!', 'error');
-                            return;
-                        }
-                        if(typeof triggerConfetti === 'function') triggerConfetti();
-                        localStorage.setItem('enkutatash_claimed', 'true');
-                        currentUser.points += 1000;
-                        currentUser.realBalance = (currentUser.realBalance || 0) + 0.50;
-                        updateUI();
-                        showToast('Happy New Year! +1000 Gems & +$0.50 added!', 'success');
-                    };
-                </script>
 
                 <div class="card cyber-card" style="text-align:center; padding: 30px 20px; position:relative; overflow:hidden;">
                     <div style="position:absolute; top:-50px; left:-50px; width:150px; height:150px; background:var(--color-magenta); filter:blur(60px); opacity:0.3; border-radius:50%;"></div>

@@ -181,7 +181,7 @@
             <a class="nav-item" data-page="referrals" onclick="nav('referrals')"><i class="fa-solid fa-user-group"></i><span>Invite</span></a>
             <a class="nav-item" data-page="leaderboard" onclick="nav('leaderboard')"><i class="fa-solid fa-trophy"></i><span>Top</span></a>
             <a class="nav-item" data-page="withdraw" onclick="nav('withdraw')"><i class="fa-solid fa-money-bill-transfer"></i><span>Withdraw</span></a>
-            
+            <a class="nav-item" data-page="settings" onclick="nav('settings')"><i class="fa-solid fa-gear"></i><span>Settings</span></a>
         </div>
         
         <!-- SPONSOR TASK OVERLAY -->
@@ -719,75 +719,861 @@ function applyTranslation() {
         };
 
         function renderHome(c) {
-    const avatarUrl = window.Telegram.WebApp.initDataUnsafe?.user?.photo_url || currentUser.avatarUrl || `https://ui-avatars.com/api/?name=${currentUser.username}&background=00F2FE&color=fff`;
-    
-    // Calculate accurate streak based on lastLoginTimestamp
-    let streakCount = currentUser.streakCount || 1;
-    const lastLogin = currentUser.lastLoginTimestamp;
-    const now = Date.now();
-    if (lastLogin) {
-        const hoursSince = (now - lastLogin) / (1000 * 60 * 60);
-        if (hoursSince > 48) streakCount = 1; // reset
-    }
-
-    c.innerHTML = `
-        <div class="card cyber-card" style="text-align:center; padding: 30px 20px; position:relative; overflow:hidden; margin-bottom: 20px;">
-            <div style="position:absolute; top:-50px; left:-50px; width:150px; height:150px; background:var(--color-magenta); filter:blur(60px); opacity:0.3; border-radius:50%;"></div>
-            <div style="position:absolute; bottom:-50px; right:-50px; width:150px; height:150px; background:var(--color-cyan); filter:blur(60px); opacity:0.3; border-radius:50%;"></div>
+            const avatarUrl = window.Telegram.WebApp.initDataUnsafe?.user?.photo_url || currentUser.avatarUrl || `https://ui-avatars.com/api/?name=${currentUser.username}&background=00F2FE&color=fff`;
             
-            <div class="avatar-ring" style="width:100px; height:100px; margin: 0 auto 15px;">
-                <div class="avatar-inner" style="background-image:url('${avatarUrl}'); border-width: 4px;"></div>
-            </div>
-            <h2 style="font-size:1.6rem; margin-bottom:5px;">${currentUser.username}</h2>
-            <div style="font-size: 2.5rem; color:var(--color-cyan); font-weight:800; text-shadow: 0 0 20px rgba(0, 242, 254, 0.5); margin: 10px 0;">
-                <i class="fa-solid fa-gem"></i> <span id="home-odometer" class="odometer">${currentUser.points}</span>
-            </div>
+            c.innerHTML = `
+                <!-- 1. Hero Profile -->
+                <!-- ENKUTATASH BANNER -->
+                <div class="card cyber-card" style="padding: 15px; margin-bottom: 15px; background: linear-gradient(135deg, rgba(255,215,0,0.1), rgba(0,255,136,0.1)); border: 1px solid rgba(255,215,0,0.4); display: flex; justify-content: space-between; align-items: center;" onclick="claimEnkutatash()">
+                    <div style="display:flex; align-items:center; gap: 15px;">
+                        <div style="font-size: 2.5rem; text-shadow: 0 0 10px #FFD700;">🌼</div>
+                        <div>
+                            <h3 style="color: #FFD700; margin-bottom: 2px; font-weight: 800; font-family: 'Orbitron', sans-serif;">Happy Enkutatash!</h3>
+                            <p style="font-size: 0.8rem; color: #E2E8F0;">Tap to claim your Aday Abeba Gift (1000 Gems + $0.50)!</p>
+                        </div>
+                    </div>
+                    <div><i class="fa-solid fa-chevron-right" style="color:#FFD700;"></i></div>
+                </div>
+
+                <div class="card cyber-card" style="text-align:center; padding: 30px 20px; position:relative; overflow:hidden;">
+                    <div style="position:absolute; top:-50px; left:-50px; width:150px; height:150px; background:var(--color-magenta); filter:blur(60px); opacity:0.3; border-radius:50%;"></div>
+                    <div style="position:absolute; bottom:-50px; right:-50px; width:150px; height:150px; background:var(--color-cyan); filter:blur(60px); opacity:0.3; border-radius:50%;"></div>
+                    
+                    <div class="avatar-ring" style="width:100px; height:100px; margin: 0 auto 15px;">
+                        <div class="avatar-inner" style="background-image:url('${avatarUrl}'); border-width: 4px;"></div>
+                    </div>
+                    <h2 style="font-size:1.6rem; margin-bottom:5px;">${currentUser.username}</h2>
+                    <div style="font-size: 2.5rem; color:var(--color-cyan); font-weight:800; text-shadow: 0 0 20px rgba(0, 242, 254, 0.5); margin: 10px 0;">
+                        <i class="fa-solid fa-gem"></i> <span id="home-odometer" class="odometer">${currentUser.points}</span>
+                    </div>
+                    
+                    <!-- 7-day Login Streak -->
+                    <div class="timeline">
+                        ${[1,2,3,4,5,6,7].map(day => `
+                            <div class="time-node ${currentUser.loginStreak >= day ? 'completed' : ''}">${day}</div>
+                        `).join('')}
+                    </div>
+                    <div style="font-size:0.85rem; color:#64748B; font-weight:700; margin-top:-15px;">Daily Streak</div>
+                </div>
+                
+                <!-- 2. Action Buttons (50/50 Split) -->
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-top:20px;">
+                    <button class="btn quantum-btn" onclick="postTelegramStory()">
+                        <i class="fa-solid fa-camera-retro"></i> Post Story
+                    </button>
+                    <button class="btn btn-secondary" onclick="window.location.href = '/setting.html?userId=' + userId">
+                        <i class="fa-solid fa-gear"></i> Settings
+                    </button>
+                </div>
+
+                <!-- 3. 6 Stats Grid (3x2) -->
+                <div class="stat-grid">
+                    <div class="stat-box cyber-card">
+                        <div class="stat-icon" style="color:var(--color-cyan); background:rgba(0, 242, 254, 0.1);"><i class="fa-solid fa-users"></i></div>
+                        <div style="font-size:1.2rem; font-weight:800;">${currentUser.referredUsers?.length || 0}</div>
+                        <div style="font-size:0.7rem; color:#64748B; font-weight:600;">Referrals</div>
+                    </div>
+                    <div class="stat-box cyber-card">
+                        <div class="stat-icon" style="color:var(--color-magenta); background:rgba(240, 147, 251, 0.1);"><i class="fa-solid fa-trophy"></i></div>
+                        <div style="font-size:1.2rem; font-weight:800;">#99+</div>
+                        <div style="font-size:0.7rem; color:#64748B; font-weight:600;">Global Rank</div>
+                    </div>
+                    <div class="stat-box cyber-card">
+                        <div class="stat-icon" style="color:var(--color-purple); background:rgba(79, 172, 254, 0.1);"><i class="fa-solid fa-video"></i></div>
+                        <div style="font-size:1.2rem; font-weight:800;">${((appConfig.monetagLimit || 5) - (currentUser.monetagWatchedToday || 0)) + ((appConfig.adsgramLimit || 5) - (currentUser.adsgramWatchedToday || 0))}</div>
+                        <div style="font-size:0.7rem; color:#64748B; font-weight:600;">Ads Left</div>
+                    </div>
+                    <div class="stat-box cyber-card">
+                        <div class="stat-icon" style="color:var(--gold-color); background:rgba(255, 215, 0, 0.1);"><i class="fa-solid fa-eye"></i></div>
+                        <div style="font-size:1.2rem; font-weight:800;">${(currentUser.monetagWatchedToday || 0) + (currentUser.adsgramWatchedToday || 0)}</div>
+                        <div style="font-size:0.7rem; color:#64748B; font-weight:600;">Ads Watched</div>
+                    </div>
+                    <div class="stat-box cyber-card">
+                        <div class="stat-icon" style="color:var(--success-color); background:rgba(16, 185, 129, 0.1);"><i class="fa-solid fa-list-check"></i></div>
+                        <div style="font-size:1.2rem; font-weight:800;">0</div>
+                        <div style="font-size:0.7rem; color:#64748B; font-weight:600;">Tasks Done</div>
+                    </div>
+                    <div class="stat-box cyber-card">
+                        <div class="stat-icon" style="color:var(--danger-color); background:rgba(239, 68, 68, 0.1);"><i class="fa-solid fa-wallet"></i></div>
+                        <div style="font-size:1.2rem; font-weight:800;">$0.00</div>
+                        <div style="font-size:0.7rem; color:#64748B; font-weight:600;">Withdrawn</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function renderTasks(c) {
+            let activeTasksHtml = '';
+            let completedTasksHtml = '';
+            let sponsorTasksHtml = '';
+            
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/tasks`);
+                const data = await res.json();
+                
+                const tasksObj = data.bonusTasks || data;
+                const sponsorTasks = data.sponsorTasks || [];
+                const claimed = currentUser.claimedBonuses || [];
+                const claimedSponsors = currentUser.claimedSponsorTasks || [];
+                
+                // Admin Bonus Tasks
+                Object.keys(tasksObj).forEach(id => {
+                    const t = tasksObj[id];
+                    const isClaimed = claimed.includes(id);
+                    const isFull = t.maxUsers > 0 && (t.claims || 0) >= t.maxUsers;
+                    const badge = t.maxUsers > 0 ? `<div style="font-size:0.7rem; background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:10px; display:inline-block; margin-top:5px;">${t.claims || 0}/${t.maxUsers} Claimed</div>` : '';
+                    
+                    let btnHtml = '';
+                    if (isClaimed) btnHtml = `<button class="task-pill-btn done" disabled><i class="fa-solid fa-check"></i> Done</button>`;
+                    else if (isFull) btnHtml = `<button class="task-pill-btn" style="background:#555; color:#ccc;" disabled>FULL</button>`;
+                    else btnHtml = `<button id="task-btn-${id}" class="task-pill-btn start" onclick="startTask('${id}', '${t.url}', '${t.type}', '${t.channelId}', ${t.reward})">Start</button>`;
+
+                    const html = `
+                        <div class="task-row cyber-card" id="task-row-${id}" data-name="${t.name.toLowerCase()}">
+                            <div class="icon-sq">
+                                <i class="fa-brands ${t.icon}" style="color:var(--color-cyan);"></i>
+                            </div>
+                            <div class="mid">
+                                <h4 style="font-weight:800; font-size:1.1rem; line-height:1.2;">${t.name}</h4>
+                                <div style="color:var(--success-color); font-weight:700; font-size:0.9rem;">+${t.reward} Gems</div>
+                                ${badge}
+                            </div>
+                            ${btnHtml}
+                        </div>
+                    `;
+                    
+                    if (isClaimed) completedTasksHtml += html;
+                    else activeTasksHtml += html;
+                });
+                
+                // Sponsor Tasks
+                sponsorTasks.forEach(t => {
+                    const isClaimed = claimedSponsors.includes(t.id);
+                    // Safe stringify for onclick
+                    const taskDataStr = JSON.stringify(t).replace(/'/g, "&apos;").replace(/"/g, "&quot;");
+                    
+                    let btnHtml = '';
+                    if (isClaimed) {
+                        btnHtml = `<button class="task-pill-btn done" disabled style="background:#555; color:#ccc;"><i class="fa-solid fa-check"></i> Done</button>`;
+                    } else {
+                        btnHtml = `<button id="sponsor-btn-${t.id}" class="task-pill-btn start" style="background:var(--color-magenta); color:white;" onclick="openSponsorTask(this, '${taskDataStr}')">View</button>`;
+                    }
+                    
+                    const html = `
+                        <div class="task-row cyber-card" id="sponsor-row-${t.id}" data-name="${t.name.toLowerCase()}">
+                            <div class="icon-sq" style="background:rgba(240, 147, 251, 0.1);">
+                                <i class="fa-solid ${t.icon || 'fa-star'}" style="color:var(--color-magenta);"></i>
+                            </div>
+                            <div class="mid">
+                                <h4 style="font-weight:800; font-size:1.1rem; line-height:1.2;">${t.name}</h4>
+                                <div style="color:var(--success-color); font-weight:700; font-size:0.9rem;">+${t.reward} Gems</div>
+                                <div style="font-size:0.7rem; color:#94A3B8; margin-top:2px;">Sponsored</div>
+                            </div>
+                            ${btnHtml}
+                        </div>
+                    `;
+                    
+                    if (!isClaimed) sponsorTasksHtml += html;
+                });
+                
+            } catch(e) {
+                activeTasksHtml = '<div style="text-align:center; padding:20px;">Failed to load tasks.</div>';
+            }
+
+            const monetagWatchedToday = currentUser.monetagWatchedToday || 0;
+            const adsgramWatchedToday = currentUser.adsgramWatchedToday || 0;
+            const adsterraWatchedToday = currentUser.adsterraWatchedToday || 0;
+            const monetagLimit = appConfig.monetagLimit || 5;
+            const adsgramLimit = appConfig.adsgramLimit || 5;
+            const adsterraLimit = appConfig.adsterraLimit || 10;
+            const monetagLimitReached = monetagWatchedToday >= monetagLimit;
+            const adsgramLimitReached = adsgramWatchedToday >= adsgramLimit;
+            const adsterraLimitReached = adsterraWatchedToday >= adsterraLimit;
+
+            c.innerHTML = `
+                <!-- TASK TABS -->
+                <div style="position: sticky; top: 75px; z-index: 10; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(15px); padding: 15px 20px; border-bottom: 1px solid rgba(0,168,255,0.2);">
+                    <div style="display: flex; background: rgba(0,0,0,0.5); border-radius: 30px; padding: 5px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);">
+                        <div id="tabOfficial" class="task-tab active" onclick="switchTaskTab('official')" style="flex: 1; text-align: center; padding: 10px; border-radius: 25px; cursor: pointer; transition: 0.3s; font-weight: 700; color: white; background: var(--brand-blue); box-shadow: 0 0 15px rgba(0, 168, 255, 0.5);">Official Tasks</div>
+                        <div id="tabSponsor" class="task-tab" onclick="switchTaskTab('sponsor')" style="flex: 1; text-align: center; padding: 10px; border-radius: 25px; cursor: pointer; transition: 0.3s; font-weight: 700; color: #94A3B8;">Sponsor Tasks</div>
+                    </div>
+                </div>
+
+                <div id="tasksSwipeContainer" style="overflow-x: hidden; position: relative;">
+                    <div id="taskSwipeArea" style="display: flex; width: 200%; transition: transform 0.3s ease;">
+                        <div id="officialTasksList" style="width: 50%; padding: 0 15px;">
+                            <!-- Daily Earning Top Ad Grid -->
+                <div class="ad-grid" style="grid-template-columns: repeat(3, 1fr);">
+                    <!-- Monetag Ad -->
+                    <div class="ad-card" ${monetagLimitReached ? '' : 'onclick="triggerMonetagAd()"'} style="${monetagLimitReached ? 'opacity: 0.5; cursor: not-allowed;' : ''}">
+                        <i class="fa-brands fa-youtube" style="font-size:3.5rem; color:#EF4444; filter:drop-shadow(0 0 15px rgba(239,68,68,0.6)); margin-bottom:12px; display:inline-block;"></i>
+                        <div style="font-weight:800; font-size:1.1rem; margin-bottom:5px;">Watch Ad</div>
+                        <div style="font-size: 0.8rem; color: #94A3B8; margin-bottom: 5px;">${monetagWatchedToday} / ${monetagLimit}</div>
+                        ${monetagLimitReached 
+                            ? `<div style="color:var(--danger-color); font-weight:700; font-size:0.9rem;">Limit Reached</div>`
+                            : `<div style="color:var(--success-color); font-weight:800; font-size:0.95rem;">+$${appConfig.realMoneyPerAd || 0.05} Cash</div>`
+                        }
+                    </div>
+                    <!-- Adsgram Ad -->
+                    <div class="ad-card" ${adsgramLimitReached ? '' : 'onclick="triggerAdsgramAd()"'} style="${adsgramLimitReached ? 'opacity: 0.5; cursor: not-allowed;' : ''}">
+                        <i class="fa-solid fa-fire" style="font-size:3.5rem; color:var(--gold-color); filter:drop-shadow(0 0 15px rgba(255,215,0,0.6)); margin-bottom:12px; display:inline-block;"></i>
+                        <div style="font-weight:800; font-size:1.1rem; margin-bottom:5px;">Special Ad</div>
+                        <div style="font-size: 0.8rem; color: #94A3B8; margin-bottom: 5px;">${adsgramWatchedToday} / ${adsgramLimit}</div>
+                        ${adsgramLimitReached 
+                            ? `<div style="color:var(--danger-color); font-weight:700; font-size:0.9rem;">Limit Reached</div>`
+                            : `<div style="color:var(--success-color); font-weight:800; font-size:0.95rem;">+$${appConfig.realMoneyPerAd || 0.05} Cash</div>`
+                        }
+                    </div>
+                    <!-- Adsterra Ad -->
+                    <div class="ad-card" id="adsterra-card" ${adsterraLimitReached ? '' : 'onclick="triggerAdsterraAd()"'} style="${adsterraLimitReached ? 'opacity: 0.5; cursor: not-allowed;' : ''}">
+                        <i class="fa-solid fa-star" style="font-size:3.5rem; color:#10B981; filter:drop-shadow(0 0 15px rgba(16,185,129,0.6)); margin-bottom:12px; display:inline-block;"></i>
+                        <div style="font-weight:800; font-size:1.1rem; margin-bottom:5px;">Premium Ad</div>
+                        <div style="font-size: 0.8rem; color: #94A3B8; margin-bottom: 5px;">${adsterraWatchedToday} / ${adsterraLimit}</div>
+                        ${adsterraLimitReached 
+                            ? `<div style="color:var(--danger-color); font-weight:700; font-size:0.9rem;">Limit Reached</div>`
+                            : `<div id="adsterra-reward-text" style="color:var(--success-color); font-weight:800; font-size:0.95rem;">+$${appConfig.realMoneyPerAd || 0.01} Cash</div>`
+                        }
+                    </div>
+                </div>
+
+                <div class="search-bar">
+                                <i class="fa-solid fa-magnifying-cyber-card" style="color:var(--color-cyan);"></i>
+                                <input type="text" id="taskSearch" placeholder="Search tasks..." oninput="filterTasks(this.value)">
+                            </div>
+                            
+                            <h3 style="margin-bottom: 15px; color: var(--color-cyan);">Official Tasks</h3>
+                            <div id="activeTasksContainer">${activeTasksHtml || '<div style="text-align:center; color:#94A3B8; padding:20px;">No active tasks available.</div>'}</div>
+                            
+                            <div id="completedTasksContainer" style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
+                                <h3 style="margin-bottom: 15px; color: var(--success-color);">Completed Tasks</h3>
+                                ${completedTasksHtml}
+                            </div>
+                        </div>
+                        <div id="sponsorTasksList" style="width: 50%; padding: 0 15px;">
+                            ${sponsorTasksHtml ? `
+                            <div id="sponsorTasksContainer" style="margin-top:20px; margin-bottom: 20px;">
+                                <h3 style="margin-bottom: 15px; color: var(--color-magenta); display:flex; align-items:center; gap:8px;">
+                                    <i class="fa-solid fa-star"></i> Community Sponsors
+                                </h3>
+                                ${sponsorTasksHtml}
+                            </div>` : '<div style="text-align:center; color:#94A3B8; padding:50px 20px;">No sponsor tasks available.</div>'}
+                        </div>
+                    </div>
+                </div>
+            `;
+        
+            // Swipe setup
+            setTimeout(() => {
+                let startX = 0;
+                const swipeArea = document.getElementById('taskSwipeArea');
+                if (swipeArea) {
+                    swipeArea.addEventListener('touchstart', e => startX = e.touches[0].clientX);
+                    swipeArea.addEventListener('touchend', e => {
+                        const endX = e.changedTouches[0].clientX;
+                        if (startX - endX > 50) switchTaskTab('sponsor'); // Swipe left
+                        if (endX - startX > 50) switchTaskTab('official'); // Swipe right
+                    });
+                }
+            }, 100);
+        }
+        
+        function switchTaskTab(tab) {
+            const area = document.getElementById('taskSwipeArea');
+            const btnOff = document.getElementById('tabOfficial');
+            const btnSpon = document.getElementById('tabSponsor');
+            if(!area || !btnOff || !btnSpon) return;
+            
+            if(tab === 'official') {
+                area.style.transform = 'translateX(0)';
+                btnOff.style.background = 'var(--brand-blue)';
+                btnOff.style.color = 'white';
+                btnOff.style.boxShadow = '0 0 15px rgba(0, 168, 255, 0.5)';
+                btnSpon.style.background = 'transparent';
+                btnSpon.style.color = '#94A3B8';
+                btnSpon.style.boxShadow = 'none';
+            } else {
+                area.style.transform = 'translateX(-50%)';
+                btnSpon.style.background = 'var(--brand-blue)';
+                btnSpon.style.color = 'white';
+                btnSpon.style.boxShadow = '0 0 15px rgba(0, 168, 255, 0.5)';
+                btnOff.style.background = 'transparent';
+                btnOff.style.color = '#94A3B8';
+                btnOff.style.boxShadow = 'none';
+            }
+        };
+
+        function filterTasks(query) {
+            const rows = document.querySelectorAll('.task-row');
+            const q = query.toLowerCase();
+            rows.forEach(r => {
+                if(r.dataset.name.includes(q)) {
+                    r.style.display = 'flex';
+                } else {
+                    r.style.display = 'none';
+                }
+            });
+        }
+
+        function triggerMonetagAd() {
+            const adsWatched = currentUser.dailyAdsWatched || 0;
+            if(adsWatched >= 10) return showToast("Daily limit reached!", "error");
+            
+            try {
+                if(typeof show_41731 === 'function') {
+                    show_41731().then(() => {
+                        fetch(`${API_BASE_URL}/api/watch-ad`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ userId: userId, network: 'monetag' })
+                        }).then(r => r.json()).then(data => {
+                            if (data.success) {
+                                currentUser.realBalance = (currentUser.realBalance || 0) + (appConfig.realMoneyPerAd || 0.05);
+                                currentUser.monetagWatchedToday = (currentUser.monetagWatchedToday || 0) + 1;
+                                updateUI();
+                                showToast(`Earned $${(appConfig.realMoneyPerAd || 0.05).toFixed(2)} Cash from Monetag!`, 'success');
+                            }
+                        });
+                    }).catch(() => {
+                        showToast("Ad blocked or failed to load. Please disable ad-blocker.", "error");
+                    });
+                } else {
+                    showToast("Monetag SDK not loaded.", "error");
+                }
+            } catch(e) { showToast("Ad error occurred.", "error"); }
+        }
+
+        function triggerAdsgramAd() {
+            showAdsgram();
+        }
+
+        let adsterraInterval = null;
+        function triggerAdsterraAd() {
+            if (!appConfig.adsterraLink) return showToast("Adsterra link not configured.", "error");
+            
+            const watchedToday = currentUser.adsterraWatchedToday || 0;
+            const limit = appConfig.adsterraLimit || 10;
+            if(watchedToday >= limit) return showToast("Daily limit reached!", "error");
+            
+            window.open(appConfig.adsterraLink, '_blank');
+            
+            const card = document.getElementById('adsterra-card');
+            const txt = document.getElementById('adsterra-reward-text');
+            if (card) { card.style.pointerEvents = 'none'; card.style.opacity = '0.7'; }
+            
+            let timeLeft = 15;
+            if (txt) txt.innerText = `Watching... ${timeLeft}s`;
+            
+            clearInterval(adsterraInterval);
+            adsterraInterval = setInterval(() => {
+                timeLeft--;
+                if (txt) txt.innerText = `Watching... ${timeLeft}s`;
+                if (timeLeft <= 0) {
+                    clearInterval(adsterraInterval);
+                    if (txt) txt.innerText = "Verifying...";
+                    
+                    fetch(`${API_BASE_URL}/api/adsterra-reward`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ userId: userId })
+                    }).then(r => r.json()).then(data => {
+                        if (data.success) {
+                            currentUser.realBalance = (currentUser.realBalance || 0) + (appConfig.realMoneyPerAd || 0.01);
+                            currentUser.adsterraWatchedToday = watchedToday + 1;
+                            updateUI();
+                            if(typeof triggerConfetti === 'function') triggerConfetti();
+                            showToast(`Earned $${(appConfig.realMoneyPerAd || 0.01).toFixed(2)} Cash from Premium Ad!`, 'success');
+                            nav('tasks'); // Refresh tasks page to update counter
+                        } else {
+                            showToast(data.error || "Verification failed.", "error");
+                            nav('tasks');
+                        }
+                    }).catch(() => {
+                        showToast("Network Error", "error");
+                        nav('tasks');
+                    });
+                }
+            }, 1000);
+        }
+
+        function startTask(taskId, url, type, channelId, reward) {
+            const finalUrl = url.startsWith('@') ? 'https://t.me/' + url.substring(1) : url;
+            
+            const btn = document.getElementById('task-btn-' + taskId);
+            
+            if (btn && btn.innerHTML.includes('Start')) {
+                window.open(finalUrl, '_blank');
+                btn.innerHTML = 'Check';
+                btn.style.background = 'var(--gold-color)';
+                btn.style.color = '#000';
+                return;
+            }
+
+            if (type === 'manual') {
+                // Show verification upload modal
+                const overlay = document.createElement('div');
+                overlay.style = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:10000; display:flex; justify-content:center; align-items:center; backdrop-filter:blur(5px);";
+                overlay.innerHTML = `
+                    <div class="card cyber-card" style="width:90%; max-width:400px; padding:20px; text-align:center;">
+                        <h3 style="margin-bottom:15px; color:var(--color-cyan);">Submit Task Proof</h3>
+                        <p style="font-size:0.9rem; color:#A7F3D0; margin-bottom:20px;">Please upload a screenshot showing you completed the task.</p>
+                        <input type="file" id="proofFile" accept="image/*" style="margin-bottom:20px; width:100%; color:#fff;">
+                        <div style="display:flex; gap:10px;">
+                            <button class="btn btn-secondary" style="flex:1;" onclick="this.parentElement.parentElement.parentElement.remove()">Cancel</button>
+                            <button class="btn quantum-btn" style="flex:1;" onclick="submitProof('${taskId}', this)">Submit</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(overlay);
+            } else if (type === 'auto') {
+                if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Checking...'; }
+                showToast("Verifying membership...", "info");
+                setTimeout(async () => {
+                    try {
+                        const res = await fetch(`${API_BASE_URL}/api/verify-membership`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ userId, taskId, channelId, reward })
+                        });
+                        const data = await res.json();
+                        if (data.success && !data.alreadyClaimed) {
+                            showToast("Task completed!", "success");
+                            currentUser.points = data.points;
+                            if(!currentUser.claimedBonuses) currentUser.claimedBonuses = [];
+                            currentUser.claimedBonuses.push(taskId);
+                            
+                            // DOM Reparenting on Success
+                            const pageHeaderBal = document.getElementById('pageHeaderBal');
+                            if (pageHeaderBal) {
+                                pageHeaderBal.innerText = currentUser.points;
+                            }
+                            const taskRow = document.getElementById('task-row-' + taskId);
+                            const completedContainer = document.getElementById('completedTasksContainer');
+                            if (taskRow && completedContainer) {
+                                completedContainer.appendChild(taskRow);
+                                if(btn) {
+                                    btn.className = 'task-pill-btn done';
+                                    btn.innerHTML = '<i class="fa-solid fa-check"></i> Done';
+                                    btn.disabled = true;
+                                    btn.style.background = '#555';
+                                    btn.style.color = '#ccc';
+                                }
+                            }
+                            
+                            updateUI();
+                        } else if(data.alreadyClaimed) {
+                            showToast("Already claimed!", "info");
+                            const taskRow = document.getElementById('task-row-' + taskId);
+                            const completedContainer = document.getElementById('completedTasksContainer');
+                            if (taskRow && completedContainer) {
+                                completedContainer.appendChild(taskRow);
+                                if(btn) {
+                                    btn.className = 'task-pill-btn done';
+                                    btn.innerHTML = '<i class="fa-solid fa-check"></i> Done';
+                                    btn.disabled = true;
+                                    btn.style.background = '#555';
+                                    btn.style.color = '#ccc';
+                                }
+                            }
+                        } else {
+                            showToast(data.error || "Not Joined. Please try again.", "error");
+                            if (btn) { btn.disabled = false; btn.innerHTML = 'Check'; btn.style.background = 'var(--gold-color)'; btn.style.color = '#000'; }
+                        }
+                    } catch (e) {
+                        showToast("Network Error", "error");
+                        if (btn) { btn.disabled = false; btn.innerHTML = 'Check'; btn.style.background = 'var(--gold-color)'; btn.style.color = '#000'; }
+                    }
+                }, 1500);
+            }
+        }
+
+        async function submitProof(taskId, btn) {
+            const fileInput = document.getElementById('proofFile');
+            if(!fileInput.files || fileInput.files.length === 0) return showToast("Please select a screenshot.", "error");
+            
+            btn.innerText = "Uploading...";
+            btn.disabled = true;
+
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                // Compress image via Canvas
+                const img = new Image();
+                img.onload = async function() {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 800;
+                    const scaleSize = MAX_WIDTH / img.width;
+                    canvas.width = MAX_WIDTH;
+                    canvas.height = img.height * scaleSize;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    const base64 = canvas.toDataURL('image/jpeg', 0.5); // 50% quality
+
+                    try {
+                        const res = await fetch(`${API_BASE_URL}/api/verify/upload`, {
+                            method: 'POST',
+                            headers:{'Content-Type':'application/json'},
+                            body: JSON.stringify({ userId, taskId, imageBase64: base64 })
+                        });
+                        if(res.ok) {
+                            showToast("Proof submitted! Awaiting admin review.", "success");
+                            btn.parentElement.parentElement.parentElement.remove();
+                        } else {
+                            showToast("Failed to submit.", "error");
+                            btn.innerText = "Submit"; btn.disabled = false;
+                        }
+                    } catch(err) {
+                        showToast("Network error.", "error");
+                        btn.innerText = "Submit"; btn.disabled = false;
+                    }
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        let currentSponsorTask = null;
+
+        function openSponsorTask(btn, taskDataStr) {
+            const task = JSON.parse(taskDataStr.replace(/&apos;/g, "'").replace(/&quot;/g, '"'));
+            currentSponsorTask = task;
             
             
-            <!-- Stats Grid -->
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom: 20px;">
-                <div class="stat-card" style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.05); padding:15px; border-radius:15px; text-align:center;">
-                    <i class="fa-solid fa-trophy" style="color:var(--color-magenta); font-size:1.5rem; margin-bottom:10px;"></i>
-                    <div style="font-size:0.9rem; color:var(--text-secondary);">Level</div>
-                    <div style="font-size:1.2rem; font-weight:bold;">${currentUser.level || 1}</div>
-                </div>
-                <div class="stat-card" style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.05); padding:15px; border-radius:15px; text-align:center;">
-                    <i class="fa-solid fa-ranking-star" style="color:var(--color-cyan); font-size:1.5rem; margin-bottom:10px;"></i>
-                    <div style="font-size:0.9rem; color:var(--text-secondary);">Global Rank</div>
-                    <div style="font-size:1.2rem; font-weight:bold;">#${currentUser.rank || 'N/A'}</div>
-                </div>
-                <div class="stat-card" style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.05); padding:15px; border-radius:15px; text-align:center;">
-                    <i class="fa-solid fa-play" style="color:#ef4444; font-size:1.5rem; margin-bottom:10px;"></i>
-                    <div style="font-size:0.9rem; color:var(--text-secondary);">Ads Watched</div>
-                    <div style="font-size:1.2rem; font-weight:bold;">${currentUser.totalAdsWatchedLifetime || 0}</div>
-                </div>
-                <div class="stat-card" style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.05); padding:15px; border-radius:15px; text-align:center;">
-                    <i class="fa-solid fa-users" style="color:#10b981; font-size:1.5rem; margin-bottom:10px;"></i>
-                    <div style="font-size:0.9rem; color:var(--text-secondary);">Invites</div>
-                    <div style="font-size:1.2rem; font-weight:bold;">${currentUser.referredUsers ? currentUser.referredUsers.length : 0}</div>
-                </div>
-            </div>
+            let iClass = task.icon || 'fa-solid fa-star';
+            if (iClass.includes('telegram')) iClass = 'fa-brands fa-telegram';
+            else if (iClass.includes('youtube')) iClass = 'fa-brands fa-youtube';
+            else if (iClass.includes('twitter') || iClass === 'x') iClass = 'fa-brands fa-x-twitter';
+            else if (iClass.includes('instagram')) iClass = 'fa-brands fa-instagram';
+            else if (iClass.includes('tiktok')) iClass = 'fa-brands fa-tiktok';
+            else if (!iClass.includes('fa-')) iClass = 'fa-solid fa-' + iClass;
+            else if (!iClass.includes('fa-solid') && !iClass.includes('fa-brands')) iClass = 'fa-solid ' + iClass;
+            document.getElementById('so-icon').className = iClass;
 
-            <!-- Daily Streak -->
-            <div class="timeline" style="margin-top:20px; padding-top:20px; border-top:1px solid rgba(255,255,255,0.1);">
-                <div style="font-size: 0.9rem; color: #94A3B8; margin-bottom: 10px;">Login Streak: ${streakCount} Days</div>
-                <div style="display:flex; justify-content:space-between;">
-                    ${[1,2,3,4,5,6,7].map(d => `
-                        <div style="width:30px; height:30px; border-radius:50%; background:${d <= streakCount ? 'var(--color-cyan)' : 'rgba(255,255,255,0.1)'}; color:${d <= streakCount ? 'black' : 'white'}; display:flex; align-items:center; justify-content:center; font-size:0.8rem; font-weight:bold; box-shadow:${d <= streakCount ? '0 0 10px var(--color-cyan)' : 'none'};">${d}</div>
-                    `).join('')}
+            document.getElementById('so-title').innerText = task.name;
+            document.getElementById('so-reward').innerText = `+${task.reward} Gems`;
+            document.getElementById('so-desc').innerText = task.desc || "Complete this task to earn your reward!";
+            
+            document.getElementById('so-proof-file').value = '';
+            
+            const btnContainer = document.getElementById('so-button-container');
+            
+            if (task.type === 'manual') {
+                document.getElementById('so-manual-proof-section').style.display = 'block';
+                btnContainer.innerHTML = `
+                    <button class="btn" style="flex:1; background:linear-gradient(45deg, #8A2BE2, #B026FF); color:white; font-size:1.2rem; padding:18px; font-weight:800; box-shadow:0 0 20px rgba(176,38,255,0.4);" onclick="executeSponsorTask()"><i class="fa-solid fa-arrow-up-right-from-square"></i> Do Task</button>
+                    <button id="so-verify-btn" class="btn" style="flex:1; background:linear-gradient(45deg, #FFD700, #F59E0B); color:black; font-size:1.2rem; padding:18px; font-weight:900; box-shadow:0 0 20px rgba(255,215,0,0.4);" onclick="verifySponsorTask()"><i class="fa-solid fa-check-double"></i> Submit</button>
+                `;
+            } else {
+                document.getElementById('so-manual-proof-section').style.display = 'none';
+                btnContainer.innerHTML = `
+                    <button class="btn" style="flex:1; background:linear-gradient(45deg, #00A8FF, #00F2FE); color:white; font-size:1.2rem; padding:18px; font-weight:800; box-shadow:0 0 20px rgba(0,242,254,0.4);" onclick="executeSponsorTask()"><i class="fa-brands fa-telegram"></i> Join</button>
+                    <button id="so-verify-btn" class="btn" style="flex:1; background:linear-gradient(45deg, #00E676, #10B981); color:white; font-size:1.2rem; padding:18px; font-weight:900; box-shadow:0 0 20px rgba(0,230,118,0.4);" onclick="verifySponsorTask()"><i class="fa-solid fa-circle-check"></i> Check</button>
+                `;
+            }
+            
+            document.getElementById('sponsorOverlay').classList.add('open');
+        }
+
+        function closeSponsorTask() {
+            document.getElementById('sponsorOverlay').classList.remove('open');
+            currentSponsorTask = null;
+        }
+
+        function executeSponsorTask() {
+            if (!currentSponsorTask) return;
+            
+            const url = currentSponsorTask.url;
+            const finalUrl = url.startsWith('@') ? 'https://t.me/' + url.substring(1) : url;
+            window.open(finalUrl, '_blank');
+            
+            document.getElementById('so-start-btn').style.display = 'none';
+            document.getElementById('so-verify-btn').style.display = 'block';
+        }
+
+        async function verifySponsorTask() {
+            if (!currentSponsorTask) return;
+            const task = currentSponsorTask;
+            const btn = document.getElementById('so-verify-btn');
+            
+            if (task.type === 'manual') {
+                const fileInput = document.getElementById('so-proof-file');
+                if(!fileInput.files || fileInput.files.length === 0) return showToast("Please select a screenshot proof first.", "error");
+                
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading...';
+                btn.disabled = true;
+
+                const file = fileInput.files[0];
+                const reader = new FileReader();
+                reader.onload = async function(e) {
+                    const img = new Image();
+                    img.onload = async function() {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 800;
+                        const scaleSize = MAX_WIDTH / img.width;
+                        canvas.width = MAX_WIDTH;
+                        canvas.height = img.height * scaleSize;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        const base64 = canvas.toDataURL('image/jpeg', 0.5);
+
+                        try {
+                            const res = await fetch(`${API_BASE_URL}/api/sponsor/verify-manual`, {
+                                method: 'POST',
+                                headers:{'Content-Type':'application/json'},
+                                body: JSON.stringify({ userId, taskId: task.id, imageBase64: base64 })
+                            });
+                            const data = await res.json();
+                            if(data.success) {
+                                showToast("Proof submitted! Awaiting sponsor review.", "success");
+                                if(!currentUser.claimedSponsorTasks) currentUser.claimedSponsorTasks = [];
+                                currentUser.claimedSponsorTasks.push(task.id);
+                                closeSponsorTask();
+                                nav('tasks'); // Refresh tasks page
+                            } else {
+                                showToast(data.error || "Failed to submit.", "error");
+                                btn.innerText = "Check"; btn.disabled = false;
+                            }
+                        } catch(err) {
+                            showToast("Network error.", "error");
+                            btn.innerText = "Check"; btn.disabled = false;
+                        }
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+                
+            } else {
+                // Auto Task
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Checking...';
+                btn.disabled = true;
+                
+                try {
+                    const res = await fetch(`${API_BASE_URL}/api/sponsor/verify-auto`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ userId, taskId: task.id, channelId: task.channelId, reward: task.reward })
+                    });
+                    const data = await res.json();
+                    
+                    if (data.success) {
+                        showToast("Task completed!", "success");
+                        currentUser.points = data.points;
+                        if(!currentUser.claimedSponsorTasks) currentUser.claimedSponsorTasks = [];
+                        currentUser.claimedSponsorTasks.push(task.id);
+                        
+                        updateUI();
+                        closeSponsorTask();
+                        nav('tasks'); // Refresh tasks page
+                    } else {
+                        showToast(data.error || "Not Joined. Please try again.", "error");
+                        btn.innerText = 'Check'; btn.disabled = false;
+                    }
+                } catch (e) {
+                    showToast("Network Error", "error");
+                    btn.innerText = 'Check'; btn.disabled = false;
+                }
+            }
+        }
+
+        async function renderReferrals(c) {
+            const botLink = (typeof appConfig !== 'undefined' && appConfig.telegramBotLink) ? appConfig.telegramBotLink : 'https://t.me/beshbesh_bot';
+            const shortname = (typeof appConfig !== 'undefined' && appConfig.miniAppShortname) ? appConfig.miniAppShortname : 'earn';
+            const refLink = `${botLink}/${shortname}?startapp=ref${userId}`;
+            
+            c.innerHTML = `
+                <div class="card cyber-card" style="text-align:center; padding:30px 20px; position:relative; overflow:hidden;">
+                    <!-- Ambient Glow -->
+                    <div style="position:absolute; top:-50px; left:-50px; width:150px; height:150px; background:var(--color-cyan); filter:blur(60px); opacity:0.3; border-radius:50%;"></div>
+                    
+                    <div class="hero-floating-icon" style="margin-bottom:15px; font-size:4rem; color:var(--color-cyan); text-shadow:0 0 20px rgba(0,242,254,0.6);">
+                        <i class="fa-solid fa-user-astronaut"></i>
+                    </div>
+                    <h2 style="font-size:1.8rem; margin-bottom:5px; background:var(--gradient-main); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">Invite & Earn</h2>
+                    <div style="color:#94A3B8; font-size:0.95rem; margin-bottom:25px; font-weight:600;">Earn $${appConfig.referralBonusReferrer || 0} Cash for every friend you invite!</div>
+                    
+                    <div class="qr-glow-box" style="display:flex; justify-content:center; align-items:center; margin:0 auto 20px auto; width:150px; height:150px;">
+                        <div id="qrCodeContainer"></div>
+                    </div>
+
+                    <div style="background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.1); padding:15px; border-radius:10px; font-family:monospace; font-size:0.85rem; word-break:break-all; margin-bottom:20px; color:#E2E8F0;">
+                        ${refLink}
+                    </div>
+
+                    <div style="display:flex; gap:10px;">
+                        <button class="btn btn-secondary" style="flex:1;" onclick="copyRefLink('${refLink}')"><i class="fa-solid fa-copy"></i> Copy</button>
+                        <button class="btn quantum-btn" style="flex:1;" onclick="shareRefLink('${refLink}')"><i class="fa-solid fa-share-nodes"></i> Share</button>
+                    </div>
                 </div>
-            </div>
-        </div>
 
-        <div style="display:flex; gap:10px; margin-bottom: 10px;">
-            <button class="btn quantum-btn" style="flex:1; padding:15px; font-size:1.1rem; border-radius:15px;" onclick="showToast('Story Posted!', 'success')"><i class="fa-solid fa-camera"></i> Post Story</button>
-            <button class="btn btn-secondary" style="flex:1; padding:15px; font-size:1.1rem; border-radius:15px;" onclick="window.location.href = '/setting.html?userId=' + userId"><i class="fa-solid fa-bullseye"></i> ADS</button>
-        </div>
-        <button class="btn" style="width:100%; padding:15px; font-size:1.1rem; border-radius:15px; background: rgba(139, 92, 246, 0.2); border: 1px solid rgba(139, 92, 246, 0.5); color: white; margin-bottom: 20px;" onclick="document.getElementById('profileModal').style.display='flex'"><i class="fa-solid fa-user-shield"></i> Profile & Security</button>
-    `;
-}
+                <div class="card cyber-card" style="margin-top:20px;">
+                    <h3 style="margin-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px; display:flex; justify-content:space-between;">
+                        <span><i class="fa-solid fa-users" style="color:var(--color-purple);"></i> My Network</span>
+                        <span style="color:var(--color-cyan); font-weight:900;">${currentUser.referredUsers?.length || 0}</span>
+                    </h3>
+                    <div id="invitesList" style="max-height:300px; overflow-y:auto; padding-right:5px;">
+                        <div style="text-align:center; padding:20px; color:#94A3B8;"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</div>
+                    </div>
+                </div>
+            `;
 
-function renderWithdraw(c) {
+            // Generate QR Code
+            setTimeout(() => {
+                new QRCode(document.getElementById("qrCodeContainer"), {
+                    text: refLink,
+                    width: 130,
+                    height: 130,
+                    colorDark : "#000000",
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.H
+                });
+            }, 100);
+
+            // Fetch Referrals
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/referrer/${userId}`);
+                const refs = await res.json();
+                const list = document.getElementById('invitesList');
+                if (!list) return;
+                if(refs.length === 0) {
+                    list.innerHTML = `
+                        <div style="text-align:center; padding:30px 10px;">
+                            <i class="fa-solid fa-ghost" style="font-size:3rem; color:rgba(255,255,255,0.1); margin-bottom:15px; filter:drop-shadow(0 0 10px rgba(255,255,255,0.2));"></i>
+                            <div style="color:#94A3B8; font-weight:600;">No invites yet. Start sharing your link!</div>
+                        </div>
+                    `;
+                } else {
+                    list.innerHTML = refs.map(r => `
+                        <div class="referral-list-item cyber-card" style="display:flex; align-items:center; padding:15px; border-radius:15px; margin-bottom:10px; gap:15px;">
+                            <img loading="lazy" src="https://ui-avatars.com/api/?name=${encodeURIComponent(r.accountName||'U')}&background=random&color=fff" style="width:45px; height:45px; border-radius:50%; border:2px solid var(--color-purple);">
+                            <div class="mid" style="flex:1; text-align:left;">
+                                <div style="font-weight:800; font-size:1rem; color:white;">${r.accountName}</div>
+                                <div style="font-size:0.75rem; color:#94A3B8;">${new Date(r.createdAt).toLocaleDateString()}</div>
+                            </div>
+                            <div style="color:var(--success-color); font-weight:900; font-size:1rem; text-shadow:0 0 10px var(--success-color);">+$${appConfig.referralBonusReferrer || 0} <i class='fa-solid fa-check'></i></div>
+                        </div>
+                    `).join('');
+                }
+            } catch(e) {}
+        }
+
+        function copyRefLink(link) {
+            navigator.clipboard.writeText(link);
+            showToast("Copied to clipboard!", "success");
+        }
+
+        function shareRefLink(link) {
+            if(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openTelegramLink) {
+                const text = encodeURIComponent(`Join me on MYFA BIRR and let's earn Gems together! 🚀`);
+                window.Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${text}`);
+            } else {
+                window.open(`https://t.me/share/url?url=${encodeURIComponent(link)}`, '_blank');
+            }
+        }
+
+        // --- AD NETWORK LOGIC ---
+        let AdController = null;
+
+        function showAdsgram() {
+            if (!window.Adsgram) {
+                return showToast("Ad system loading... Please wait a few seconds.", "info");
+            }
+            if (AdController === null) {
+                try {
+                    AdController = window.Adsgram.init({ blockId: "41731" });
+                } catch (e) {
+                    return showToast("Failed to connect to Ad Server.", "error");
+                }
+            }
+            
+            AdController.show().then((result) => {
+                setTimeout(() => {
+                    fetch(`${API_BASE_URL}/api/user/${userId}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        currentUser = data;
+                        updateUI();
+                        nav('tasks');
+                        if (typeof triggerConfetti === 'function') triggerConfetti();
+                        showToast("Ad Verified! Real Money added.", "success");
+                    });
+                }, 1500);
+            }).catch((err) => {
+                const desc = String(err?.description || err?.error || '').toLowerCase();
+                if (desc.includes('ad closed') || err?.done === false) {
+                    showToast("You closed the ad early! No reward.", "error");
+                } else if (desc.includes('no ads available')) {
+                    showToast("No ads available right now. Try again later!", "info");
+                } else {
+                    showToast("Ad system is currently pending/inactive.", "error");
+                }
+            });
+        }
+
+        function renderLudoGame(c) {
+            c.innerHTML = `
+                <div style="text-align:center; padding: 50px 20px;">
+                    <i class="fa-solid fa-dice" style="font-size:4rem; color:var(--brand-blue); filter: drop-shadow(0 0 20px var(--brand-blue)); margin-bottom:20px;"></i>
+                    <h2 style="margin-bottom:15px; font-family:'Orbitron', sans-serif; font-size:1.8rem; color:white;">Ludo Game</h2>
+                    <p style="color:#94A3B8; margin-bottom:30px;">Multiplayer Ludo is launching soon!</p>
+                    <button class="btn quantum-btn" onclick="closeGame()" style="max-width:200px; margin:0 auto;">Back to Hub</button>
+                </div>
+            `;
+        }
+
+        function renderGames(c) {
+            c.innerHTML = `
+                <h2 style="margin-bottom: 20px;"><i class="fa-solid fa-gamepad" style="color:var(--color-purple);"></i> Game Hub</h2>
+                
+                <div class="cyber-card" style="margin-bottom:20px; border-radius:15px; padding:15px; display:flex; gap:10px; align-items:center;">
+                    <i class="fa-solid fa-gift" style="color:var(--color-magenta); font-size:1.5rem;"></i>
+                    <input type="text" id="promoCodeInput" placeholder="Enter Promo Code..." style="flex:1; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:10px; color:white; outline:none; text-transform:uppercase;">
+                    <button class="btn quantum-btn" style="width:auto; padding:10px 15px; border-radius:10px;" onclick="claimPromo()">Redeem</button>
+                </div>
+
+                <div class="game-hub-list">
+                    <div class="game-row cyber-card" onclick="openGame('aviator')">
+                        <div class="game-icon-box" style="color:var(--danger-color);"><i class="fa-solid fa-plane-up"></i></div>
+                        <div class="mid">
+                            <h3>Aviator</h3>
+                            <p>Hold for high multipliers!</p>
+                        </div>
+                        <button class="game-play-btn" onclick="openGame('aviator'); event.stopPropagation();">Play</button>
+                    </div>
+                    <div class="game-row cyber-card" onclick="openGame('multiox')">
+                        <div class="game-icon-box" style="color:var(--color-cyan);"><i class="fa-solid fa-xmarks-lines"></i></div>
+                        <div class="mid">
+                            <h3>Multi OX</h3>
+                            <p>Tic-Tac-Toe against the bot.</p>
+                        </div>
+                        <button class="game-play-btn" onclick="openGame('multiox'); event.stopPropagation();">Play</button>
+                    </div>
+                    <div class="game-row cyber-card" onclick="openGame('dailycombo')">
+                        <div class="game-icon-box" style="color:var(--gold-color);"><i class="fa-solid fa-puzzle-piece"></i></div>
+                        <div class="mid">
+                            <h3>Daily Combo</h3>
+                            <p>Select 3 cards to win.</p>
+                        </div>
+                        <button class="game-play-btn" onclick="openGame('dailycombo'); event.stopPropagation();">Play</button>
+                    </div>
+                    <div class="game-row cyber-card" onclick="openGame('prospin')">
+                        <div class="game-icon-box" style="color:var(--color-magenta);"><i class="fa-solid fa-dharmachakra"></i></div>
+                        <div class="mid">
+                            <h3>Pro Spin</h3>
+                            <p>Spin the wheel of fortune.</p>
+                        </div>
+                        <button class="game-play-btn" onclick="openGame('prospin'); event.stopPropagation();">Play</button>
+                    </div>
+                    <div class="game-row cyber-card" onclick="openGame('scratchcard')">
+                        <div class="game-icon-box" style="color:var(--success-color);"><i class="fa-solid fa-ticket"></i></div>
+                        <div class="mid">
+                            <h3>Scratch Card</h3>
+                            <p>Instant win scratch tickets.</p>
+                        </div>
+                        <button class="game-play-btn" onclick="openGame('scratchcard'); event.stopPropagation();">Play</button>
+                    </div>
+                </div>`;
+        }
+
+        function renderWithdraw(c) {
             const realBal = currentUser.realBalance || 0;
             const curInvites = currentUser.referredUsers ? currentUser.referredUsers.length : 0;
             const curAds = currentUser.totalAdsWatchedLifetime || 0;
@@ -1348,7 +2134,6 @@ function renderWithdraw(c) {
             }
         };
 
-        
         async function renderLeaderboard(c) {
             c.innerHTML = `
                 <style>
@@ -1381,85 +2166,104 @@ function renderWithdraw(c) {
                     
                     .podium-avatar {
                         border-radius: 50%;
-                        border: 3px solid var(--color-magenta);
-                        background: #1E293B;
                         object-fit: cover;
+                        background: var(--bg-color);
+                        z-index: 2;
+                        position: relative;
                     }
                     
-                    .rank-1 .podium-avatar { width: 90px; height: 90px; border-color: #FFD700; box-shadow: 0 0 30px rgba(255,215,0,0.4); z-index: 3; }
-                    .rank-2 .podium-avatar { width: 75px; height: 75px; border-color: #C0C0C0; box-shadow: 0 0 20px rgba(192,192,192,0.4); z-index: 2; }
-                    .rank-3 .podium-avatar { width: 65px; height: 65px; border-color: #CD7F32; box-shadow: 0 0 15px rgba(205,127,50,0.4); z-index: 1; }
-                    
-                    .podium-crown {
-                        color: #FFD700;
-                        font-size: 1.8rem;
-                        margin-bottom: -15px;
-                        z-index: 4;
-                        filter: drop-shadow(0 0 10px rgba(255,215,0,0.8));
+                    /* Gold - Rank 1 */
+                    .podium-tier.rank-1 .podium-avatar {
+                        width: 80px; height: 80px;
+                        border: 4px solid #FFD700;
+                        box-shadow: 0 0 25px rgba(255, 215, 0, 0.6);
                     }
-                    .rank-2 .podium-crown, .rank-3 .podium-crown { display: none; }
+                    /* Silver - Rank 2 */
+                    .podium-tier.rank-2 .podium-avatar {
+                        width: 65px; height: 65px;
+                        border: 3px solid #C0C0C0;
+                        box-shadow: 0 0 15px rgba(192, 192, 192, 0.6);
+                    }
+                    /* Bronze - Rank 3 */
+                    .podium-tier.rank-3 .podium-avatar {
+                        width: 65px; height: 65px;
+                        border: 3px solid #CD7F32;
+                        box-shadow: 0 0 15px rgba(205, 127, 50, 0.6);
+                    }
                     
-                    .podium-name { font-weight: 800; font-size: 0.9rem; margin-top: 8px; max-width: 90px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-                    .podium-gems { font-size: 0.8rem; color: var(--color-cyan); font-weight: 900; }
+                    .podium-crown { font-size: 1.5rem; margin-bottom: -15px; z-index: 3; position: relative; }
+                    .rank-1 .podium-crown { color: #FFD700; filter: drop-shadow(0 0 10px #FFD700); font-size: 2rem; margin-bottom: -20px; }
+                    .rank-2 .podium-crown { color: #C0C0C0; filter: drop-shadow(0 0 8px #C0C0C0); }
+                    .rank-3 .podium-crown { color: #CD7F32; filter: drop-shadow(0 0 8px #CD7F32); }
                     
+                    .podium-name {
+                        font-weight: 800; color: white;
+                        margin-top: 10px;
+                        max-width: 90px;
+                        text-overflow: ellipsis; white-space: nowrap; overflow: hidden;
+                    }
+                    .rank-1 .podium-name { font-size: 1.1rem; max-width: 110px; }
+                    
+                    .podium-gems { font-size: 0.9rem; font-weight: 900; margin-top: 5px; display:flex; align-items:center; justify-content:center; gap:5px;}
+                    .rank-1 .podium-gems { color: #FFD700; text-shadow: 0 0 10px rgba(255,215,0,0.8); }
+                    .rank-2 .podium-gems { color: #C0C0C0; }
+                    .rank-3 .podium-gems { color: #CD7F32; }
+
                     .lb-list-item {
-                        display: flex;
-                        align-items: center;
-                        background: rgba(255,255,255,0.03);
-                        border: 1px solid rgba(255,255,255,0.05);
-                        border-radius: 16px;
-                        padding: 12px 15px;
-                        margin-bottom: 8px;
-                        transition: transform 0.2s;
+                        display: flex; align-items: center; justify-content: space-between;
+                        background: rgba(255, 255, 255, 0.05);
+                        border: 1px solid rgba(255, 255, 255, 0.1);
+                        border-radius: 16px; margin-bottom: 8px; padding: 10px 15px;
+                        backdrop-filter: blur(16px);
                     }
-                    .lb-list-item:active { transform: scale(0.98); }
                     
                     .lb-badge {
-                        width: 30px;
-                        font-weight: 900;
-                        color: #94A3B8;
-                        font-size: 1.1rem;
+                        width: 25px; height: 25px; border-radius: 50%;
+                        background: rgba(255,255,255,0.1);
+                        display: flex; align-items: center; justify-content: center;
+                        font-size: 0.8rem; font-weight: bold; color: #94A3B8;
+                        margin-right: 12px;
                     }
                     
                     .lb-avatar {
-                        width: 45px;
-                        height: 45px;
-                        border-radius: 50%;
-                        margin-right: 15px;
-                        object-fit: cover;
-                        border: 2px solid rgba(255,255,255,0.1);
+                        width: 45px; height: 45px; border-radius: 50%; object-fit: cover;
+                        margin-right: 12px;
                     }
                     
-                    .lb-name { flex: 1; font-weight: bold; font-size: 1rem; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
-                    .lb-gems { font-weight: 900; color: var(--color-cyan); font-size: 1rem; }
+                    .lb-name {
+                        flex: 1; font-weight: 800; color: white;
+                        text-overflow: ellipsis; white-space: nowrap; overflow: hidden;
+                    }
+                    
+                    .lb-gems {
+                        font-weight: 900; color: var(--color-cyan);
+                        display: flex; align-items: center; gap: 5px;
+                    }
                     
                     .lb-sticky-footer {
-                        position: fixed;
-                        bottom: 85px;
-                        left: 0;
-                        right: 0;
-                        background: rgba(15, 23, 42, 0.95);
-                        backdrop-filter: blur(20px);
-                        border-top: 1px solid rgba(255,255,255,0.1);
-                        padding: 15px 20px;
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        z-index: 90;
-                        box-shadow: 0 -10px 30px rgba(0,0,0,0.5);
+                        position: fixed; bottom: 80px; left: 0; right: 0; z-index: 90;
+                        background: rgba(10, 10, 10, 0.7);
+                        backdrop-filter: blur(16px);
+                        border-top: 2px solid transparent;
+                        border-image: linear-gradient(90deg, #00F2FE, #4FACFE, #F093FB) 1;
+                        padding: 10px 20px;
+                        display: flex; justify-content: space-between; align-items: center;
                     }
                 </style>
-                <div class="header-main" style="padding: 20px 15px 5px 15px; background: none; border: none; box-shadow: none;">
-                    <h2 style="font-size: 1.8rem; margin:0;"><i class="fa-solid fa-trophy" style="color:#FFD700;"></i> Top 100</h2>
-                    <p style="color:#94A3B8; margin-top:5px; font-size:0.9rem;">Rankings update in real-time</p>
+                <div style="text-align:center; padding: 20px 0;">
+                    <h2><i class="fa-solid fa-trophy" style="color:var(--gold-color); font-size: 2rem; margin-bottom: 10px; display:inline-block; filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.5));"></i><br>Top 100 Players</h2>
+                    <p style="font-size:0.85rem; color:#94A3B8;">The best of the best.</p>
                 </div>
                 
-                <div id="leaderboardLoading" style="padding: 15px;">
-                    <div class="skeleton-row" style="height:150px; margin-bottom:30px; border-radius:20px;"></div>
-                    <div class="skeleton-row"></div><div class="skeleton-row"></div><div class="skeleton-row"></div>
+                <div id="leaderboardLoading" style="padding: 0 15px;">
+                    <div class="skeleton-row"></div>
+                    <div class="skeleton-row"></div>
+                    <div class="skeleton-row"></div>
+                    <div class="skeleton-row"></div>
+                    <div class="skeleton-row"></div>
                 </div>
                 
-                <div id="podiumContainer" class="podium-container"></div>
+                <div id="podiumContainer" class="podium-container" style="display:none;"></div>
                 <div id="leaderboardList" style="padding: 0 15px; margin-bottom: 140px; display:none;"></div>
                 <div id="leaderboardFooter" class="lb-sticky-footer" style="display:none;"></div>
             `;
@@ -1501,23 +2305,20 @@ function renderWithdraw(c) {
                         const fbUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(realName)}&background=B026FF&color=fff`;
                         const avatarUrl = u.id ? `${API_BASE_URL}/api/avatar/${u.id}` : fbUrl;
                         
-                        const nameColor = u.usernameColor ? `color: ${u.usernameColor} !important;` : '';
-                        const badge = u.titleBadge && u.titleBadge !== 'None' ? `<span style="font-size:0.6rem; background:rgba(255,255,255,0.2); padding:2px 5px; border-radius:4px; margin-right:3px;">${u.titleBadge}</span>` : '';
-                        
                         podiumHtml += `
                             <div class="podium-tier rank-${rank}">
                                 <div class="podium-crown"><i class="fa-solid fa-crown"></i></div>
                                 <img loading="lazy" src="${avatarUrl}" class="podium-avatar" loading="lazy" onerror="this.onerror=null; this.src='${fbUrl}';">
-                                <div class="podium-name" style="${nameColor}">${badge}${realName}</div>
+                                <div class="podium-name">${realName}</div>
                                 <div class="podium-gems"><i class="fa-solid fa-gem"></i> ${Number(u.points || 0).toLocaleString()}</div>
                             </div>
                         `;
                     });
-                    
                     podiumCont.innerHTML = podiumHtml;
+                    podiumCont.style.display = 'flex';
                 }
 
-                // --- REST OF LIST (4-100) ---
+                // --- LIST (4 to 100) ---
                 let listHtml = '';
                 for (let i = 3; i < top100.length; i++) {
                     const u = top100[i];
@@ -1526,14 +2327,11 @@ function renderWithdraw(c) {
                     const fbUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(realName)}&background=B026FF&color=fff`;
                     const avatarUrl = u.id ? `${API_BASE_URL}/api/avatar/${u.id}` : fbUrl;
                     
-                    const nameColor = u.usernameColor ? `color: ${u.usernameColor} !important;` : '';
-                    const badge = u.titleBadge && u.titleBadge !== 'None' ? `<span style="font-size:0.6rem; background:rgba(255,255,255,0.2); padding:2px 5px; border-radius:4px; margin-right:3px;">${u.titleBadge}</span>` : '';
-                    
                     listHtml += `
                         <div class="lb-list-item">
                             <div class="lb-badge">${rank}</div>
                             <img loading="lazy" src="${avatarUrl}" class="lb-avatar" loading="lazy" onerror="this.onerror=null; this.src='${fbUrl}';">
-                            <div class="lb-name" style="${nameColor}">${badge}${realName}</div>
+                            <div class="lb-name">${realName}</div>
                             <div class="lb-gems">${Number(u.points || 0).toLocaleString()} <i class="fa-solid fa-gem"></i></div>
                         </div>
                     `;
@@ -1571,112 +2369,13 @@ function renderWithdraw(c) {
                 `;
                 footer.style.display = 'flex';
                 
-            } catch (err) {
-                console.error(err);
-                if (document.getElementById('leaderboardLoading')) {
-                    document.getElementById('leaderboardLoading').innerHTML = `
-                        <div style="text-align:center; color:var(--danger-color); padding: 20px;">
-                            <i class="fa-solid fa-triangle-exclamation" style="font-size:2rem; margin-bottom:10px;"></i>
-                            <div>Failed to load leaderboard. Retrying...</div>
-                        </div>
-                    `;
-                    setTimeout(() => renderLeaderboard(c), 3000);
-                }
+            } catch(e) {
+                const loader = document.getElementById('leaderboardLoading');
+                if (loader) loader.innerHTML = "<div style='color:var(--danger-color); padding: 20px;'>Failed to load leaderboard.</div>";
             }
         }
 
-        
-
-function renderTasks(container) {
-    container.innerHTML = `
-        <div class="card fade-in cyber-card">
-            <h2 style="margin-bottom: 20px; font-weight: 700; color: var(--color-cyan);"><i class="fa-solid fa-list-check"></i> Earn Gems</h2>
-            
-            <div class="task-list" style="display:flex; flex-direction:column; gap:15px;">
-                <div class="task-item" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); padding: 15px; border-radius: 15px; display:flex; justify-content:space-between; align-items:center;">
-                    <div class="task-info" style="display:flex; align-items:center; gap:15px;">
-                        <i class="fa-brands fa-youtube" style="color: #ff0000; font-size:2rem;"></i>
-                        <div>
-                            <div class="task-title" style="font-weight:bold; font-size:1.1rem;">Watch Video</div>
-                            <div class="task-reward" style="color:var(--color-cyan); font-size:0.9rem;">+500 Gems</div>
-                        </div>
-                    </div>
-                    <button class="btn btn-secondary" style="width:auto; padding:8px 15px;" onclick="showToast('Watching...', 'info')">Start</button>
-                </div>
-
-                <div class="task-item" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); padding: 15px; border-radius: 15px; display:flex; justify-content:space-between; align-items:center;">
-                    <div class="task-info" style="display:flex; align-items:center; gap:15px;">
-                        <i class="fa-brands fa-twitter" style="color: #1da1f2; font-size:2rem;"></i>
-                        <div>
-                            <div class="task-title" style="font-weight:bold; font-size:1.1rem;">Follow Us</div>
-                            <div class="task-reward" style="color:var(--color-cyan); font-size:0.9rem;">+1,000 Gems</div>
-                        </div>
-                    </div>
-                    <button class="btn btn-secondary" style="width:auto; padding:8px 15px;" onclick="showToast('Verified!', 'success')">Verify</button>
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-function renderGames(container) {
-    container.innerHTML = `
-        <div class="card fade-in cyber-card">
-            <h2 style="margin-bottom: 20px; font-weight: 700; color: var(--color-magenta);"><i class="fa-solid fa-gamepad"></i> Game Hub</h2>
-            <p style="color: var(--text-secondary); margin-bottom: 20px;">Play to earn real rewards.</p>
-            
-            <div style="display:grid; grid-template-columns: 1fr; gap: 15px;">
-                <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); padding: 15px; border-radius: 15px; display:flex; align-items:center; justify-content:space-between;">
-                    <div>
-                        <b style="color:white; font-size:1.1rem;">Tap to Earn</b>
-                        <div style="color:var(--text-secondary); font-size:0.9rem; margin-top:5px;">Classic clicker game</div>
-                    </div>
-                    <button class="btn quantum-btn" style="width:auto; padding: 10px 20px;" onclick="openGame('tap')">Play</button>
-                </div>
-                
-                <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); padding: 15px; border-radius: 15px; display:flex; align-items:center; justify-content:space-between;">
-                    <div>
-                        <b style="color:white; font-size:1.1rem;">Spin the Wheel</b>
-                        <div style="color:var(--text-secondary); font-size:0.9rem; margin-top:5px;">Daily lucky spin</div>
-                    </div>
-                    <button class="btn quantum-btn" style="width:auto; padding: 10px 20px;" onclick="openGame('spin')">Play</button>
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-function renderInvite(container) {
-    container.innerHTML = `
-        <div class="card fade-in cyber-card" style="text-align: center;">
-            <i class="fa-solid fa-users" style="font-size: 3rem; color: var(--color-cyan); margin-bottom: 15px;"></i>
-            <h2 style="margin-bottom: 10px; font-weight: 700;">Invite Friends</h2>
-            <p style="color: var(--text-secondary); margin-bottom: 20px;">Earn 50,000 Gems for each referral!</p>
-            
-            <div style="background: rgba(0,0,0,0.4); padding: 15px; border-radius: 10px; border: 1px dashed var(--color-cyan); margin-bottom: 20px;">
-                <code style="color: white; font-size: 1.2rem;" id="refLink">t.me/MYFA_bot?start=${currentUser.id || '123'}</code>
-            </div>
-            
-            <button class="btn quantum-btn" onclick="copyRef()">Copy Link <i class="fa-solid fa-copy"></i></button>
-            <div style="margin-top: 15px; font-size: 0.9rem; color: var(--color-magenta);" id="copyMsg"></div>
-        </div>
-    `;
-}
-
-function renderReferrals(container) {
-    renderInvite(container);
-}
-
-function copyRef() {
-    const text = document.getElementById('refLink').innerText;
-    navigator.clipboard.writeText(text).then(() => {
-        document.getElementById('copyMsg').innerText = "Copied to clipboard!";
-        setTimeout(() => document.getElementById('copyMsg').innerText = "", 2000);
-    });
-}
-
-
-function openGame(gameId) {
+        function openGame(gameId) {
             if(gameId === 'ludo') {
                 window.location.href = '/ludo.html?userId=' + (typeof userId !== 'undefined' ? userId : '');
                 return;
@@ -3013,301 +3712,5 @@ function openGame(gameId) {
             }
         }
     </script>
-
-<!-- MYFA AD OVERLAY -->
-<div id="myfaAdOverlay" style="display:none; position:fixed; inset:0; background:#000; z-index:99999; flex-direction:column; align-items:center; justify-content:center; padding:20px; text-align:center;">
-    <div id="myfaAdTimer" style="position:absolute; top:20px; right:20px; background:rgba(255,255,255,0.2); padding:10px 20px; border-radius:20px; font-weight:bold; font-size:1.2rem; color:white;">10s</div>
-    <img id="myfaAdImg" src="" style="width:100%; max-width:400px; border-radius:15px; margin-bottom:20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-    <h2 id="myfaAdTitle" style="font-size:2rem; margin-bottom:10px; color:white;"></h2>
-    <p id="myfaAdDesc" style="color:#94A3B8; margin-bottom:30px;"></p>
-    <button id="myfaAdLinkBtn" class="btn btn-secondary" style="margin-bottom:20px; width:100%; max-width:400px; padding:15px; border-radius:15px;" onclick="window.open(document.getElementById('myfaAdLinkBtn').dataset.url, '_blank')">Visit Link</button>
-    <button id="myfaAdClaimBtn" class="btn quantum-btn" style="display:none; width:100%; max-width:400px; padding:15px; border-radius:15px;" onclick="claimMyfaAd()">Claim Reward</button>
-</div>
-
-<!-- PROFILE MODAL -->
-<div id="profileModal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.95); backdrop-filter:blur(20px); z-index:99998; overflow-y:auto; padding:20px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px; position:sticky; top:0; background:rgba(15,23,42,0.9); padding:10px 0; z-index:1;">
-        <h2 style="font-size: 1.8rem; margin:0;"><i class="fa-solid fa-user-shield" style="color:var(--color-cyan);"></i> Profile & Security</h2>
-        <button class="btn btn-secondary" onclick="document.getElementById('profileModal').style.display='none'" style="width:40px; height:40px; border-radius:50%; padding:0; display:flex; align-items:center; justify-content:center;"><i class="fa-solid fa-xmark"></i></button>
-    </div>
-    
-    <div class="card cyber-card" style="margin-bottom: 20px; padding: 20px;">
-        <h3 style="margin-bottom: 15px; color:var(--color-magenta);"><i class="fa-solid fa-lock"></i> Core Security</h3>
-        <div class="setting-row"><div><b>Passcode Lock</b><div class="sub-text">Require PIN on start</div></div><label class="switch"><input type="checkbox" id="pm-pin" onchange="togglePin(this.checked)"><span class="slider round"></span></label></div>
-        <div class="setting-row"><div><b>Privacy Mode</b><div class="sub-text">Hide balances</div></div><label class="switch"><input type="checkbox" id="pm-priv" onchange="togglePrivacy(this.checked)"><span class="slider round"></span></label></div>
-        <div class="setting-row"><div><b>Data Saver Mode</b><div class="sub-text">Disable animations</div></div><label class="switch"><input type="checkbox" id="pm-data" onchange="toggleDataSaver(this.checked)"><span class="slider round"></span></label></div>
-        <div class="setting-row" style="border:none;"><div><b>Clear App Cache</b><div class="sub-text">Reset all local data</div></div><button class="btn btn-secondary" style="width:auto; padding:5px 15px;" onclick="clearAppCache()">Clear</button></div>
-    </div>
-    
-    <div class="card cyber-card" style="margin-bottom: 20px; padding: 20px;">
-        <h3 style="margin-bottom: 15px; color:var(--color-cyan);"><i class="fa-solid fa-star"></i> Pro Features (20)</h3>
-        
-        <div class="setting-row"><div><b>1. Active Sessions</b><div class="sub-text">Manage logged-in devices</div></div><button class="btn btn-secondary" style="width:auto; padding:5px 15px;" onclick="handleRevokeSessions()">Revoke</button></div>
-        <div class="setting-row"><div><b>2. Username Color</b><div class="sub-text">Leaderboard identity</div></div><input type="color" onchange="updateProfileSetting('usernameColor', this.value)" style="background:transparent; border:none; height:30px;"></div>
-        <div class="setting-row"><div><b>3. Title Badges</b><div class="sub-text">Prefix display name</div></div><select onchange="updateProfileSetting('titleBadge', this.value)" style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:5px; color:white; padding:5px;"><option>None</option><option>[OG]</option><option>[VIP]</option></select></div>
-        <div class="setting-row"><div><b>4. Stealth Mode</b><div class="sub-text">Hide from leaderboard</div></div><label class="switch"><input type="checkbox" onchange="updateProfileSetting('stealthMode', this.checked)"><span class="slider round"></span></label></div>
-        <div class="setting-row"><div><b>5. Custom Tone</b><div class="sub-text">Notification sound</div></div><select onchange="changeTone(this.value)" style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:5px; color:white; padding:5px;"><option>Default</option><option>Chime</option></select></div>
-        <div class="setting-row"><div><b>6. Auto-Claim Bonus</b><div class="sub-text">Claim daily on boot</div></div><label class="switch"><input type="checkbox" onchange="updateProfileSetting('autoClaim', this.checked)"><span class="slider round"></span></label></div>
-        <div class="setting-row"><div><b>7. Panic Button</b><div class="sub-text">Log out everywhere</div></div><button class="btn btn-secondary" style="width:auto; padding:5px 15px; background:var(--danger-color);" onclick="handlePanic()">Trigger</button></div>
-        <div class="setting-row"><div><b>8. 2FA Phrase</b><div class="sub-text">Secure recovery</div></div><input type="password" placeholder="6 digits" onchange="updateProfileSetting('twoFactorPhrase', this.value)" style="width:80px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:5px; color:white; padding:5px; text-align:center;"></div>
-        <div class="setting-row"><div><b>9. Profile Bio</b><div class="sub-text">100 chars public bio</div></div><button class="btn btn-secondary" style="width:auto; padding:5px 15px;" onclick="updateProfileSetting('bio', prompt('Enter Bio:'))">Edit</button></div>
-        <div class="setting-row"><div><b>10. Display Fiat</b><div class="sub-text">Currency conversion</div></div><select onchange="changeFiat(this.value)" style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:5px; color:white; padding:5px;"><option>USD</option><option>ETB</option><option>EUR</option></select></div>
-        <div class="setting-row"><div><b>11. Ghost Viewer</b><div class="sub-text">Anonymous browsing</div></div><label class="switch"><input type="checkbox" onchange="updateProfileSetting('ghostViewer', this.checked)"><span class="slider round"></span></label></div>
-        <div class="setting-row"><div><b>12. Auto-Convert Gems</b><div class="sub-text">At 10,000 threshold</div></div><label class="switch"><input type="checkbox" onchange="updateProfileSetting('autoConvert', this.checked)"><span class="slider round"></span></label></div>
-        <div class="setting-row"><div><b>13. UI Scale Slider</b><div class="sub-text">Zoom level</div></div><input type="range" min="0.8" max="1.2" step="0.1" value="1" onchange="document.body.style.zoom=this.value"></div>
-        <div class="setting-row"><div><b>14. Tx Filter</b><div class="sub-text">History sorting</div></div><select onchange="updateProfileSetting('txFilter', this.value)" style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:5px; color:white; padding:5px;"><option>All</option><option>Earned</option><option>Spent</option></select></div>
-        <div class="setting-row"><div><b>15. Burn Gems</b><div class="sub-text">Increase deflation</div></div><button class="btn btn-secondary" style="width:auto; padding:5px 15px;" onclick="handleBurnGems()">Burn 100</button></div>
-        <div class="setting-row"><div><b>16. Pinned Task</b><div class="sub-text">Stick favorite to top</div></div><select onchange="updateProfileSetting('pinnedTask', this.value)" style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:5px; color:white; padding:5px;"><option>Daily Check-in</option></select></div>
-        <div class="setting-row"><div><b>17. Custom Icon</b><div class="sub-text">App shortcut icon</div></div><button class="btn btn-secondary" style="width:auto; padding:5px 15px;" onclick="changeAppIcon('gold')">Change</button></div>
-        <div class="setting-row"><div><b>18. Sound / Haptic</b><div class="sub-text">App feedback</div></div><label class="switch"><input type="checkbox" checked onchange="toggleHaptic(this.checked)"><span class="slider round"></span></label></div>
-        <div class="setting-row"><div><b>19. Music Loop</b><div class="sub-text">Background audio</div></div><label class="switch"><input type="checkbox" onchange="showToast('Music toggled', 'info')"><span class="slider round"></span></label></div>
-        <div class="setting-row" style="border:none;"><div><b>20. Account Export</b><div class="sub-text">Download JSON data</div></div><button class="btn btn-secondary" style="width:auto; padding:5px 15px;" onclick="showToast('Export sent to email.', 'success')">Export</button></div>
-    </div>
-</div>
-
-<div id="pinPad" style="display:none; position:fixed; inset:0; background:#0f172a; z-index:100000; flex-direction:column; align-items:center; justify-content:center;">
-    <h2 style="color:white; margin-bottom:20px;">Enter Passcode</h2>
-    <input type="password" id="pinInput" style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:15px; padding:15px; color:white; font-size:2rem; text-align:center; width:200px; margin-bottom:20px; outline:none;" readonly>
-    <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:15px;">
-        ${[1,2,3,4,5,6,7,8,9,0].map(n => `<button style="width:60px; height:60px; border-radius:50%; border:none; background:rgba(255,255,255,0.1); color:white; font-size:1.5rem;" onclick="document.getElementById('pinInput').value += '${n}'">${n}</button>`).join('')}
-        <button style="width:60px; height:60px; border-radius:50%; border:none; background:rgba(239,68,68,0.2); color:#ef4444; font-size:1.2rem;" onclick="document.getElementById('pinInput').value = ''"><i class="fa-solid fa-delete-left"></i></button>
-        <button style="width:60px; height:60px; border-radius:50%; border:none; background:rgba(16,185,129,0.2); color:#10b981; font-size:1.2rem;" onclick="verifyPin()"><i class="fa-solid fa-check"></i></button>
-    </div>
-</div>
-
-<script>
-    let myfaAdTimer = null;
-    let myfaTimeLeft = 10;
-    
-    async function openMyfaAd() {
-        try {
-            const res = await fetch(API_BASE_URL + '/api/myfa-ads/get');
-            const ad = await res.json();
-            if(!ad || !ad.imageUrl) throw new Error("No active campaigns");
-            
-            document.getElementById('myfaAdImg').src = ad.imageUrl;
-            document.getElementById('myfaAdTitle').innerText = ad.title || "Sponsored App";
-            document.getElementById('myfaAdDesc').innerText = ad.caption || "Check out this amazing platform!";
-            document.getElementById('myfaAdLinkBtn').dataset.url = ad.link || "#";
-            document.getElementById('myfaAdClaimBtn').dataset.id = ad.id;
-            
-            document.getElementById('myfaAdOverlay').style.display = 'flex';
-            document.getElementById('myfaAdClaimBtn').style.display = 'none';
-            document.getElementById('myfaAdTimer').style.display = 'block';
-            
-            myfaTimeLeft = 10;
-            document.getElementById('myfaAdTimer').innerText = myfaTimeLeft + 's';
-            
-            myfaAdTimer = setInterval(() => {
-                myfaTimeLeft--;
-                document.getElementById('myfaAdTimer').innerText = myfaTimeLeft + 's';
-                if(myfaTimeLeft <= 0) {
-                    clearInterval(myfaAdTimer);
-                    document.getElementById('myfaAdTimer').style.display = 'none';
-                    document.getElementById('myfaAdClaimBtn').style.display = 'block';
-                }
-            }, 1000);
-            
-        } catch(e) {
-            showToast("No ads available right now.", "error");
-        }
-    }
-    
-    document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === 'hidden' && document.getElementById('myfaAdOverlay').style.display === 'flex' && myfaTimeLeft > 0) {
-            clearInterval(myfaAdTimer);
-            document.getElementById('myfaAdOverlay').style.display = 'none';
-            showToast("Ad closed early. No reward.", "error");
-        }
-    });
-    
-    async function claimMyfaAd() {
-        try {
-            const campaignId = document.getElementById('myfaAdClaimBtn').dataset.id;
-            const res = await fetch(API_BASE_URL + '/api/myfa-ads/claim', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ userId: userId, campaignId })
-            });
-            const data = await res.json();
-            if (res.ok && data.success) {
-                currentUser.points += data.reward;
-                if(document.getElementById('headerBalance')) document.getElementById('headerBalance').innerText = currentUser.points;
-                confetti();
-                showToast(`+${data.reward} Gems!`, 'success');
-            } else {
-                showToast("Failed to claim reward", 'error');
-            }
-        } catch (e) {
-            showToast("Network Error", "error");
-        }
-        document.getElementById('myfaAdOverlay').style.display = 'none';
-    }
-
-    function togglePin(checked) {
-        if(checked) {
-            localStorage.setItem('appPin', '1234');
-            showToast('PIN set to 1234', 'success');
-        } else {
-            localStorage.removeItem('appPin');
-            showToast('PIN disabled', 'info');
-        }
-    }
-
-    function verifyPin() {
-        if (document.getElementById('pinInput').value === localStorage.getItem('appPin')) {
-            document.getElementById('pinPad').style.display = 'none';
-        } else {
-            document.getElementById('pinInput').value = '';
-            showToast('Incorrect PIN', 'error');
-        }
-    }
-
-    function togglePrivacy(checked) {
-        const els = document.querySelectorAll('.odometer, #pageHeaderBalance, #pageHeaderRealBalance, #headerBalance');
-        els.forEach(el => {
-            if(checked) {
-                el.dataset.orig = el.innerText;
-                el.innerText = '****';
-            } else {
-                if(el.dataset.orig) el.innerText = el.dataset.orig;
-            }
-        });
-    }
-
-    function toggleDataSaver(checked) {
-        if(checked) {
-            const style = document.createElement('style');
-            style.id = 'dataSaverStyle';
-            style.innerHTML = '* { animation: none !important; transition: none !important; backdrop-filter: none !important; }';
-            document.head.appendChild(style);
-        } else {
-            const style = document.getElementById('dataSaverStyle');
-            if(style) style.remove();
-        }
-    }
-
-    function clearAppCache() {
-        localStorage.clear();
-        sessionStorage.clear();
-        window.location.reload();
-    }
-    
-    // Check PIN on load
-    document.addEventListener('DOMContentLoaded', () => {
-        if (localStorage.getItem('appPin')) {
-            document.getElementById('pinPad').style.display = 'flex';
-        }
-    });
-
-    async function updateProfileSetting(key, value) {
-        try {
-            currentUser[key] = value;
-            await fetch(API_BASE_URL + '/api/profile/update', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ userId, updates: { [key]: value } })
-            });
-            showToast('Setting updated!', 'success');
-        } catch(e) {
-            showToast('Network Error', 'error');
-        }
-    }
-
-    async function handleBurnGems() {
-        try {
-            const res = await fetch(API_BASE_URL + '/api/profile/burn', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ userId, amount: 100 })
-            });
-            const data = await res.json();
-            if(data.success) {
-                currentUser.points = data.newPoints;
-                if(document.getElementById('headerBalance')) document.getElementById('headerBalance').innerText = currentUser.points;
-                showToast('100 Gems Burned!', 'success');
-            } else {
-                showToast(data.error, 'error');
-            }
-        } catch(e) {
-            showToast('Network Error', 'error');
-        }
-    }
-
-    async function handlePanic() {
-        try {
-            await fetch(API_BASE_URL + '/api/profile/panic', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ userId })
-            });
-            showToast('All other sessions destroyed. You must re-login.', 'success');
-            setTimeout(() => window.location.reload(), 2000);
-        } catch(e) {
-            showToast('Network Error', 'error');
-        }
-    }
-
-    async function handleRevokeSessions() {
-        try {
-            await fetch(API_BASE_URL + '/api/profile/sessions', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ userId, action: 'revoke' })
-            });
-            showToast('Active sessions revoked.', 'success');
-        } catch(e) {
-            showToast('Network Error', 'error');
-        }
-    }
-    
-    function changeFiat(currency) {
-        updateProfileSetting('fiatCurrency', currency);
-        let rate = 1;
-        if(currency === 'ETB') rate = 115;
-        if(currency === 'EUR') rate = 0.92;
-        if(currency === 'GBP') rate = 0.78;
-        
-        const realEls = document.querySelectorAll('.bal-real span, #pageHeaderRealBalance');
-        realEls.forEach(el => {
-            const val = currentUser.realBalance || 0;
-            el.innerText = (val * rate).toFixed(2) + ' ' + currency;
-        });
-    }
-    
-    function changeAppIcon(icon) {
-        updateProfileSetting('appIcon', icon);
-        let link = document.querySelector("link[rel~='icon']");
-        if (!link) {
-            link = document.createElement('link');
-            link.rel = 'icon';
-            document.head.appendChild(link);
-        }
-        link.href = (icon === 'gold') ? 'https://cdn-icons-png.flaticon.com/512/1036/1036814.png' : 'https://cdn-icons-png.flaticon.com/512/3233/3233483.png';
-    }
-    
-    function changeTone(tone) {
-        updateProfileSetting('notifTone', tone);
-        const audioUrl = tone === 'Chime' ? 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3' : 'https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3';
-        let audio = document.getElementById('successAudio');
-        if(!audio) {
-            audio = document.createElement('audio');
-            audio.id = 'successAudio';
-            document.body.appendChild(audio);
-        }
-        audio.src = audioUrl;
-        audio.play().catch(e=>{});
-    }
-
-    function toggleHaptic(checked) {
-        soundEnabled = checked;
-        localStorage.setItem('appSound', soundEnabled);
-        if(checked && window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
-            window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
-        }
-    }
-
-</script>
 </body>
 </html>
-

@@ -9,12 +9,20 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
+// Disable caching
+app.use((req, res, next) => {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    next();
+});
+
 // API Routes
 app.use(apiApp);
 app.use('/api', gamesRouter); // mount games routes at /api/
 
 // Static Files
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), { etag: false, maxAge: 0 }));
 app.get('/myfa', (req, res) => res.sendFile(path.join(__dirname, 'public', 'myfa.html')));
 app.use((req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 

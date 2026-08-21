@@ -356,6 +356,8 @@
                 }
                 currentUser = await res.json();
                 
+                updateUI();
+                
                 if(currentUser.isBanned) {
                     document.body.innerHTML = "<h2 style='text-align:center; color:red; margin-top:50px;'>ACCOUNT BANNED</h2>";
                     return;
@@ -2253,8 +2255,10 @@ function applyTranslation() {
             const main = document.getElementById('mainContent');
             const wrapper = document.getElementById('gameCanvasWrapper');
             const canvasArea = document.getElementById('activeGameCanvas');
+            const header = document.getElementById('pageHeader');
             if(!main || !wrapper || !canvasArea) return console.error("DOM missing");
 
+            if (header) header.style.display = 'none';
             main.style.display = 'none';
             wrapper.style.display = 'block';
             canvasArea.innerHTML = ''; // Clear previous
@@ -2270,6 +2274,7 @@ function applyTranslation() {
             const main = document.getElementById('mainContent');
             const wrapper = document.getElementById('gameCanvasWrapper');
             const canvasArea = document.getElementById('activeGameCanvas');
+            const header = document.getElementById('pageHeader');
             
             if(typeof aviatorActive !== 'undefined') window.aviatorActive = false;
             if(typeof avGameState !== 'undefined') window.avGameState = 'IDLE';
@@ -2281,6 +2286,7 @@ function applyTranslation() {
             if (wrapper) wrapper.style.display = 'none';
             if (canvasArea) canvasArea.innerHTML = '';
             if (main) main.style.display = 'block';
+            if (header) header.style.display = 'flex';
             
             updateUI();
         };

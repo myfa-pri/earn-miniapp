@@ -611,6 +611,7 @@ function applyTranslation() {
 
         
         
+        
         function updateUI() {
             document.getElementById('pageHeaderName').textContent = currentUser.username;
             
@@ -631,13 +632,7 @@ function applyTranslation() {
                 document.body.classList.remove('data-saver');
             }
         }
-&background=00F2FE&color=fff`;
-            document.getElementById('pageHeaderAvatar').style.backgroundImage = `url('${avatarUrl}')`;
-        }
-&background=00F2FE&color=fff`;
-            document.getElementById('pageHeaderAvatar').style.backgroundImage = `url('${avatarUrl}')`;
-        }
-
+        
         function showToast(msg, type='info') {
             const t = document.getElementById('toast');
             if(document.getElementById('toast-msg')) document.getElementById('toast-msg').innerText = msg;

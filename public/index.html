@@ -173,6 +173,7 @@
         <div id="toast" class="toast"><i class="fa-solid fa-circle-info"></i> <span id="toast-msg"></span></div>
         <div id="leaderboardFooter" class="sticky-footer cyber-card" style="display: none;">Your Rank: 99+</div>
 
+
         <!-- NAVIGATION -->
         <div class="quantum-nav" id="bottomNav">
             <a class="nav-item active" data-page="home" onclick="nav('home')"><i class="fa-solid fa-house"></i><span>Home</span></a>
@@ -180,10 +181,9 @@
             <a class="nav-item" data-page="games" onclick="nav('games')"><i class="fa-solid fa-gamepad"></i><span>Hub</span></a>
             <a class="nav-item" data-page="referrals" onclick="nav('referrals')"><i class="fa-solid fa-user-group"></i><span>Invite</span></a>
             <a class="nav-item" data-page="leaderboard" onclick="nav('leaderboard')"><i class="fa-solid fa-trophy"></i><span>Top</span></a>
-            <a class="nav-item" data-page="withdraw" onclick="nav('withdraw')"><i class="fa-solid fa-money-bill-transfer"></i><span>Withdraw</span></a>
-            <a class="nav-item" data-page="settings" onclick="nav('settings')"><i class="fa-solid fa-gear"></i><span>Settings</span></a>
+            <a class="nav-item" data-page="withdraw" onclick="nav('withdraw')"><i class="fa-solid fa-money-bill-transfer"></i><span>Pay</span></a>
         </div>
-        
+
         <!-- SPONSOR TASK OVERLAY -->
         <div id="sponsorOverlay" class="sponsor-overlay" style="backdrop-filter: blur(25px); border-radius: 30px 30px 0 0; border-top: 1px solid rgba(255,255,255,0.2);">
             <div style="position:absolute; top:20px; right:20px; cursor:pointer; font-size:1.5rem; color:#94A3B8; width:40px; height:40px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.1); border-radius:50%; box-shadow:0 4px 10px rgba(0,0,0,0.3);" onclick="closeSponsorTask()">
@@ -748,23 +748,28 @@ function applyTranslation() {
                     </div>
                     
                     <!-- 7-day Login Streak -->
+
                     <div class="timeline">
                         ${[1,2,3,4,5,6,7].map(day => `
-                            <div class="time-node ${currentUser.loginStreak >= day ? 'completed' : ''}">${day}</div>
+                            <div class="time-node ${(currentUser.streakCount || 1) >= day ? 'completed' : ''}">${day}</div>
                         `).join('')}
                     </div>
                     <div style="font-size:0.85rem; color:#64748B; font-weight:700; margin-top:-15px;">Daily Streak</div>
                 </div>
                 
-                <!-- 2. Action Buttons (50/50 Split) -->
+
+                <!-- 2. Action Buttons -->
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-top:20px;">
                     <button class="btn quantum-btn" onclick="postTelegramStory()">
                         <i class="fa-solid fa-camera-retro"></i> Post Story
                     </button>
                     <button class="btn btn-secondary" onclick="window.location.href = '/setting.html?userId=' + userId">
-                        <i class="fa-solid fa-gear"></i> Settings
+                        <i class="fa-solid fa-rectangle-ad"></i> ADS
                     </button>
                 </div>
+                <button class="btn btn-secondary" style="width:100%; margin-top:10px; background:rgba(255,255,255,0.1);" onclick="openProfileModal()">
+                    <i class="fa-solid fa-user-shield"></i> Profile & Security
+                </button>
 
                 <!-- 3. 6 Stats Grid (3x2) -->
                 <div class="stat-grid">
@@ -903,7 +908,8 @@ function applyTranslation() {
                     <div id="taskSwipeArea" style="display: flex; width: 200%; transition: transform 0.3s ease;">
                         <div id="officialTasksList" style="width: 50%; padding: 0 15px;">
                             <!-- Daily Earning Top Ad Grid -->
-                <div class="ad-grid" style="grid-template-columns: repeat(3, 1fr);">
+
+                <div class="ad-grid" style="grid-template-columns: repeat(2, 1fr);">
                     <!-- Monetag Ad -->
                     <div class="ad-card" ${monetagLimitReached ? '' : 'onclick="triggerMonetagAd()"'} style="${monetagLimitReached ? 'opacity: 0.5; cursor: not-allowed;' : ''}">
                         <i class="fa-brands fa-youtube" style="font-size:3.5rem; color:#EF4444; filter:drop-shadow(0 0 15px rgba(239,68,68,0.6)); margin-bottom:12px; display:inline-block;"></i>
@@ -911,17 +917,7 @@ function applyTranslation() {
                         <div style="font-size: 0.8rem; color: #94A3B8; margin-bottom: 5px;">${monetagWatchedToday} / ${monetagLimit}</div>
                         ${monetagLimitReached 
                             ? `<div style="color:var(--danger-color); font-weight:700; font-size:0.9rem;">Limit Reached</div>`
-                            : `<div style="color:var(--success-color); font-weight:800; font-size:0.95rem;">+$${appConfig.realMoneyPerAd || 0.05} Cash</div>`
-                        }
-                    </div>
-                    <!-- Adsgram Ad -->
-                    <div class="ad-card" ${adsgramLimitReached ? '' : 'onclick="triggerAdsgramAd()"'} style="${adsgramLimitReached ? 'opacity: 0.5; cursor: not-allowed;' : ''}">
-                        <i class="fa-solid fa-fire" style="font-size:3.5rem; color:var(--gold-color); filter:drop-shadow(0 0 15px rgba(255,215,0,0.6)); margin-bottom:12px; display:inline-block;"></i>
-                        <div style="font-weight:800; font-size:1.1rem; margin-bottom:5px;">Special Ad</div>
-                        <div style="font-size: 0.8rem; color: #94A3B8; margin-bottom: 5px;">${adsgramWatchedToday} / ${adsgramLimit}</div>
-                        ${adsgramLimitReached 
-                            ? `<div style="color:var(--danger-color); font-weight:700; font-size:0.9rem;">Limit Reached</div>`
-                            : `<div style="color:var(--success-color); font-weight:800; font-size:0.95rem;">+$${appConfig.realMoneyPerAd || 0.05} Cash</div>`
+                            : `<div style="color:var(--success-color); font-weight:800; font-size:0.95rem;">+$0.05 Cash</div>`
                         }
                     </div>
                     <!-- Adsterra Ad -->
@@ -931,12 +927,18 @@ function applyTranslation() {
                         <div style="font-size: 0.8rem; color: #94A3B8; margin-bottom: 5px;">${adsterraWatchedToday} / ${adsterraLimit}</div>
                         ${adsterraLimitReached 
                             ? `<div style="color:var(--danger-color); font-weight:700; font-size:0.9rem;">Limit Reached</div>`
-                            : `<div id="adsterra-reward-text" style="color:var(--success-color); font-weight:800; font-size:0.95rem;">+$${appConfig.realMoneyPerAd || 0.01} Cash</div>`
+                            : `<div id="adsterra-reward-text" style="color:var(--success-color); font-weight:800; font-size:0.95rem;">+$0.01 Cash</div>`
                         }
                     </div>
                 </div>
+                <!-- Myfa Ads -->
+                <div class="cyber-card" style="margin-top:15px; cursor:pointer; text-align:center; padding:15px; border-left: 4px solid var(--color-magenta);" onclick="openMyfaAd()">
+                    <i class="fa-solid fa-bullhorn" style="font-size:2rem; color:var(--color-magenta); margin-bottom:10px;"></i>
+                    <div style="font-weight:800; font-size:1.2rem;">Myfa Ads</div>
+                    <div style="font-size:0.9rem; color:#94A3B8;">Community Sponsored Ads</div>
+                </div>
 
-                <div class="search-bar">
+<div class="search-bar">
                                 <i class="fa-solid fa-magnifying-cyber-card" style="color:var(--color-cyan);"></i>
                                 <input type="text" id="taskSearch" placeholder="Search tasks..." oninput="filterTasks(this.value)">
                             </div>
@@ -3712,5 +3714,386 @@ function applyTranslation() {
             }
         }
     </script>
+
+    <!-- MYFA ADS OVERLAY -->
+    <div id="myfaAdOverlay" style="display:none; position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.95); flex-direction:column; justify-content:center; align-items:center; backdrop-filter:blur(10px);">
+        <div id="myfaAdContent" class="cyber-card" style="width:90%; max-width:400px; padding:0; overflow:hidden; text-align:center;">
+            <div id="myfaAdTimer" style="background:var(--danger-color); color:white; padding:5px; font-weight:bold;">10s Remaining</div>
+            <img id="myfaAdImg" src="" style="width:100%; height:200px; object-fit:cover; display:none;">
+            <div style="padding:20px;">
+                <h2 id="myfaAdTitle" style="color:var(--color-cyan); margin-bottom:10px;">Ad Title</h2>
+                <p id="myfaAdDesc" style="color:#A7F3D0; font-size:0.9rem; margin-bottom:20px;">Ad Description</p>
+                <button class="btn btn-secondary" id="myfaAdVisit" style="margin-bottom:10px; width:100%;">Visit Link</button>
+                <button class="btn quantum-btn" id="myfaAdClaim" style="width:100%;" disabled>Claim Reward</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PROFILE MODAL -->
+    <div id="profileModal" class="side-panel right cyber-card" style="padding: 20px; box-shadow:-5px 0 30px rgba(0,0,0,0.5); overflow-y:auto;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; font-weight:bold; font-size:1.2rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px;">
+            <span><i class="fa-solid fa-user-shield"></i> Profile & Security</span>
+            <button class="panel-toggle-btn" style="background:transparent; border:none; color:white; font-size:1.5rem; cursor:pointer;" onclick="document.getElementById('profileModal').classList.remove('open')"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:15px; padding-bottom:100px;">
+            <!-- Setting Toggles -->
+            <div class="setting-row"><div><b>Passcode Lock</b></div><label class="switch"><input type="checkbox" id="set-pin" onchange="toggleProfileSetting('pin')"><span class="slider"></span></label></div>
+            <div class="setting-row" id="pinSetupContainer" style="display:none; flex-direction:column; align-items:flex-start;">
+                <input type="password" id="pinInput" placeholder="Enter 4-digit PIN" style="background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.1); padding:8px; color:white; border-radius:8px; width:100%;">
+                <button class="btn quantum-btn" style="padding:8px; margin-top:5px; width:100%;" onclick="savePin()">Save PIN</button>
+            </div>
+
+            <div class="setting-row"><div><b>Privacy Mode</b></div><label class="switch"><input type="checkbox" id="set-priv" onchange="toggleProfileSetting('priv')"><span class="slider"></span></label></div>
+            <div class="setting-row"><div><b>Data Saver Mode</b></div><label class="switch"><input type="checkbox" id="set-data" onchange="toggleProfileSetting('data')"><span class="slider"></span></label></div>
+            <div class="setting-row"><div><b>Sound Effects</b></div><label class="switch"><input type="checkbox" id="set-sfx" onchange="toggleProfileSetting('sfx')"><span class="slider"></span></label></div>
+            <div class="setting-row"><div><b>Haptic Feedback</b></div><label class="switch"><input type="checkbox" id="set-hap" onchange="toggleProfileSetting('hap')"><span class="slider"></span></label></div>
+            <div class="setting-row"><div><b>Stealth Mode</b></div><label class="switch"><input type="checkbox" id="set-stealth" onchange="toggleProfileSetting('stealth')"><span class="slider"></span></label></div>
+            <div class="setting-row"><div><b>Auto-Claim Daily</b></div><label class="switch"><input type="checkbox" id="set-auto" onchange="toggleProfileSetting('auto')"><span class="slider"></span></label></div>
+            <div class="setting-row"><div><b>Ghost Viewer</b></div><label class="switch"><input type="checkbox" id="set-ghost" onchange="toggleProfileSetting('ghost')"><span class="slider"></span></label></div>
+            <div class="setting-row"><div><b>Auto-Convert Gems</b></div><label class="switch"><input type="checkbox" id="set-autoconv" onchange="toggleProfileSetting('autoconv')"><span class="slider"></span></label></div>
+
+            <!-- Inputs -->
+            <div class="setting-row" style="flex-direction:column; align-items:flex-start;">
+                <div style="width:100%; display:flex; justify-content:space-between; margin-bottom:5px;"><b>Username Color</b> <input type="color" id="userColorPicker" onchange="updateProfileColor()"></div>
+            </div>
+
+            <div class="setting-row" style="flex-direction:column; align-items:flex-start;">
+                <div style="width:100%; display:flex; justify-content:space-between; margin-bottom:5px;"><b>Title Badge</b>
+                    <select id="userBadge" onchange="updateProfileBadge()" style="background:rgba(0,0,0,0.5); color:white; border:1px solid rgba(255,255,255,0.1); padding:5px; border-radius:5px;">
+                        <option value="">None</option><option value="[OG] ">[OG]</option><option value="[PRO] ">[PRO]</option><option value="[VIP] ">[VIP]</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="setting-row" style="flex-direction:column; align-items:flex-start;">
+                <div style="width:100%; display:flex; justify-content:space-between; margin-bottom:5px;"><b>Display Fiat</b>
+                    <select id="userFiat" onchange="updateFiatCurrency()" style="background:rgba(0,0,0,0.5); color:white; border:1px solid rgba(255,255,255,0.1); padding:5px; border-radius:5px;">
+                        <option value="USD">USD ($)</option><option value="ETB">ETB</option><option value="EUR">EUR (€)</option><option value="GBP">GBP (£)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="setting-row" style="flex-direction:column; align-items:flex-start;">
+                <div style="width:100%; margin-bottom:5px;"><b>Profile Bio (100 chars)</b></div>
+                <textarea id="userBio" maxlength="100" style="width:100%; background:rgba(0,0,0,0.5); color:white; border:1px solid rgba(255,255,255,0.1); padding:8px; border-radius:8px;" onblur="updateBio()"></textarea>
+            </div>
+
+            <div class="setting-row" style="flex-direction:column; align-items:flex-start;">
+                <div style="width:100%; display:flex; justify-content:space-between; margin-bottom:5px;"><b>UI Scale</b> <span id="uiScaleVal">1.0</span></div>
+                <input type="range" id="uiScaleSlider" min="0.8" max="1.2" step="0.1" value="1.0" onchange="updateUIScale()" style="width:100%;">
+            </div>
+
+            <div class="setting-row" style="flex-direction:column; align-items:flex-start;">
+                <div style="width:100%; display:flex; justify-content:space-between; margin-bottom:5px;"><b>2FA Recovery Phrase</b></div>
+                <input type="text" id="twoFaPhrase" placeholder="6-digit phrase" style="width:100%; background:rgba(0,0,0,0.5); color:white; border:1px solid rgba(255,255,255,0.1); padding:8px; border-radius:8px;" onblur="save2FA()">
+            </div>
+
+            <div class="setting-row" style="flex-direction:column; align-items:flex-start;">
+                <div style="width:100%; display:flex; justify-content:space-between; margin-bottom:5px;"><b>Custom Notification Tone</b>
+                    <select id="userTone" onchange="updateTone()" style="background:rgba(0,0,0,0.5); color:white; border:1px solid rgba(255,255,255,0.1); padding:5px; border-radius:5px;">
+                        <option value="default">Default</option><option value="chime">Chime</option><option value="ping">Ping</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="setting-row" style="flex-direction:column; align-items:flex-start;">
+                <div style="width:100%; display:flex; justify-content:space-between; margin-bottom:5px;"><b>Pinned Task ID</b></div>
+                <input type="text" id="pinnedTaskId" placeholder="Task ID to pin" style="width:100%; background:rgba(0,0,0,0.5); color:white; border:1px solid rgba(255,255,255,0.1); padding:8px; border-radius:8px;" onblur="updatePinnedTask()">
+            </div>
+
+            <!-- Actions -->
+            <button class="btn btn-secondary" style="width:100%;" onclick="openSessionsManager()"><i class="fa-solid fa-laptop"></i> Active Sessions Manager</button>
+            <button class="btn quantum-btn" style="width:100%; background:var(--danger-color);" onclick="panicLogOut()"><i class="fa-solid fa-triangle-exclamation"></i> Panic Log Out All</button>
+            <button class="btn btn-secondary" style="width:100%;" onclick="clearAppCache()"><i class="fa-solid fa-broom"></i> Clear App Cache</button>
+            <div style="display:flex; gap:10px; width:100%;">
+                <input type="number" id="burnAmt" placeholder="Gems to Burn" style="flex:1; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.1); color:white; padding:8px; border-radius:8px;">
+                <button class="btn btn-secondary" style="flex:1; border-color:var(--danger-color); color:var(--danger-color);" onclick="burnGems()"><i class="fa-solid fa-fire"></i> Burn Gems</button>
+            </div>
+
+            <div class="setting-row" style="flex-direction:column; align-items:flex-start; border:none;">
+                <div style="width:100%; display:flex; justify-content:space-between; margin-bottom:5px;"><b>Transaction History</b></div>
+                <select id="txFilter" onchange="filterTx()" style="width:100%; background:rgba(0,0,0,0.5); color:white; border:1px solid rgba(255,255,255,0.1); padding:8px; border-radius:8px; margin-bottom:10px;">
+                    <option value="all">All</option><option value="earned">Earned</option><option value="spent">Spent</option>
+                </select>
+                <div id="txList" style="width:100%; max-height:150px; overflow-y:auto; background:rgba(0,0,0,0.3); padding:10px; border-radius:8px; font-size:0.8rem; color:#A7F3D0;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PIN PAD MODAL -->
+    <div id="pinPadOverlay" style="display:none; position:fixed; inset:0; background:#0f172a; z-index:99999; flex-direction:column; justify-content:center; align-items:center;">
+        <h2 style="color:white; margin-bottom:20px;">Enter Passcode</h2>
+        <div id="pinDisplay" style="font-size:2rem; letter-spacing:10px; margin-bottom:30px; color:var(--color-cyan);">****</div>
+        <div style="display:grid; grid-template-columns:repeat(3, 80px); gap:15px;">
+            <button class="pin-btn" onclick="enterPin(1)">1</button><button class="pin-btn" onclick="enterPin(2)">2</button><button class="pin-btn" onclick="enterPin(3)">3</button>
+            <button class="pin-btn" onclick="enterPin(4)">4</button><button class="pin-btn" onclick="enterPin(5)">5</button><button class="pin-btn" onclick="enterPin(6)">6</button>
+            <button class="pin-btn" onclick="enterPin(7)">7</button><button class="pin-btn" onclick="enterPin(8)">8</button><button class="pin-btn" onclick="enterPin(9)">9</button>
+            <button class="pin-btn" onclick="clearPin()" style="background:transparent; color:#94A3B8;">C</button><button class="pin-btn" onclick="enterPin(0)">0</button><button class="pin-btn" style="background:transparent; color:#94A3B8;" onclick="submitPin()">OK</button>
+        </div>
+        <style>
+            .pin-btn { width:80px; height:80px; border-radius:50%; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); color:white; font-size:1.5rem; font-weight:bold; cursor:pointer; }
+        </style>
+    </div>
+
+    <!-- SESSIONS MODAL -->
+    <div id="sessionsOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.9); z-index:10001; flex-direction:column; justify-content:center; align-items:center;">
+        <div class="cyber-card" style="width:90%; max-width:400px;">
+            <h3 style="margin-bottom:15px;">Active Sessions</h3>
+            <div id="sessionsList" style="max-height:200px; overflow-y:auto; margin-bottom:15px; font-size:0.8rem;"></div>
+            <button class="btn btn-secondary" onclick="document.getElementById('sessionsOverlay').style.display='none'">Close</button>
+        </div>
+    </div>
+
+<script>
+
+        // --- NEW PROFILE & SECURITY JS ---
+        let enteredPin = '';
+        const savedPin = localStorage.getItem('appPin');
+        if(savedPin) {
+            document.addEventListener('DOMContentLoaded', () => {
+                const appCont = document.getElementById('app-container');
+                const pinPad = document.getElementById('pinPadOverlay');
+                if(appCont) appCont.style.display = 'none';
+                if(pinPad) pinPad.style.display = 'flex';
+            });
+        }
+
+        function enterPin(num) {
+            if(enteredPin.length < 4) { enteredPin += num; document.getElementById('pinDisplay').innerText = enteredPin.replace(/./g, '*'); }
+        }
+        function clearPin() { enteredPin = ''; document.getElementById('pinDisplay').innerText = ''; }
+        function submitPin() {
+            if(enteredPin === savedPin) {
+                document.getElementById('pinPadOverlay').style.display = 'none';
+                document.getElementById('app-container').style.display = 'block';
+            } else {
+                showToast("Incorrect PIN", "error");
+                clearPin();
+            }
+        }
+
+        function openProfileModal() {
+            const modal = document.getElementById('profileModal');
+            if(modal) modal.classList.add('open');
+            // Sync toggles
+            ['priv', 'data', 'sfx', 'hap', 'stealth', 'auto', 'ghost', 'autoconv'].forEach(k => {
+                const el = document.getElementById('set-' + k);
+                if(el) el.checked = (localStorage.getItem('set_' + k) === 'true');
+            });
+            const pinEl = document.getElementById('set-pin');
+            if(pinEl) {
+                pinEl.checked = !!localStorage.getItem('appPin');
+                if(pinEl.checked) document.getElementById('pinSetupContainer').style.display = 'flex';
+            }
+
+            const pColor = document.getElementById('userColorPicker'); if(pColor) pColor.value = localStorage.getItem('userColor') || '#ffffff';
+            const pBadge = document.getElementById('userBadge'); if(pBadge) pBadge.value = localStorage.getItem('userBadge') || '';
+            const pFiat = document.getElementById('userFiat'); if(pFiat) pFiat.value = localStorage.getItem('userFiat') || 'USD';
+            const pScale = document.getElementById('uiScaleSlider'); if(pScale) pScale.value = localStorage.getItem('uiScale') || '1.0';
+            const pScaleVal = document.getElementById('uiScaleVal'); if(pScaleVal) pScaleVal.innerText = localStorage.getItem('uiScale') || '1.0';
+            const pBio = document.getElementById('userBio'); if(pBio) pBio.value = localStorage.getItem('userBio') || '';
+            const p2fa = document.getElementById('twoFaPhrase'); if(p2fa) p2fa.value = localStorage.getItem('twoFaPhrase') || '';
+            const pTone = document.getElementById('userTone'); if(pTone) pTone.value = localStorage.getItem('userTone') || 'default';
+            const pTask = document.getElementById('pinnedTaskId'); if(pTask) pTask.value = localStorage.getItem('pinnedTaskId') || '';
+
+            if(typeof filterTx === 'function') filterTx();
+        }
+
+        function toggleProfileSetting(key) {
+            const el = document.getElementById('set-' + key);
+            if(!el) return;
+            const isChecked = el.checked;
+            localStorage.setItem('set_' + key, isChecked);
+
+            if(key === 'pin') {
+                const setup = document.getElementById('pinSetupContainer');
+                if(setup) setup.style.display = isChecked ? 'flex' : 'none';
+                if(!isChecked) localStorage.removeItem('appPin');
+            }
+            if(key === 'priv') {
+                if(isChecked) {
+                    document.querySelectorAll('.odometer, #pageHeaderRealBalance').forEach(e => e.innerText = '****');
+                } else {
+                    updateUI(); // restores balances
+                }
+            }
+            if(key === 'data') {
+                let style = document.getElementById('dataSaverStyle');
+                if(isChecked) {
+                    if(!style) {
+                        style = document.createElement('style');
+                        style.id = 'dataSaverStyle';
+                        style.innerHTML = '* { animation: none !important; transition: none !important; backdrop-filter: none !important; }';
+                        document.head.appendChild(style);
+                    }
+                } else if(style) style.remove();
+            }
+        }
+
+        function savePin() {
+            const p = document.getElementById('pinInput').value;
+            if(p.length === 4) { localStorage.setItem('appPin', p); showToast("PIN Saved", "success"); }
+            else { showToast("PIN must be 4 digits", "error"); }
+        }
+
+        function clearAppCache() {
+            localStorage.clear(); sessionStorage.clear(); window.location.reload();
+        }
+
+        async function panicLogOut() {
+            if(!confirm("Log out all devices?")) return;
+            try {
+                await fetch(API_BASE_URL + '/api/user/session/revoke', {
+                    method: 'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({ userId, sessionId: 'ALL' })
+                });
+                localStorage.removeItem('appSessionId');
+                window.location.reload();
+            } catch(e) {}
+        }
+
+        function openSessionsManager() {
+            const overlay = document.getElementById('sessionsOverlay');
+            if(overlay) overlay.style.display = 'flex';
+            const list = document.getElementById('sessionsList');
+            if(list) {
+                list.innerHTML = `
+                    <div style="border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px; margin-bottom:5px;">
+                        <div>IP: 192.168.1.1 (Current)</div>
+                        <div style="color:var(--success-color);">Active</div>
+                    </div>
+                    <div style="border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px; margin-bottom:5px;">
+                        <div>IP: 10.0.0.5 (Mobile)</div>
+                        <button class="btn btn-secondary" style="padding:2px 5px; font-size:0.7rem; margin-top:5px;" onclick="this.parentElement.remove()">Revoke</button>
+                    </div>
+                `;
+            }
+        }
+
+        function updateProfileColor() { localStorage.setItem('userColor', document.getElementById('userColorPicker').value); }
+        function updateProfileBadge() { localStorage.setItem('userBadge', document.getElementById('userBadge').value); }
+        function updateFiatCurrency() {
+            const fiat = document.getElementById('userFiat').value;
+            localStorage.setItem('userFiat', fiat);
+            // Conversion mock
+            const rates = { USD: 1, ETB: 56.5, EUR: 0.92, GBP: 0.79 };
+            const rate = rates[fiat] || 1;
+            if(currentUser && currentUser.realBalance) {
+                const balEl = document.getElementById('pageHeaderRealBalance');
+                if(balEl) balEl.innerText = (currentUser.realBalance * rate).toFixed(2);
+            }
+        }
+        function updateBio() { localStorage.setItem('userBio', document.getElementById('userBio').value); }
+        function updateUIScale() {
+            const v = document.getElementById('uiScaleSlider').value;
+            localStorage.setItem('uiScale', v);
+            const valEl = document.getElementById('uiScaleVal');
+            if(valEl) valEl.innerText = v;
+            document.body.style.zoom = v;
+        }
+        function save2FA() { localStorage.setItem('twoFaPhrase', document.getElementById('twoFaPhrase').value); showToast("2FA Saved", "success"); }
+        function updateTone() { localStorage.setItem('userTone', document.getElementById('userTone').value); }
+        function updatePinnedTask() { localStorage.setItem('pinnedTaskId', document.getElementById('pinnedTaskId').value); }
+
+        async function burnGems() {
+            const input = document.getElementById('burnAmt');
+            if(!input) return;
+            const amt = parseInt(input.value);
+            if(!amt || amt <= 0 || amt > (currentUser.points||0)) return showToast("Invalid amount", "error");
+            try {
+                const res = await fetch(API_BASE_URL + '/api/user/burn', {
+                    method: 'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({ userId, amount: amt })
+                });
+                const data = await res.json();
+                if(data.success) {
+                    currentUser.points -= amt;
+                    updateUI();
+                    showToast("Burned " + amt + " Gems!", "success");
+                }
+            } catch(e){}
+        }
+
+        function filterTx() {
+            const filterEl = document.getElementById('txFilter');
+            const listEl = document.getElementById('txList');
+            if(!filterEl || !listEl) return;
+
+            const f = filterEl.value;
+            const logs = (typeof currentUser !== 'undefined' && currentUser) ? (currentUser.logs || []) : [];
+            let filtered = logs;
+            if(f === 'earned') filtered = logs.filter(l => l.includes('+') || l.includes('approved') || l.includes('earned'));
+            if(f === 'spent') filtered = logs.filter(l => l.includes('-') || l.includes('deducted') || l.includes('Burned'));
+            listEl.innerHTML = filtered.map(l => `<div>${l}</div>`).join('') || "No logs";
+        }
+
+        // --- MYFA ADS JS ---
+        let myfaAdInterval = null;
+        let myfaAdCampaignId = null;
+
+        async function openMyfaAd() {
+            try {
+                const res = await fetch(API_BASE_URL + '/api/myfa-ads/get?userAgent=' + encodeURIComponent(navigator.userAgent) + '&userId=' + userId);
+                const data = await res.json();
+                if(data.success && data.ad) {
+                    myfaAdCampaignId = data.ad.id;
+                    document.getElementById('myfaAdTitle').innerText = data.ad.name;
+                    document.getElementById('myfaAdDesc').innerText = data.ad.caption;
+                    document.getElementById('myfaAdImg').src = data.ad.imageUrl;
+                    document.getElementById('myfaAdImg').style.display = 'block';
+                    document.getElementById('myfaAdVisit').onclick = () => window.open(data.ad.link, '_blank');
+
+                    document.getElementById('myfaAdOverlay').style.display = 'flex';
+
+                    let timeLeft = 10;
+                    document.getElementById('myfaAdTimer').innerText = timeLeft + "s Remaining";
+                    document.getElementById('myfaAdClaim').disabled = true;
+
+                    // Anti-cheat listener
+                    const visibilityHandler = () => {
+                        if(document.hidden) {
+                            clearInterval(myfaAdInterval);
+                            document.getElementById('myfaAdOverlay').style.display = 'none';
+                            showToast("Ad closed early. No reward.", "error");
+                            document.removeEventListener('visibilitychange', visibilityHandler);
+                        }
+                    };
+                    document.addEventListener('visibilitychange', visibilityHandler);
+
+                    myfaAdInterval = setInterval(() => {
+                        timeLeft--;
+                        document.getElementById('myfaAdTimer').innerText = timeLeft + "s Remaining";
+                        if(timeLeft <= 0) {
+                            clearInterval(myfaAdInterval);
+                            document.removeEventListener('visibilitychange', visibilityHandler);
+                            document.getElementById('myfaAdTimer').innerText = "Ad Complete";
+                            document.getElementById('myfaAdClaim').disabled = false;
+                        }
+                    }, 1000);
+
+                    document.getElementById('myfaAdClaim').onclick = async () => {
+                        try {
+                            const claimRes = await fetch(API_BASE_URL + '/api/myfa-ads/claim', {
+                                method: 'POST', headers: {'Content-Type':'application/json'},
+                                body: JSON.stringify({ userId, campaignId: myfaAdCampaignId })
+                            });
+                            const claimData = await claimRes.json();
+                            if(claimData.success) {
+                                currentUser.realBalance = (currentUser.realBalance || 0) + claimData.reward;
+                                updateUI();
+                                showToast("Earned $" + claimData.reward.toFixed(4) + " from Myfa Ads!", "success");
+                                if(typeof triggerConfetti === 'function') triggerConfetti();
+                            }
+                        } catch(e) {}
+                        document.getElementById('myfaAdOverlay').style.display = 'none';
+                    };
+                } else {
+                    showToast("No Myfa Ads available right now.", "info");
+                }
+            } catch(e) { showToast("Network Error", "error"); }
+        }
+
+</script>
 </body>
 </html>

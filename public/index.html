@@ -101,8 +101,14 @@
     const stageInterval = setInterval(() => {
         currentStage++;
         if(currentStage < stages.length) {
-            document.getElementById('loader-text').innerText = stages[currentStage];
-            document.getElementById('loader-progress').style.width = ((currentStage + 1) / stages.length * 100) + '%';
+            const loaderText = document.getElementById('loader-text');
+            const loaderProgress = document.getElementById('loader-progress');
+            if(loaderText && loaderProgress) {
+                loaderText.innerText = stages[currentStage];
+                loaderProgress.style.width = ((currentStage + 1) / stages.length * 100) + '%';
+            } else {
+                clearInterval(stageInterval);
+            }
         } else {
             clearInterval(stageInterval);
         }
@@ -697,7 +703,7 @@ function applyTranslation() {
             }
         }
         
-        window.claimEnkutatash = function() {
+        function claimEnkutatash() {
             if(localStorage.getItem('enkutatash_claimed')) {
                 showToast('You already claimed your Enkutatash gift!', 'error');
                 return;
@@ -969,7 +975,7 @@ function applyTranslation() {
             }, 100);
         }
         
-        window.switchTaskTab = function(tab) {
+        function switchTaskTab(tab) {
             const area = document.getElementById('taskSwipeArea');
             const btnOff = document.getElementById('tabOfficial');
             const btnSpon = document.getElementById('tabSponsor');
@@ -1730,7 +1736,7 @@ function applyTranslation() {
 
         window.currentExchangeMode = 'gemsToCash';
         
-        window.setExchangeMode = function(mode) {
+        function setExchangeMode(mode) {
             window.currentExchangeMode = mode;
             const btnG2C = document.getElementById('btnGemsToCash');
             const btnC2G = document.getElementById('btnCashToGems');
@@ -1775,7 +1781,7 @@ function applyTranslation() {
             document.getElementById('exchangePreview').innerText = '0.00';
         };
 
-        window.updateExchangePreview = function() {
+        function updateExchangePreview() {
             const input = document.getElementById('exchangeAmount');
             const val = parseFloat(input.value) || 0;
             const rate = (typeof appConfig !== 'undefined' && appConfig.exchangeRate) ? appConfig.exchangeRate : 100;
@@ -1828,8 +1834,8 @@ function applyTranslation() {
                 btn.disabled = false;
             }
         }
-           async 
-        function renderSettings(c) {
+
+        async function renderSettings(c) {
             c.innerHTML = `
                 <div style="padding-bottom: 20px;">
                     <h2 style="font-size: 2rem; margin-bottom: 20px; text-shadow: 0 0 10px var(--brand-blue);">Settings Hub</h2>
@@ -1989,7 +1995,7 @@ function applyTranslation() {
             const lang = localStorage.getItem('set_lang'); if(lang) document.getElementById('set-lang').value = lang;
         }
 
-        window.toggleSetting = function(key, val) {
+        function toggleSetting(key, val) {
             if(val !== undefined) {
                 localStorage.setItem('set_' + key, val);
                 showToast(key.toUpperCase() + ' updated successfully!', 'success');
@@ -2243,7 +2249,7 @@ function applyTranslation() {
             }
         }
 
-        window.openGame = function(gameId) {
+        function openGame(gameId) {
             if(gameId === 'ludo') {
                 window.location.href = '/ludo.html?userId=' + (typeof userId !== 'undefined' ? userId : '');
                 return;
@@ -2270,7 +2276,7 @@ function applyTranslation() {
             else if(gameId === 'scratchcard') renderScratchCardGame(canvasArea);
         };
 
-        window.closeGame = function() { if(typeof window.clearAllGameLoops === "function") window.clearAllGameLoops();
+        function closeGame() { if(typeof window.clearAllGameLoops === "function") window.clearAllGameLoops();
             const main = document.getElementById('mainContent');
             const wrapper = document.getElementById('gameCanvasWrapper');
             const canvasArea = document.getElementById('activeGameCanvas');

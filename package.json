@@ -21,6 +21,7 @@
   },
   "homepage": "https://github.com/myfa-pri/earn-miniapp#readme",
   "dependencies": {
+    "acorn": "^8.18.0",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "node-fetch": "^3.3.2",

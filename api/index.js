@@ -70,12 +70,39 @@ async function ensureUserExists(userId, username, refParam) {
     // UPDATE: Even if user exists, we can update their display name to latest Real Account Name if we wanted, 
     // but we will prioritize keeping the initial one or updating if blank.
     if (existingUser) {
+        const now = Date.now();
         if (!existingUser.accountName || existingUser.accountName === 'Unknown User') {
-            await dbUpdate(`users/${userId}`, { accountName: username, username: username });
             existingUser.accountName = username;
         }
+        let streakCount = existingUser.streakCount || 1;
+        const lastLogin = existingUser.lastLoginTimestamp || existingUser.lastLoginDate;
+        if (lastLogin) {
+            const diff = now - lastLogin;
+            const hours = diff / (1000 * 60 * 60);
+            if (hours >= 24 && hours <= 48) {
+                streakCount++;
+            } else if (hours > 48) {
+                streakCount = 1;
+            }
+        }
+        // Auto-claim logic
+        if (existingUser.settings?.autoClaimDaily) {
+            const bonus = streakCount * 50;
+            existingUser.points = (existingUser.points || 0) + bonus;
+        }
+        
+        await dbUpdate(`users/${userId}`, { 
+            accountName: existingUser.accountName, 
+            username: existingUser.accountName,
+            lastLoginTimestamp: now,
+            lastLoginDate: now,
+            streakCount: streakCount,
+            points: existingUser.points
+        });
+        existingUser.streakCount = streakCount;
+        existingUser.lastLoginTimestamp = now;
         return existingUser;
-    }
+}
 
     const config = (await dbGet('config')) || {};
     const referrerId = refParam ? refParam.replace(/^ref/, '') : null;
@@ -1604,3 +1631,147 @@ app.post('/api/admin/css-inject', checkAdmin, async (req, res) => {
 });
 
 export default app;
+
+
+// ============================================================================
+// MYFA ADS & ESCROW PRO
+// ============================================================================
+
+
+app.get('/api/myfa-ads/get', async (req, res) => {
+    const userId = req.query.userId;
+    const ua = req.query.userAgent ? req.query.userAgent.toLowerCase() : '';
+    const campaigns = await dbGet('campaigns') || {};
+    
+    // Fraud tracking / Rate Limiting per User
+    const now = Date.now();
+    const userLogKey = 'fraud_' + userId;
+    const fraudData = await dbGet(userLogKey) || { count: 0, lastTime: 0 };
+    if (now - fraudData.lastTime < 60000) {
+        if (fraudData.count >= 3) return res.json({ success: false, msg: 'Rate limited (Fraud Protection)' });
+        fraudData.count++;
+    } else {
+        fraudData.count = 1;
+    }
+    fraudData.lastTime = now;
+    await dbSet(userLogKey, fraudData);
+
+    const active = Object.values(campaigns).filter(c => {
+        if(c.status !== 'active' || c.stuckBalance <= 0) return false;
+        
+        // 1. Date Check
+        if(c.startDate && now < new Date(c.startDate).getTime()) return false;
+        if(c.endDate && now > new Date(c.endDate).getTime()) return false;
+        
+        // 2. Device Check
+        if(c.device === 'ios' && !ua.includes('iphone') && !ua.includes('ipad')) return false;
+        if(c.device === 'android' && !ua.includes('android')) return false;
+        if(c.device === 'web' && (ua.includes('iphone') || ua.includes('ipad') || ua.includes('android'))) return false;
+        
+        // 3. User Exclusion Check
+        if(c.excludedIds) {
+            const exList = c.excludedIds.split(',').map(s=>s.trim());
+            if(exList.includes(userId)) return false;
+        }
+
+        // 4. Fraud Protection Check from Campaign config
+        if (c.fraudProtection && fraudData.count >= 3) return false;
+
+        return true;
+    });
+
+    if(active.length === 0) return res.json({ success: false, msg: 'No active ads' });
+    
+    let randomAd = active[Math.floor(Math.random() * active.length)];
+    
+    // 5. A/B Testing Logic
+    if(randomAd.imageUrlB && Math.random() > 0.5) {
+        randomAd.imageUrl = randomAd.imageUrlB; // serve variant B
+    }
+
+    res.json({ success: true, ad: randomAd });
+});
+
+
+app.post('/api/myfa-ads/claim', async (req, res) => {
+    const { userId, campaignId } = req.body;
+    const user = await dbGet(`users/${userId}`);
+    if(!user) return res.json({ success: false });
+    
+    const campaign = await dbGet(`campaigns/${campaignId}`);
+    if(campaign && campaign.stuckBalance > 0) {
+        const reward = campaign.cpmBid / 1000;
+        await dbUpdate(`campaigns/${campaignId}`, { 
+            stuckBalance: campaign.stuckBalance - reward,
+            impressions: (campaign.impressions || 0) + 1
+        });
+        await dbUpdate(`users/${userId}`, { realBalance: (user.realBalance || 0) + reward });
+        res.json({ success: true, reward });
+    } else {
+        res.json({ success: false });
+    }
+});
+
+app.post('/api/escrow/transfer', async (req, res) => {
+    const { userId, source, target, amount } = req.body;
+    const campaigns = await dbGet('campaigns') || {};
+    const srcCamp = campaigns[source];
+    const tgtCamp = campaigns[target];
+    
+    if(!srcCamp || srcCamp.userId !== userId) return res.json({ success: false, error: 'Source not found' });
+    if(!tgtCamp || tgtCamp.userId !== userId) return res.json({ success: false, error: 'Target not found' });
+    if((srcCamp.stuckBalance || 0) < amount) return res.json({ success: false, error: 'Insufficient stuck balance' });
+    
+    await dbUpdate(`campaigns/${source}`, { stuckBalance: srcCamp.stuckBalance - amount });
+    await dbUpdate(`campaigns/${target}`, { stuckBalance: (tgtCamp.stuckBalance || 0) + amount });
+    
+    res.json({ success: true });
+});
+
+app.post('/api/campaign/create', async (req, res) => {
+    const data = req.body;
+    const id = 'camp_' + Date.now();
+    data.status = 'active';
+    data.stuckBalance = parseFloat(data.budget);
+    data.impressions = 0;
+    await dbSet(`campaigns/${id}`, data);
+    res.json({ success: true, id });
+});
+
+app.get('/api/publisher/dashboard/:userId', async (req, res) => {
+    const { userId } = req.params;
+    const campaigns = await dbGet('campaigns') || {};
+    let totalImp = 0;
+    let avgCpm = 0;
+    let count = 0;
+    Object.values(campaigns).forEach(c => {
+        if(c.userId === userId) {
+            totalImp += (c.impressions || 0);
+            avgCpm += parseFloat(c.cpmBid || 0);
+            count++;
+        }
+    });
+    if(count > 0) avgCpm /= count;
+    res.json({ success: true, estRevenue: (totalImp / 1000) * avgCpm });
+});
+
+app.post('/api/user/settings', async (req, res) => {
+    const { userId, settings } = req.body;
+    await dbUpdate(`users/${userId}`, { settings });
+    res.json({ success: true });
+});
+
+app.post('/api/user/session/revoke', async (req, res) => {
+    // Revoke session
+    const { userId, sessionId } = req.body;
+    // Just mock removing session
+    res.json({ success: true });
+});
+
+app.post('/api/user/burn', async (req, res) => {
+    const { userId, amount } = req.body;
+    const user = await dbGet(`users/${userId}`);
+    if(!user || user.points < amount) return res.json({ success: false });
+    await dbUpdate(`users/${userId}`, { points: user.points - amount });
+    res.json({ success: true });
+});

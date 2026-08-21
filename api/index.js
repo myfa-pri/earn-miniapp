@@ -423,18 +423,25 @@ app.get('/api/leaderboard/:id', async (req, res) => {
 // TASK 1: LIGHT-SPEED TELEGRAM MEMBERSHIP API
 async function fetchMultiAPI(channelId, userId, botToken) {
     try {
-        const url = `https://multiapi-roan.vercel.app/check_member?user_id=${userId}&chat_id=${channelId}&bot_token=${botToken}`;
-        const controller = new AbortController();
-        const fetchPromise = fetch(url, { signal: controller.signal }).then(res => res.json());
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => { controller.abort(); reject(new Error('timeout')); }, 3000));
+        const url = `https://api.telegram.org/bot${botToken}/getChatMember?chat_id=${channelId}&user_id=${userId}`;
+        const response = await fetch(url);
+        const data = await response.json();
         
-        const data = await Promise.race([fetchPromise, timeoutPromise]);
-        
-        if (data && data.success) {
-            return { success: data.is_member, status: data.status };
+        if (data.ok && ['creator', 'administrator', 'member', 'restricted'].includes(data.result.status)) {
+            return { success: true, status: data.result.status };
         }
-        return { success: false, status: 'error' };
+        
+        // Return clear error if bot is not admin or user not found
+        if (!data.ok) {
+            console.error("TG API Error:", data.description);
+            if (data.description.includes('bot is not a member') || data.description.includes('chat not found')) {
+                return { success: false, status: 'error', error: "Bot must be an admin in the channel/group!" };
+            }
+        }
+        
+        return { success: false, status: data.ok ? data.result.status : 'error' };
     } catch (e) {
+        console.error("Fetch Error:", e.message);
         return { success: false, status: 'error' };
     }
 }
@@ -444,7 +451,7 @@ async function nativeTelegramCheck(channelId, userId) {
         const url = `https://api.telegram.org/bot${BOT_TOKEN}/getChatMember?chat_id=${channelId}&user_id=${userId}`;
         const response = await fetch(url);
         const data = await response.json();
-        if (data.ok && ['creator', 'administrator', 'member'].includes(data.result.status)) {
+        if (data.ok && ['creator', 'administrator', 'member', 'restricted'].includes(data.result.status)) {
             return { success: true, status: data.result.status };
         }
         return { success: false, status: data.ok ? data.result.status : 'error' };
@@ -491,7 +498,7 @@ app.post('/api/sponsor/verify-auto', async (req, res) => {
     try {
         const member = await fetchMultiAPI(channelId, userId, BOT_TOKEN);
         if (member.status === 'error') {
-            return res.json({ success: false, error: "Verification failed. Is the bot an admin in the channel?" });
+            return res.json({ success: false, error: member.error || "Verification failed. Is the bot an admin in the channel?" });
         }
         if (member.success) {
             // Update Campaign claims
@@ -585,7 +592,7 @@ app.post('/api/verify-membership', async (req, res) => {
     try {
         const member = await fetchMultiAPI(channelId, userId, BOT_TOKEN);
         if (member.status === 'error') {
-            return res.json({ success: false, error: "Verification failed. Is the bot an admin in the channel?" });
+            return res.json({ success: false, error: member.error || "Verification failed. Is the bot an admin in the channel?" });
         }
         if (member.success) {
             

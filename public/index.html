@@ -140,7 +140,7 @@
                 </div>
             </div>
             <div class="balances" style="z-index: 2;">
-                <div class="bal-gems"><i class="fa-solid fa-gem"></i> <span id="pageHeaderBalance" id="home-odometer" id="home-odometer" class="odometer">0</span></div>
+                <div class="bal-gems"><i class="fa-solid fa-gem"></i> <span id="pageHeaderBalance" class="odometer">0</span></div>
                 <div class="bal-real"><i class="fa-solid fa-money-bill-wave"></i> $<span id="pageHeaderRealBalance">0.00</span></div>
             </div>
         </div>
@@ -174,6 +174,7 @@
             <a class="nav-item" data-page="referrals" onclick="nav('referrals')"><i class="fa-solid fa-user-group"></i><span>Invite</span></a>
             <a class="nav-item" data-page="leaderboard" onclick="nav('leaderboard')"><i class="fa-solid fa-trophy"></i><span>Top</span></a>
             <a class="nav-item" data-page="withdraw" onclick="nav('withdraw')"><i class="fa-solid fa-money-bill-transfer"></i><span>Withdraw</span></a>
+            <a class="nav-item" data-page="settings" onclick="nav('settings')"><i class="fa-solid fa-gear"></i><span>Settings</span></a>
         </div>
         
         <!-- SPONSOR TASK OVERLAY -->
@@ -608,13 +609,32 @@ function applyTranslation() {
             }
         }
 
+        
+        
         function updateUI() {
             document.getElementById('pageHeaderName').textContent = currentUser.username;
-            if(document.getElementById('pageHeaderBalance')) document.getElementById('pageHeaderBalance').innerText = (currentUser.points || 0).toLocaleString();
-            if(document.getElementById('pageHeaderRealBalance')) document.getElementById('pageHeaderRealBalance').innerText = (currentUser.realBalance || 0).toFixed(2);
+            
+            const isPriv = localStorage.getItem('set_priv') === 'true';
+            const displayPoints = isPriv ? '****' : (currentUser.points || 0).toLocaleString();
+            const displayReal = isPriv ? '****' : (currentUser.realBalance || 0).toFixed(2);
+            
+            if(document.getElementById('pageHeaderBalance')) document.getElementById('pageHeaderBalance').innerText = displayPoints;
+            if(document.getElementById('pageHeaderRealBalance')) document.getElementById('pageHeaderRealBalance').innerText = displayReal;
             document.getElementById('pageHeaderStatus').innerHTML = currentUser.isVip ? '<i class="fa-solid fa-crown"></i> VIP' : 'Member';
             
             const avatarUrl = window.Telegram.WebApp.initDataUnsafe?.user?.photo_url || currentUser.avatarUrl || `https://ui-avatars.com/api/?name=${currentUser.username}&background=00F2FE&color=fff`;
+            document.getElementById('pageHeaderAvatar').style.backgroundImage = `url('${avatarUrl}')`;
+            
+            if (localStorage.getItem('set_data') === 'true') {
+                document.body.classList.add('data-saver');
+            } else {
+                document.body.classList.remove('data-saver');
+            }
+        }
+&background=00F2FE&color=fff`;
+            document.getElementById('pageHeaderAvatar').style.backgroundImage = `url('${avatarUrl}')`;
+        }
+&background=00F2FE&color=fff`;
             document.getElementById('pageHeaderAvatar').style.backgroundImage = `url('${avatarUrl}')`;
         }
 
@@ -685,6 +705,32 @@ function applyTranslation() {
             
             c.innerHTML = `
                 <!-- 1. Hero Profile -->
+                <!-- ENKUTATASH BANNER -->
+                <div class="card cyber-card" style="padding: 15px; margin-bottom: 15px; background: linear-gradient(135deg, rgba(255,215,0,0.1), rgba(0,255,136,0.1)); border: 1px solid rgba(255,215,0,0.4); display: flex; justify-content: space-between; align-items: center;" onclick="claimEnkutatash()">
+                    <div style="display:flex; align-items:center; gap: 15px;">
+                        <div style="font-size: 2.5rem; text-shadow: 0 0 10px #FFD700;">🌼</div>
+                        <div>
+                            <h3 style="color: #FFD700; margin-bottom: 2px; font-weight: 800; font-family: 'Orbitron', sans-serif;">Happy Enkutatash!</h3>
+                            <p style="font-size: 0.8rem; color: #E2E8F0;">Tap to claim your Aday Abeba Gift (1000 Gems + $0.50)!</p>
+                        </div>
+                    </div>
+                    <div><i class="fa-solid fa-chevron-right" style="color:#FFD700;"></i></div>
+                </div>
+                <script>
+                    window.claimEnkutatash = function() {
+                        if(localStorage.getItem('enkutatash_claimed')) {
+                            showToast('You already claimed your Enkutatash gift!', 'error');
+                            return;
+                        }
+                        if(typeof triggerConfetti === 'function') triggerConfetti();
+                        localStorage.setItem('enkutatash_claimed', 'true');
+                        currentUser.points += 1000;
+                        currentUser.realBalance = (currentUser.realBalance || 0) + 0.50;
+                        updateUI();
+                        showToast('Happy New Year! +1000 Gems & +$0.50 added!', 'success');
+                    };
+                </script>
+
                 <div class="card cyber-card" style="text-align:center; padding: 30px 20px; position:relative; overflow:hidden;">
                     <div style="position:absolute; top:-50px; left:-50px; width:150px; height:150px; background:var(--color-magenta); filter:blur(60px); opacity:0.3; border-radius:50%;"></div>
                     <div style="position:absolute; bottom:-50px; right:-50px; width:150px; height:150px; background:var(--color-cyan); filter:blur(60px); opacity:0.3; border-radius:50%;"></div>
@@ -694,7 +740,7 @@ function applyTranslation() {
                     </div>
                     <h2 style="font-size:1.6rem; margin-bottom:5px;">${currentUser.username}</h2>
                     <div style="font-size: 2.5rem; color:var(--color-cyan); font-weight:800; text-shadow: 0 0 20px rgba(0, 242, 254, 0.5); margin: 10px 0;">
-                        <i class="fa-solid fa-gem"></i> <span id="home-odometer" id="home-odometer" class="odometer">${currentUser.points}</span>
+                        <i class="fa-solid fa-gem"></i> <span id="home-odometer" class="odometer">${currentUser.points}</span>
                     </div>
                     
                     <!-- 7-day Login Streak -->
@@ -979,7 +1025,7 @@ function applyTranslation() {
                             if (data.success) {
                                 currentUser.realBalance = (currentUser.realBalance || 0) + (appConfig.realMoneyPerAd || 0.05);
                                 currentUser.monetagWatchedToday = (currentUser.monetagWatchedToday || 0) + 1;
-                                // // updateUI(); replaced by targeted updates replaced by targeted updates
+                                updateUI();
                                 showToast(`Earned $${(appConfig.realMoneyPerAd || 0.05).toFixed(2)} Cash from Monetag!`, 'success');
                             }
                         });
@@ -1029,7 +1075,7 @@ function applyTranslation() {
                         if (data.success) {
                             currentUser.realBalance = (currentUser.realBalance || 0) + (appConfig.realMoneyPerAd || 0.01);
                             currentUser.adsterraWatchedToday = watchedToday + 1;
-                            // // updateUI(); replaced by targeted updates replaced by targeted updates
+                            updateUI();
                             if(typeof triggerConfetti === 'function') triggerConfetti();
                             showToast(`Earned $${(appConfig.realMoneyPerAd || 0.01).toFixed(2)} Cash from Premium Ad!`, 'success');
                             nav('tasks'); // Refresh tasks page to update counter
@@ -1109,7 +1155,7 @@ function applyTranslation() {
                                 }
                             }
                             
-                            // // updateUI(); replaced by targeted updates replaced by targeted updates
+                            updateUI();
                         } else if(data.alreadyClaimed) {
                             showToast("Already claimed!", "info");
                             const taskRow = document.getElementById('task-row-' + taskId);
@@ -1187,7 +1233,17 @@ function applyTranslation() {
             const task = JSON.parse(taskDataStr.replace(/&apos;/g, "'").replace(/&quot;/g, '"'));
             currentSponsorTask = task;
             
-            document.getElementById('so-icon').className = `fa-solid ${task.icon || 'fa-star'}`;
+            
+            let iClass = task.icon || 'fa-solid fa-star';
+            if (iClass.includes('telegram')) iClass = 'fa-brands fa-telegram';
+            else if (iClass.includes('youtube')) iClass = 'fa-brands fa-youtube';
+            else if (iClass.includes('twitter') || iClass === 'x') iClass = 'fa-brands fa-x-twitter';
+            else if (iClass.includes('instagram')) iClass = 'fa-brands fa-instagram';
+            else if (iClass.includes('tiktok')) iClass = 'fa-brands fa-tiktok';
+            else if (!iClass.includes('fa-')) iClass = 'fa-solid fa-' + iClass;
+            else if (!iClass.includes('fa-solid') && !iClass.includes('fa-brands')) iClass = 'fa-solid ' + iClass;
+            document.getElementById('so-icon').className = iClass;
+
             document.getElementById('so-title').innerText = task.name;
             document.getElementById('so-reward').innerText = `+${task.reward} Gems`;
             document.getElementById('so-desc').innerText = task.desc || "Complete this task to earn your reward!";
@@ -1300,7 +1356,7 @@ function applyTranslation() {
                         if(!currentUser.claimedSponsorTasks) currentUser.claimedSponsorTasks = [];
                         currentUser.claimedSponsorTasks.push(task.id);
                         
-                        // // updateUI(); replaced by targeted updates replaced by targeted updates
+                        updateUI();
                         closeSponsorTask();
                         nav('tasks'); // Refresh tasks page
                     } else {
@@ -1430,7 +1486,7 @@ function applyTranslation() {
                     .then(r => r.json())
                     .then(data => {
                         currentUser = data;
-                        // // updateUI(); replaced by targeted updates replaced by targeted updates
+                        updateUI();
                         nav('tasks');
                         if (typeof triggerConfetti === 'function') triggerConfetti();
                         showToast("Ad Verified! Real Money added.", "success");
@@ -1776,7 +1832,181 @@ function applyTranslation() {
                 btn.disabled = false;
             }
         }
-           async function renderLeaderboard(c) {
+           async 
+        function renderSettings(c) {
+            c.innerHTML = `
+                <div style="padding-bottom: 20px;">
+                    <h2 style="font-size: 2rem; margin-bottom: 20px; text-shadow: 0 0 10px var(--brand-blue);">Settings Hub</h2>
+                    
+                    <div class="card cyber-card" style="margin-bottom: 20px; padding: 20px;">
+                        <h3 style="color: var(--brand-blue); margin-bottom: 15px;"><i class="fa-solid fa-shield-halved"></i> Advanced Security</h3>
+                        
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+                            <div>
+                                <div style="font-weight: bold; font-size: 1.1rem;">Guard Mode</div>
+                                <div style="font-size: 0.8rem; color: #94A3B8;">Gate group joins and auto-approve requests.</div>
+                            </div>
+                            <label class="switch"><input type="checkbox" id="set-guard" onchange="toggleSetting('guard')"><span class="slider round"></span></label>
+                        </div>
+                        
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+                            <div>
+                                <div style="font-weight: bold; font-size: 1.1rem;">Secretary Mode</div>
+                                <div style="font-size: 0.8rem; color: #94A3B8;">Auto-reply to chat messages on your behalf.</div>
+                            </div>
+                            <label class="switch"><input type="checkbox" id="set-sec" onchange="toggleSetting('sec')"><span class="slider round"></span></label>
+                        </div>
+
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+                            <div>
+                                <div style="font-weight: bold; font-size: 1.1rem;">Privacy Mode</div>
+                                <div style="font-size: 0.8rem; color: #94A3B8;">Hide balances on main screens.</div>
+                            </div>
+                            <label class="switch"><input type="checkbox" id="set-priv" onchange="toggleSetting('priv')"><span class="slider round"></span></label>
+                        </div>
+
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
+                            <div>
+                                <div style="font-weight: bold; font-size: 1.1rem;">Passcode Lock</div>
+                                <div style="font-size: 0.8rem; color: #94A3B8;">Require PIN to open the app.</div>
+                            </div>
+                            <label class="switch"><input type="checkbox" id="set-pin" onchange="toggleSetting('pin')"><span class="slider round"></span></label>
+                        </div>
+                    </div>
+
+                    <div class="card cyber-card" style="margin-bottom: 20px; padding: 20px;">
+                        <h3 style="color: var(--brand-green); margin-bottom: 15px;"><i class="fa-solid fa-bolt"></i> Automation & Alerts</h3>
+                        
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+                            <div>
+                                <div style="font-weight: bold; font-size: 1.1rem;">Auto-Claim Bonus</div>
+                                <div style="font-size: 0.8rem; color: #94A3B8;">Automatically claim daily bonuses.</div>
+                            </div>
+                            <label class="switch"><input type="checkbox" id="set-auto" onchange="toggleSetting('auto')"><span class="slider round"></span></label>
+                        </div>
+                        
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+                            <div>
+                                <div style="font-weight: bold; font-size: 1.1rem;">Push Notifications</div>
+                                <div style="font-size: 0.8rem; color: #94A3B8;">Receive alerts for tasks and drops.</div>
+                            </div>
+                            <label class="switch"><input type="checkbox" id="set-push" onchange="toggleSetting('push')"><span class="slider round"></span></label>
+                        </div>
+
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+                            <div>
+                                <div style="font-weight: bold; font-size: 1.1rem;">Daily Reminders</div>
+                                <div style="font-size: 0.8rem; color: #94A3B8;">Never miss a login streak.</div>
+                            </div>
+                            <label class="switch"><input type="checkbox" id="set-remind" onchange="toggleSetting('remind')"><span class="slider round"></span></label>
+                        </div>
+
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <div style="font-weight: bold; font-size: 1.1rem;">Data Saver Mode</div>
+                                <div style="font-size: 0.8rem; color: #94A3B8;">Reduce animations to save bandwidth.</div>
+                            </div>
+                            <label class="switch"><input type="checkbox" id="set-data" onchange="toggleSetting('data')"><span class="slider round"></span></label>
+                        </div>
+                    </div>
+
+                    <div class="card cyber-card" style="margin-bottom: 20px; padding: 20px;">
+                        <h3 style="color: var(--brand-orange); margin-bottom: 15px;"><i class="fa-solid fa-palette"></i> Experience & UI</h3>
+                        
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+                            <div>
+                                <div style="font-weight: bold; font-size: 1.1rem;">Sound Effects</div>
+                                <div style="font-size: 0.8rem; color: #94A3B8;">In-game sounds and UI clicks.</div>
+                            </div>
+                            <label class="switch"><input type="checkbox" id="set-sfx" onchange="toggleSetting('sfx')"><span class="slider round"></span></label>
+                        </div>
+
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+                            <div>
+                                <div style="font-weight: bold; font-size: 1.1rem;">Background Music</div>
+                                <div style="font-size: 0.8rem; color: #94A3B8;">Play ambient cyber tracks.</div>
+                            </div>
+                            <label class="switch"><input type="checkbox" id="set-bgm" onchange="toggleSetting('bgm')"><span class="slider round"></span></label>
+                        </div>
+
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+                            <div>
+                                <div style="font-weight: bold; font-size: 1.1rem;">Haptic Feedback</div>
+                                <div style="font-size: 0.8rem; color: #94A3B8;">Vibrate on interactions (mobile only).</div>
+                            </div>
+                            <label class="switch"><input type="checkbox" id="set-hap" onchange="toggleSetting('hap')"><span class="slider round"></span></label>
+                        </div>
+
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+                            <div style="flex:1;">
+                                <div style="font-weight: bold; font-size: 1.1rem;">App Theme</div>
+                                <select id="set-theme" onchange="toggleSetting('theme', this.value)" style="width:100%; margin-top:5px; background:rgba(0,0,0,0.5); color:white; border:1px solid rgba(255,255,255,0.2); padding:10px; border-radius:8px;">
+                                    <option value="quantum">Quantum Cyber (Default)</option>
+                                    <option value="dark">Pure Dark Mode</option>
+                                    <option value="light">Light Mode</option>
+                                    <option value="neon">Neon Tokyo</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+                            <div style="flex:1;">
+                                <div style="font-weight: bold; font-size: 1.1rem;">Language</div>
+                                <select id="set-lang" onchange="toggleSetting('lang', this.value)" style="width:100%; margin-top:5px; background:rgba(0,0,0,0.5); color:white; border:1px solid rgba(255,255,255,0.2); padding:10px; border-radius:8px;">
+                                    <option value="en">English (US)</option>
+                                    <option value="am">Amharic (Ethiopia)</option>
+                                    <option value="ru">Russian</option>
+                                    <option value="es">Spanish</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card cyber-card" style="margin-bottom: 20px; padding: 20px;">
+                        <h3 style="color: #FF4444; margin-bottom: 15px;"><i class="fa-solid fa-triangle-exclamation"></i> Danger Zone</h3>
+                        
+                        <button class="btn" style="width:100%; background:rgba(255,255,255,0.1); color:white; margin-bottom:10px; border:1px solid rgba(255,255,255,0.2);" onclick="showToast('Active sessions cleared!', 'success')"><i class="fa-solid fa-laptop-code"></i> Logout other devices</button>
+                        <button class="btn" style="width:100%; background:rgba(255,255,255,0.1); color:white; margin-bottom:10px; border:1px solid rgba(255,255,255,0.2);" onclick="showToast('Cache cleared. Performance boosted!', 'success')"><i class="fa-solid fa-broom"></i> Clear App Cache</button>
+                        <button class="btn" style="width:100%; background:rgba(255,68,68,0.2); color:#FF4444; border:1px solid rgba(255,68,68,0.5);" onclick="showToast('Cannot delete while balance > 0', 'error')"><i class="fa-solid fa-trash-can"></i> Delete Account</button>
+                    </div>
+
+                </div>
+                
+                <style>
+                    .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
+                    .switch input { opacity: 0; width: 0; height: 0; }
+                    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255,255,255,0.1); transition: .4s; }
+                    .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background-color: white; transition: .4s; }
+                    input:checked + .slider { background-color: var(--brand-blue); box-shadow: 0 0 10px var(--brand-blue); }
+                    input:checked + .slider:before { transform: translateX(24px); }
+                    .slider.round { border-radius: 34px; }
+                    .slider.round:before { border-radius: 50%; }
+                </style>
+            `;
+            
+            // Hydrate values
+            ['guard', 'sec', 'priv', 'pin', 'auto', 'push', 'remind', 'data', 'sfx', 'bgm', 'hap'].forEach(key => {
+                const el = document.getElementById('set-' + key);
+                if(el) el.checked = localStorage.getItem('set_' + key) === 'true';
+            });
+            const theme = localStorage.getItem('set_theme'); if(theme) document.getElementById('set-theme').value = theme;
+            const lang = localStorage.getItem('set_lang'); if(lang) document.getElementById('set-lang').value = lang;
+        }
+
+        window.toggleSetting = function(key, val) {
+            if(val !== undefined) {
+                localStorage.setItem('set_' + key, val);
+                showToast(key.toUpperCase() + ' updated successfully!', 'success');
+            } else {
+                const isChecked = document.getElementById('set-' + key).checked;
+                localStorage.setItem('set_' + key, isChecked);
+                showToast('Setting updated: ' + (isChecked ? 'ON' : 'OFF'), 'success');
+                if(key === 'priv') updateUI(); // Re-render header to hide/show balances
+                if(key === 'sfx') soundEnabled = isChecked;
+            }
+        };
+
+        function renderLeaderboard(c) {
             c.innerHTML = `
                 <style>
                     /* Leaderboard Custom CSS */
@@ -2042,7 +2272,7 @@ function applyTranslation() {
             else if(gameId === 'scratchcard') renderScratchCardGame(canvasArea);
         };
 
-        window.closeGame = function() { window.clearAllGameLoops();
+        window.closeGame = function() { if(typeof window.clearAllGameLoops === "function") window.clearAllGameLoops();
             const main = document.getElementById('mainContent');
             const wrapper = document.getElementById('gameCanvasWrapper');
             const canvasArea = document.getElementById('activeGameCanvas');
@@ -2058,7 +2288,7 @@ function applyTranslation() {
             if (canvasArea) canvasArea.innerHTML = '';
             if (main) main.style.display = 'block';
             
-            // updateUI disabled
+            updateUI();
         };
 
         // ==========================================
@@ -2436,7 +2666,7 @@ function applyTranslation() {
                             btn.innerText = `WON ${data.winnings}`;
                             playSound('audioCashout');
                             currentUser.points += data.winnings; // Backend already added, sync locally
-                            // // updateUI(); replaced by targeted updates replaced by targeted updates
+                            updateUI();
                             if(document.getElementById('avHeaderBal')) document.getElementById('avHeaderBal').innerText = currentUser.points;
                             triggerSpark(avX, avY);
                             if(mult > 5.0) confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#FFD700', '#FFA500'] });
@@ -2454,7 +2684,7 @@ function applyTranslation() {
                 if(currentUser.points < bet) return showToast("Not enough Gems", "error");
                 
                 currentUser.points -= bet; // Local deduction for instant UI feedback
-                // // updateUI(); replaced by targeted updates replaced by targeted updates
+                updateUI();
                 if(document.getElementById('avHeaderBal')) document.getElementById('avHeaderBal').innerText = currentUser.points;
                 
                 btn.className = "bet-btn active";
@@ -2467,7 +2697,7 @@ function applyTranslation() {
                 // Cancel Bet
                 const queued = parseInt(btn.dataset.queuedBet) || 0;
                 currentUser.points += queued;
-                // // updateUI(); replaced by targeted updates replaced by targeted updates
+                updateUI();
                 if(document.getElementById('avHeaderBal')) document.getElementById('avHeaderBal').innerText = currentUser.points;
                 
                 btn.className = "bet-btn idle";
@@ -2573,7 +2803,7 @@ function applyTranslation() {
                 // Ensure UI is synced with backend deduction
                 const uRes = await fetch(`${API_BASE_URL}/api/user/${userId}`);
                 currentUser = await uRes.json();
-                // // updateUI(); replaced by targeted updates replaced by targeted updates
+                updateUI();
                 if(document.getElementById('avHeaderBal')) document.getElementById('avHeaderBal').innerText = currentUser.points;
             }
 
@@ -2737,7 +2967,7 @@ function applyTranslation() {
             
             // Deduct wager locally for instant UI update
             currentUser.points -= wager;
-            // // updateUI(); replaced by targeted updates replaced by targeted updates
+            updateUI();
             if(document.getElementById('gameHeaderBal')) document.getElementById('gameHeaderBal').innerText = currentUser.points;
             
             document.getElementById('oxBoardUI').style.opacity = '1';
@@ -2848,7 +3078,7 @@ function applyTranslation() {
             const data = await res.json();
             if(data.success) {
                 currentUser.points = data.newBal;
-                // // updateUI(); replaced by targeted updates replaced by targeted updates
+                updateUI();
                 if(document.getElementById('gameHeaderBal')) document.getElementById('gameHeaderBal').innerText = currentUser.points;
             }
         }
@@ -2958,7 +3188,7 @@ function applyTranslation() {
                 showToast(`COMBO CRACKED! You won ${data.reward} Gems!`, "success");
                 currentUser.points += data.reward;
                 currentUser.comboTries = 0;
-                // // updateUI(); replaced by targeted updates replaced by targeted updates
+                updateUI();
                 if(document.getElementById('gameHeaderBal2')) document.getElementById('gameHeaderBal2').innerText = currentUser.points;
                 if(document.getElementById('comboTriesTxt')) document.getElementById('comboTriesTxt').innerText = `Tries left today: 0`;
                 confetti({ particleCount: 300, spread: 150 });
@@ -3029,7 +3259,7 @@ function applyTranslation() {
                 
                 // Deduct cost locally instantly
                 currentUser.points -= 10;
-                // // updateUI(); replaced by targeted updates replaced by targeted updates
+                updateUI();
                 if(document.getElementById('gameHeaderBal3')) document.getElementById('gameHeaderBal3').innerText = currentUser.points;
 
                 // Determine target degree based on reward
@@ -3057,7 +3287,7 @@ function applyTranslation() {
                     window.isSpinning = false;
                     showToast(`You won ${data.reward} Gems!`, "success");
                     currentUser.points = data.newBal;
-                    // // updateUI(); replaced by targeted updates replaced by targeted updates
+                    updateUI();
                     if(document.getElementById('gameHeaderBal3')) document.getElementById('gameHeaderBal3').innerText = currentUser.points;
                     if(data.reward >= 50) confetti({ particleCount: 100, spread: 70 });
                 }, 4000); // 4s matches transition duration
@@ -3157,7 +3387,7 @@ function applyTranslation() {
                 setTimeout(() => {
                     showToast(`You won ${window.scratchRewardAmount} Gems!`, "success");
                     currentUser.points = window.scratchNewBal;
-                    // // updateUI(); replaced by targeted updates replaced by targeted updates
+                    updateUI();
                     if(document.getElementById('gameHeaderBal4')) document.getElementById('gameHeaderBal4').innerText = currentUser.points;
                     confetti();
                     document.getElementById('buyScratchBtn').disabled = false;
@@ -3185,7 +3415,7 @@ function applyTranslation() {
                 
                 // Deduct cost visually
                 currentUser.points -= 50;
-                // // updateUI(); replaced by targeted updates replaced by targeted updates
+                updateUI();
                 if(document.getElementById('gameHeaderBal4')) document.getElementById('gameHeaderBal4').innerText = currentUser.points;
 
                 window.scratchRewardAmount = data.reward;
@@ -3310,7 +3540,7 @@ function applyTranslation() {
                     if (pageHeaderBal) {
                         pageHeaderBal.innerText = currentUser.points;
                     }
-                    // // updateUI(); replaced by targeted updates replaced by targeted updates
+                    updateUI();
                     triggerConfetti();
                     showToast(`Promo Claimed! +${data.reward} Gems`, "success");
                     codeInput.value = '';

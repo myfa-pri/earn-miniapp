@@ -74,15 +74,6 @@ body {
     background-size: cover; background-position: center;
 }
 
-.hologram-avatar::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 50%;
-    background: linear-gradient(135deg, rgba(0,255,136,0.4), rgba(0,168,255,0.4));
-    -webkit-mask: url('data:image/svg+xml;utf8,<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="50" fill="white" /><line x1="0" y1="0" x2="100" y2="100" stroke="black" stroke-width="20" /><line x1="100" y1="0" x2="0" y2="100" stroke="black" stroke-width="20" /></svg>');
-    animation: hologramPulse 2s infinite alternate;
-}
 
 @keyframes hologramPulse {
     0% { opacity: 0.2; transform: scale(0.98); }
@@ -479,4 +470,12 @@ body {
 .cyber-card { border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5), inset 0 0 10px rgba(255,255,255,0.05); }
 .btn { border-radius: 15px; transition: transform 0.2s, box-shadow 0.2s; }
 .btn:active { transform: scale(0.95); }
+
+
+body.data-saver *, body.data-saver *::before, body.data-saver *::after {
+    animation: none !important;
+    transition: none !important;
+    backdrop-filter: none !important;
+    box-shadow: none !important;
+}
 

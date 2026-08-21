@@ -1,226 +1,4 @@
-<!DOCTYPE html>
-<!-- UI Bug Fixes & Quantum Orbit Loader Successfully Applied -->
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💎</text></svg>">
-    <title>Besh Besh</title>
-    <style>
-        .side-panel {
-            position: fixed !important;
-            top: 0;
-            width: 320px;
-            max-width: 85vw;
-            height: 100vh;
-            z-index: 9999 !important;
-            transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            overflow-y: auto;
-            background: rgba(15, 23, 42, 0.95);
-            backdrop-filter: blur(16px);
-            border-left: 1px solid rgba(255,255,255,0.1);
-            border-right: 1px solid rgba(255,255,255,0.1);
-        }
-        .side-panel.right { right: -100vw; left: auto; }
-        .side-panel.right.open { right: 0; }
-        .side-panel.left { left: -100vw; right: auto; }
-        .side-panel.left.open { left: 0; }
-        
-        #channelOverlay {
-            width: 100vw !important;
-            max-width: 100vw !important;
-        }
-        
-        .sponsor-overlay {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 70vh;
-            border-radius: 35px 35px 0 0;
-            background: rgba(15, 23, 42, 0.95);
-            backdrop-filter: blur(25px);
-            z-index: 5000;
-            transition: transform 0.2s ease-out, opacity 0.2s ease-out; will-change: transform, opacity;
-            transform: translate3d(0, 100%, 0);
-            display: flex;
-            flex-direction: column;
-            padding: 25px;
-            box-sizing: border-box;
-            box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
-            border-top: 1px solid rgba(255,255,255,0.1);
-        }
-        .sponsor-overlay.open {
-            transform: translate3d(0, 0, 0);
-        }
-    </style>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link rel="stylesheet" href="index.css">
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    
-    <!-- AD NETWORKS: ADSGRAM & MONETAG -->
-    <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
-    <script src="//libtl.com/sdk.js" data-zone="41731" data-sdk="show_41731"></script>
-</head>
-<body class="dark-mode">
 
-    
-<style>
-.modern-loader {
-    position: fixed; inset: 0; background: #0B0F19; z-index: 99999;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    transition: opacity 0.5s ease;
-}
-.loader-logo { font-size: 3rem; font-weight: 900; background: linear-gradient(90deg, #00F2FE, #4FACFE, #00F2FE); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 30px; animation: pulseGlow 2s infinite; }
-.loader-rings { position: relative; width: 100px; height: 100px; margin-bottom: 30px; }
-.loader-rings div { box-sizing: border-box; display: block; position: absolute; width: 80px; height: 80px; margin: 10px; border: 4px solid transparent; border-radius: 50%; animation: loader-ring 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite; }
-.loader-rings div:nth-child(1) { border-top-color: #00F2FE; animation-delay: -0.45s; }
-.loader-rings div:nth-child(2) { border-right-color: #FF007A; animation-delay: -0.3s; }
-.loader-rings div:nth-child(3) { border-bottom-color: #F59E0B; animation-delay: -0.15s; }
-.loader-rings div:nth-child(4) { border-left-color: #8B5CF6; }
-@keyframes loader-ring { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-@keyframes pulseGlow { 0% { filter: drop-shadow(0 0 5px #00F2FE); } 50% { filter: drop-shadow(0 0 20px #00F2FE); } 100% { filter: drop-shadow(0 0 5px #00F2FE); } }
-.loader-text { color: #94A3B8; font-family: 'Orbitron', sans-serif; font-size: 1.1rem; letter-spacing: 3px; font-weight: bold; }
-.progress-bar-container { width: 200px; height: 6px; background: rgba(255,255,255,0.1); border-radius: 10px; margin-top: 20px; overflow: hidden; }
-.progress-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #00F2FE, #FF007A); transition: width 0.3s ease; }
-</style>
-<div id="loading-overlay" class="modern-loader">
-    <div class="loader-logo">MYFA BIRR</div>
-    <div class="loader-rings"><div></div><div></div><div></div><div></div></div>
-    <div id="loader-text" class="loader-text">CONNECTING</div>
-    <div class="progress-bar-container"><div id="loader-progress" class="progress-bar-fill"></div></div>
-</div>
-
-<script>
-    // Modern Loader Logic - ensure under 5 seconds
-    const stages = ["CONNECTING", "VERIFYING SESSION", "LOADING PROFILE", "SYNCING BALANCE", "LOADING TASKS", "READY"];
-    let currentStage = 0;
-    const stageInterval = setInterval(() => {
-        currentStage++;
-        if(currentStage < stages.length) {
-            const loaderText = document.getElementById('loader-text');
-            const loaderProgress = document.getElementById('loader-progress');
-            if(loaderText && loaderProgress) {
-                loaderText.innerText = stages[currentStage];
-                loaderProgress.style.width = ((currentStage + 1) / stages.length * 100) + '%';
-            } else {
-                clearInterval(stageInterval);
-            }
-        } else {
-            clearInterval(stageInterval);
-        }
-    }, 400); // 400ms * 6 = 2.4 seconds total for text transitions
-</script>
-
-    <div id="gate-overlay" style="display:none; background: rgba(50, 0, 0, 0.90); backdrop-filter: blur(25px); z-index: 9999; position: fixed; inset: 0; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:20px; border: 2px solid rgba(255, 0, 0, 0.3);">
-        <svg width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="#ff3333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 20px #ff0000); margin-bottom: 20px; animation: floatIcon 3s ease-in-out infinite;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-        <h2 style="color: #ffcccc; margin-bottom:20px; font-weight:800; font-size:1.8rem; text-shadow: 0 0 10px red;">You left an Official Channel!</h2>
-        <p style="color: #ff9999; margin-bottom: 30px; font-size: 1.1rem;">You must rejoin to access your account.</p>
-        <div id="gateChannelList" style="width:100%; max-width:400px; display:flex; flex-direction:column; margin-bottom:30px; max-height: 50vh; overflow-y: auto; padding-right:10px;">
-            <!-- Channels dynamically injected here -->
-        </div>
-        <button id="verifyGateBtn" onclick="checkGate()" style="width:100%; max-width:400px; padding:18px; font-size:1.2rem; border-radius:12px; background: linear-gradient(90deg, #ff0000, #cc0000); border:none; color:white; font-weight:800; cursor:pointer; box-shadow: 0 0 30px rgba(255, 0, 0, 0.6); transition: transform 0.2s;"><i class="fa-solid fa-rotate-right"></i> Rejoin & Verify</button>
-    </div>
-
-    <div class="app-container" id="app-container">
-        <!-- FLOATING PILL (DAY/NIGHT, SOUND & LANG) -->
-        <div class="floating-pill cyber-card" style="position: fixed; top: 10px; left: 10px; right: auto; z-index: 2000; display: flex; gap: 10px; padding: 8px 15px; border-radius: 30px;">
-            <div id="themeToggle" style="cursor:pointer;" onclick="toggleTheme()"></div>
-            <div style="width:1px; background:rgba(255,255,255,0.2);"></div>
-            <div id="soundToggle" style="cursor:pointer;" onclick="toggleSound()"><i class="fa-solid fa-volume-high"></i></div>
-            <div style="width:1px; background:rgba(255,255,255,0.2);"></div>
-            <div id="langToggle" style="cursor:pointer; font-weight:700; font-size:0.9rem;" onclick="toggleLang()">EN</div>
-        </div>
-
-        <!-- HEADER -->
-        <div id="pageHeader" class="quantum-header">
-            <div style="display:flex; align-items:center; gap:12px;">
-                <div class="hologram-avatar" id="pageHeaderAvatar"></div>
-                <div style="display:flex; flex-direction:column; justify-content:center; z-index: 2;">
-                    <div style="font-weight:800; font-size:1.1rem; line-height:1;" id="pageHeaderName">User</div>
-                    <div style="font-size:0.75rem; color:#64748B; font-weight:700; margin-top:2px;" id="pageHeaderStatus">Member</div>
-                    <div style="font-size:0.65rem; color:var(--success-color); font-weight:bold; margin-top:2px;" id="onlineCounter"><i class="fa-solid fa-circle" style="font-size:0.5rem; animation: pulse 2s infinite;"></i> 0 Online</div>
-                </div>
-            </div>
-            <div class="balances" style="z-index: 2;">
-                <div class="bal-gems"><i class="fa-solid fa-gem"></i> <span id="pageHeaderBalance" class="odometer">0</span></div>
-                <div class="bal-real"><i class="fa-solid fa-money-bill-wave"></i> $<span id="pageHeaderRealBalance">0.00</span></div>
-            </div>
-        </div>
-
-        <!-- CONTENT AREA -->
-        
-<div id="mainContent" class="content-section" style="position:relative;">
-    <div id="page-home" class="page-container" style="display:none; transition: opacity 0.15s ease, transform 0.15s ease;"></div>
-    <div id="page-tasks" class="page-container" style="display:none; transition: opacity 0.15s ease, transform 0.15s ease;"></div>
-    <div id="page-games" class="page-container" style="display:none; transition: opacity 0.15s ease, transform 0.15s ease;"></div>
-    <div id="page-withdraw" class="page-container" style="display:none; transition: opacity 0.15s ease, transform 0.15s ease;"></div>
-    <div id="page-referrals" class="page-container" style="display:none; transition: opacity 0.15s ease, transform 0.15s ease;"></div>
-    <div id="page-leaderboard" class="page-container" style="display:none; transition: opacity 0.15s ease, transform 0.15s ease;"></div>
-    <div id="page-settings" class="page-container" style="display:none; transition: opacity 0.15s ease, transform 0.15s ease;"></div>
-    <div id="page-ads" class="page-container" style="display:none; transition: opacity 0.15s ease, transform 0.15s ease;"></div>
-</div>
-
-
-        <!-- GAMES WRAPPER -->
-        <div id="gameCanvasWrapper" style="display: none; padding: 0;">
-            <div id="activeGameCanvas"></div>
-        </div>
-
-        <div id="toast" class="toast"><i class="fa-solid fa-circle-info"></i> <span id="toast-msg"></span></div>
-        <div id="leaderboardFooter" class="sticky-footer cyber-card" style="display: none;">Your Rank: 99+</div>
-
-        <!-- NAVIGATION -->
-        <div class="quantum-nav" id="bottomNav">
-            <a class="nav-item active" data-page="home" onclick="nav('home')"><i class="fa-solid fa-house"></i><span>Home</span></a>
-            <a class="nav-item" data-page="tasks" onclick="nav('tasks')"><i class="fa-solid fa-list-check"></i><span>Tasks</span></a>
-            <a class="nav-item" data-page="games" onclick="nav('games')"><i class="fa-solid fa-gamepad"></i><span>Hub</span></a>
-            <a class="nav-item" data-page="referrals" onclick="nav('referrals')"><i class="fa-solid fa-user-group"></i><span>Invite</span></a>
-            <a class="nav-item" data-page="leaderboard" onclick="nav('leaderboard')"><i class="fa-solid fa-trophy"></i><span>Top</span></a>
-            <a class="nav-item" data-page="withdraw" onclick="nav('withdraw')"><i class="fa-solid fa-money-bill-transfer"></i><span>Withdraw</span></a>
-            
-        </div>
-        
-        <!-- SPONSOR TASK OVERLAY -->
-        <div id="sponsorOverlay" class="sponsor-overlay" style="backdrop-filter: blur(25px); border-radius: 30px 30px 0 0; border-top: 1px solid rgba(255,255,255,0.2);">
-            <div style="position:absolute; top:20px; right:20px; cursor:pointer; font-size:1.5rem; color:#94A3B8; width:40px; height:40px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.1); border-radius:50%; box-shadow:0 4px 10px rgba(0,0,0,0.3);" onclick="closeSponsorTask()">
-                <i class="fa-solid fa-xmark"></i>
-            </div>
-            
-            <div style="text-align:center; margin-top:20px;">
-                <div id="so-icon-box" style="width:90px; height:90px; background:rgba(255,255,255,0.05); border-radius:30px; display:flex; align-items:center; justify-content:center; margin:0 auto 15px; font-size:3rem; color:var(--color-cyan); box-shadow:0 10px 30px rgba(0,242,254, 0.2); border:1px solid rgba(255,255,255,0.1);">
-                    <i id="so-icon" class="fa-solid fa-star"></i>
-                </div>
-                <h2 id="so-title" style="font-size:1.8rem; font-weight:900; margin-bottom:5px; text-shadow: 0 4px 10px rgba(0,0,0,0.5);">Task Name</h2>
-                <div id="so-reward" style="font-size:1.4rem; color:var(--success-color); font-weight:900; text-shadow:0 0 15px rgba(16, 185, 129, 0.6);">+0 Gems</div>
-            </div>
-            
-            <div style="flex:1; margin-top:25px; overflow-y:auto; padding-right:10px;">
-                <div style="background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.05); border-radius:20px; padding:20px; font-size:1rem; color:#E2E8F0; line-height:1.6; text-align:center;" id="so-desc">
-                    Task description goes here...
-                </div>
-                
-                <div id="so-manual-proof-section" style="display:none; margin-top:20px; background:rgba(255,255,255,0.05); padding:15px; border-radius:15px; border:1px dashed rgba(255,255,255,0.2);">
-                    <label style="font-size:0.85rem; color:#94A3B8; font-weight:800; margin-bottom:10px; display:block; text-align:center;"><i class="fa-solid fa-cloud-arrow-up"></i> Upload Screenshot Proof</label>
-                    <input type="file" id="so-proof-file" accept="image/*" style="width:100%; color:#fff; background:rgba(0,0,0,0.5); padding:12px; border-radius:10px; outline:none; border:none;">
-                </div>
-            </div>
-            
-            <div id="so-button-container" style="margin-top:25px; display:flex; gap:15px; width:100%;">
-                <!-- Dynamic Dual-Button Logic -->
-            </div>
-        </div>
-    </div>
-
-    <!-- AUDIO ELEMENTS -->
-    <audio id="audioCashout" src="https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3"></audio>
-    <audio id="audioCrash" src="https://assets.mixkit.co/active_storage/sfx/1466/1466-preview.mp3"></audio>
-    <!-- We will use Web Audio API for the dynamic engine pitch -->
-
-    <script>
         let errCount = 0;
         window.onerror = function(msg, url, lineNo, columnNo, error) {
             errCount++;
@@ -1323,7 +1101,6 @@ function renderWithdraw(c) {
             }
         };
 
-        
         async function renderLeaderboard(c) {
             c.innerHTML = `
                 <style>
@@ -1356,85 +1133,104 @@ function renderWithdraw(c) {
                     
                     .podium-avatar {
                         border-radius: 50%;
-                        border: 3px solid var(--color-magenta);
-                        background: #1E293B;
                         object-fit: cover;
+                        background: var(--bg-color);
+                        z-index: 2;
+                        position: relative;
                     }
                     
-                    .rank-1 .podium-avatar { width: 90px; height: 90px; border-color: #FFD700; box-shadow: 0 0 30px rgba(255,215,0,0.4); z-index: 3; }
-                    .rank-2 .podium-avatar { width: 75px; height: 75px; border-color: #C0C0C0; box-shadow: 0 0 20px rgba(192,192,192,0.4); z-index: 2; }
-                    .rank-3 .podium-avatar { width: 65px; height: 65px; border-color: #CD7F32; box-shadow: 0 0 15px rgba(205,127,50,0.4); z-index: 1; }
-                    
-                    .podium-crown {
-                        color: #FFD700;
-                        font-size: 1.8rem;
-                        margin-bottom: -15px;
-                        z-index: 4;
-                        filter: drop-shadow(0 0 10px rgba(255,215,0,0.8));
+                    /* Gold - Rank 1 */
+                    .podium-tier.rank-1 .podium-avatar {
+                        width: 80px; height: 80px;
+                        border: 4px solid #FFD700;
+                        box-shadow: 0 0 25px rgba(255, 215, 0, 0.6);
                     }
-                    .rank-2 .podium-crown, .rank-3 .podium-crown { display: none; }
+                    /* Silver - Rank 2 */
+                    .podium-tier.rank-2 .podium-avatar {
+                        width: 65px; height: 65px;
+                        border: 3px solid #C0C0C0;
+                        box-shadow: 0 0 15px rgba(192, 192, 192, 0.6);
+                    }
+                    /* Bronze - Rank 3 */
+                    .podium-tier.rank-3 .podium-avatar {
+                        width: 65px; height: 65px;
+                        border: 3px solid #CD7F32;
+                        box-shadow: 0 0 15px rgba(205, 127, 50, 0.6);
+                    }
                     
-                    .podium-name { font-weight: 800; font-size: 0.9rem; margin-top: 8px; max-width: 90px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-                    .podium-gems { font-size: 0.8rem; color: var(--color-cyan); font-weight: 900; }
+                    .podium-crown { font-size: 1.5rem; margin-bottom: -15px; z-index: 3; position: relative; }
+                    .rank-1 .podium-crown { color: #FFD700; filter: drop-shadow(0 0 10px #FFD700); font-size: 2rem; margin-bottom: -20px; }
+                    .rank-2 .podium-crown { color: #C0C0C0; filter: drop-shadow(0 0 8px #C0C0C0); }
+                    .rank-3 .podium-crown { color: #CD7F32; filter: drop-shadow(0 0 8px #CD7F32); }
                     
+                    .podium-name {
+                        font-weight: 800; color: white;
+                        margin-top: 10px;
+                        max-width: 90px;
+                        text-overflow: ellipsis; white-space: nowrap; overflow: hidden;
+                    }
+                    .rank-1 .podium-name { font-size: 1.1rem; max-width: 110px; }
+                    
+                    .podium-gems { font-size: 0.9rem; font-weight: 900; margin-top: 5px; display:flex; align-items:center; justify-content:center; gap:5px;}
+                    .rank-1 .podium-gems { color: #FFD700; text-shadow: 0 0 10px rgba(255,215,0,0.8); }
+                    .rank-2 .podium-gems { color: #C0C0C0; }
+                    .rank-3 .podium-gems { color: #CD7F32; }
+
                     .lb-list-item {
-                        display: flex;
-                        align-items: center;
-                        background: rgba(255,255,255,0.03);
-                        border: 1px solid rgba(255,255,255,0.05);
-                        border-radius: 16px;
-                        padding: 12px 15px;
-                        margin-bottom: 8px;
-                        transition: transform 0.2s;
+                        display: flex; align-items: center; justify-content: space-between;
+                        background: rgba(255, 255, 255, 0.05);
+                        border: 1px solid rgba(255, 255, 255, 0.1);
+                        border-radius: 16px; margin-bottom: 8px; padding: 10px 15px;
+                        backdrop-filter: blur(16px);
                     }
-                    .lb-list-item:active { transform: scale(0.98); }
                     
                     .lb-badge {
-                        width: 30px;
-                        font-weight: 900;
-                        color: #94A3B8;
-                        font-size: 1.1rem;
+                        width: 25px; height: 25px; border-radius: 50%;
+                        background: rgba(255,255,255,0.1);
+                        display: flex; align-items: center; justify-content: center;
+                        font-size: 0.8rem; font-weight: bold; color: #94A3B8;
+                        margin-right: 12px;
                     }
                     
                     .lb-avatar {
-                        width: 45px;
-                        height: 45px;
-                        border-radius: 50%;
-                        margin-right: 15px;
-                        object-fit: cover;
-                        border: 2px solid rgba(255,255,255,0.1);
+                        width: 45px; height: 45px; border-radius: 50%; object-fit: cover;
+                        margin-right: 12px;
                     }
                     
-                    .lb-name { flex: 1; font-weight: bold; font-size: 1rem; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
-                    .lb-gems { font-weight: 900; color: var(--color-cyan); font-size: 1rem; }
+                    .lb-name {
+                        flex: 1; font-weight: 800; color: white;
+                        text-overflow: ellipsis; white-space: nowrap; overflow: hidden;
+                    }
+                    
+                    .lb-gems {
+                        font-weight: 900; color: var(--color-cyan);
+                        display: flex; align-items: center; gap: 5px;
+                    }
                     
                     .lb-sticky-footer {
-                        position: fixed;
-                        bottom: 85px;
-                        left: 0;
-                        right: 0;
-                        background: rgba(15, 23, 42, 0.95);
-                        backdrop-filter: blur(20px);
-                        border-top: 1px solid rgba(255,255,255,0.1);
-                        padding: 15px 20px;
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        z-index: 90;
-                        box-shadow: 0 -10px 30px rgba(0,0,0,0.5);
+                        position: fixed; bottom: 80px; left: 0; right: 0; z-index: 90;
+                        background: rgba(10, 10, 10, 0.7);
+                        backdrop-filter: blur(16px);
+                        border-top: 2px solid transparent;
+                        border-image: linear-gradient(90deg, #00F2FE, #4FACFE, #F093FB) 1;
+                        padding: 10px 20px;
+                        display: flex; justify-content: space-between; align-items: center;
                     }
                 </style>
-                <div class="header-main" style="padding: 20px 15px 5px 15px; background: none; border: none; box-shadow: none;">
-                    <h2 style="font-size: 1.8rem; margin:0;"><i class="fa-solid fa-trophy" style="color:#FFD700;"></i> Top 100</h2>
-                    <p style="color:#94A3B8; margin-top:5px; font-size:0.9rem;">Rankings update in real-time</p>
+                <div style="text-align:center; padding: 20px 0;">
+                    <h2><i class="fa-solid fa-trophy" style="color:var(--gold-color); font-size: 2rem; margin-bottom: 10px; display:inline-block; filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.5));"></i><br>Top 100 Players</h2>
+                    <p style="font-size:0.85rem; color:#94A3B8;">The best of the best.</p>
                 </div>
                 
-                <div id="leaderboardLoading" style="padding: 15px;">
-                    <div class="skeleton-row" style="height:150px; margin-bottom:30px; border-radius:20px;"></div>
-                    <div class="skeleton-row"></div><div class="skeleton-row"></div><div class="skeleton-row"></div>
+                <div id="leaderboardLoading" style="padding: 0 15px;">
+                    <div class="skeleton-row"></div>
+                    <div class="skeleton-row"></div>
+                    <div class="skeleton-row"></div>
+                    <div class="skeleton-row"></div>
+                    <div class="skeleton-row"></div>
                 </div>
                 
-                <div id="podiumContainer" class="podium-container"></div>
+                <div id="podiumContainer" class="podium-container" style="display:none;"></div>
                 <div id="leaderboardList" style="padding: 0 15px; margin-bottom: 140px; display:none;"></div>
                 <div id="leaderboardFooter" class="lb-sticky-footer" style="display:none;"></div>
             `;
@@ -1473,31 +1269,6 @@ function renderWithdraw(c) {
                         
                         const rank = idx + 1;
                         const realName = u.accountName || u.username || 'Anonymous';
-                        const fbUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(realName)}&background=B026FF&color=fff`;
-                        const avatarUrl = u.id ? `${API_BASE_URL}/api/avatar/${u.id}` : fbUrl;
-                        
-                        const nameColor = u.usernameColor ? `color: ${u.usernameColor} !important;` : '';
-                        const badge = u.titleBadge && u.titleBadge !== 'None' ? `<span style="font-size:0.6rem; background:rgba(255,255,255,0.2); padding:2px 5px; border-radius:4px; margin-right:3px;">${u.titleBadge}</span>` : '';
-                        
-                        podiumHtml += `
-                            <div class="podium-tier rank-${rank}">
-                                <div class="podium-crown"><i class="fa-solid fa-crown"></i></div>
-                                <img loading="lazy" src="${avatarUrl}" class="podium-avatar" loading="lazy" onerror="this.onerror=null; this.src='${fbUrl}';">
-                                <div class="podium-name" style="${nameColor}">${badge}${realName}</div>
-                                <div class="podium-gems"><i class="fa-solid fa-gem"></i> ${Number(u.points || 0).toLocaleString()}</div>
-                            </div>
-                        `;
-                    });
-                    
-                    podiumCont.innerHTML = podiumHtml;
-                }
-
-                // --- REST OF LIST (4-100) ---
-                let listHtml = '';
-                for (let i = 3; i < top100.length; i++) {
-                    const u = top100[i];
-                    const rank = i + 1;
-                    const realName = u.accountName || u.username || 'Anonymous';
                     const fbUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(realName)}&background=B026FF&color=fff`;
                     const avatarUrl = u.id ? `${API_BASE_URL}/api/avatar/${u.id}` : fbUrl;
                     
@@ -1546,17 +1317,9 @@ function renderWithdraw(c) {
                 `;
                 footer.style.display = 'flex';
                 
-            } catch (err) {
-                console.error(err);
-                if (document.getElementById('leaderboardLoading')) {
-                    document.getElementById('leaderboardLoading').innerHTML = `
-                        <div style="text-align:center; color:var(--danger-color); padding: 20px;">
-                            <i class="fa-solid fa-triangle-exclamation" style="font-size:2rem; margin-bottom:10px;"></i>
-                            <div>Failed to load leaderboard. Retrying...</div>
-                        </div>
-                    `;
-                    setTimeout(() => renderLeaderboard(c), 3000);
-                }
+            } catch(e) {
+                const loader = document.getElementById('leaderboardLoading');
+                if (loader) loader.innerHTML = "<div style='color:var(--danger-color); padding: 20px;'>Failed to load leaderboard.</div>";
             }
         }
 
@@ -2763,435 +2526,4 @@ function renderWithdraw(c) {
                 showToast("Network error", "error");
             }
         }
-    </script>
-
-    <!-- Official Channel Overlay -->
-    <div id="channelOverlay" class="side-panel left cyber-card" style="padding: 20px; display: flex; flex-direction: column;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
-            <h2 style="margin:0;"><i class="fa-solid fa-bullhorn" style="color:var(--color-magenta);"></i> Official Channel</h2>
-            <button class="panel-toggle-btn" style="background:transparent; border:none; color:white; font-size:1.5rem; cursor:pointer;" onclick="document.getElementById('channelOverlay').classList.remove('open')"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-        <div id="channelPostsContainer" style="overflow-y: auto; flex: 1; padding-bottom: 50px;">
-            <!-- Posts will go here -->
-        </div>
-    </div>
-
-    <script>
-        // Store last seen post to show badge
-        let lastSeenPostId = localStorage.getItem('lastSeenPostId');
-
-        async function loadOfficialChannelPosts() {
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/channel/posts`);
-                const posts = await res.json();
-                
-                if (posts.length > 0 && posts[0].id !== lastSeenPostId) {
-                    const badge = document.getElementById('channelBadge');
-                    if(badge) badge.style.display = 'flex';
-                }
-
-                const container = document.getElementById('channelPostsContainer');
-                if(!container) return;
-                
-                container.innerHTML = posts.map(p => {
-                    const r = p.reactions || {};
-                    const defaultEmojis = ['👍', '❤️', '🔥'];
-                    defaultEmojis.forEach(e => { if(r[e] === undefined) r[e] = 0; });
-                    
-                    const reactHtml = Object.keys(r).map(emoji => `
-                        <div onclick="reactToPost('${p.id}', '${emoji}')" style="display:inline-flex; align-items:center; gap:6px; background:linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01)); padding: 6px 14px; border-radius: 20px; font-size: 0.9rem; font-weight: 800; color: white; cursor: pointer; transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1); border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 2px 10px rgba(0,0,0,0.2);" onmouseover="this.style.transform='scale(1.05)'; this.style.borderColor='var(--color-magenta)';" onmouseout="this.style.transform='scale(1)'; this.style.borderColor='rgba(255,255,255,0.1)';">
-                            <span style="filter:drop-shadow(0 0 5px rgba(255,255,255,0.3));">${emoji}</span> <span style="color:var(--color-cyan); text-shadow:0 0 5px var(--color-cyan);">${(r[emoji]||0).toLocaleString()}</span>
-                        </div>
-                    `).join('');
-
-                    return `
-                    <div class="cyber-card" style="border-radius: 15px; padding: 18px; margin-bottom: 20px; border-top: 1px solid rgba(255,255,255,0.2); border-left: 4px solid var(--color-magenta); box-shadow: 0 8px 32px rgba(0,0,0,0.3); backdrop-filter: blur(16px); position: relative; overflow: hidden;">
-                        <div style="position:absolute; top:-50px; right:-50px; width:100px; height:100px; background:var(--color-magenta); filter:blur(50px); opacity:0.2; border-radius:50%;"></div>
-                        <div style="display:flex; justify-content:space-between; margin-bottom: 12px; align-items:center;">
-                            <span style="font-weight: 900; color: white; font-size: 1.1rem; display:flex; align-items:center; gap:5px;"><i class="fa-solid fa-certificate" style="color:var(--color-magenta); font-size:1.2rem;"></i> Official</span>
-                            <span style="font-size: 0.75rem; color: #94A3B8; font-weight:600; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:10px;">${new Date(p.date).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</span>
-                        </div>
-                        <div style="font-size: 0.95rem; line-height: 1.6; color: #E2E8F0; margin-bottom: 18px; white-space: pre-wrap; font-weight:500;">${p.text}</div>
-                        <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                            ${reactHtml}
-                        </div>
-                    </div>
-                `}).join('') || '<div style="text-align:center; padding: 30px; color:#94A3B8; font-weight:600;"><i class="fa-solid fa-ghost" style="font-size:3rem; margin-bottom:15px; display:block; opacity:0.5;"></i>No news yet</div>';
-
-            } catch (e) {}
-        }
-        
-        async function reactToPost(postId, emoji) {
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/channel/react`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ postId, emoji })
-                });
-                if(res.ok) loadOfficialChannelPosts();
-            } catch(e) {}
-        }
-
-        // Refresh periodically
-        setInterval(loadOfficialChannelPosts, 15000);
-
-        async function claimPromo() {
-            const codeInput = document.getElementById('promoCodeInput');
-            if(!codeInput) return;
-            const code = codeInput.value.trim();
-            if(!code) return showToast("Enter a promo code", "error");
-            
-            const btn = document.getElementById('claimPromoBtn');
-            if(btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
-            
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/claim-promo`, {
-                    method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ userId: currentUser.id || userId, code })
-                });
-                const data = await res.json();
-                if(data.success) {
-                    currentUser.points = data.newBal;
-                    
-                    const pageHeaderBal = document.getElementById('pageHeaderBal');
-                    if (pageHeaderBal) {
-                        pageHeaderBal.innerText = currentUser.points;
-                    }
-                    updateUI();
-                    triggerConfetti();
-                    showToast(`Promo Claimed! +${data.reward} Gems`, "success");
-                    codeInput.value = '';
-                } else {
-                    showToast(data.error || "Failed to claim", "error");
-                }
-            } catch(e) {
-                showToast("Network error", "error");
-            } finally {
-                if(btn) { btn.disabled = false; btn.innerHTML = 'Claim'; }
-            }
-        }
-
-        async function checkGate() {
-            const btn = document.getElementById('verifyGateBtn');
-            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Checking...'; }
-            showToast("Checking membership...", "info");
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/verify-gate`, {
-                    method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ userId: currentUser.id || userId })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    triggerConfetti();
-                    const gate = document.getElementById('gate-overlay');
-                    gate.style.transition = 'opacity 0.5s ease';
-                    gate.style.opacity = '0';
-                    setTimeout(() => { gate.style.display = 'none'; typeof setupApp === 'function' ? setupApp() : nav('home'); }, 500);
-                } else {
-                    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Try Again'; }
-                    showToast(data.message || "You must join all channels to continue!", "error");
-                }
-            } catch(e) {
-                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Try Again'; }
-                showToast("Network error. Try again.", "error");
-            }
-        }
-    </script>
-
-<!-- MYFA AD OVERLAY -->
-<div id="myfaAdOverlay" style="display:none; position:fixed; inset:0; background:#000; z-index:99999; flex-direction:column; align-items:center; justify-content:center; padding:20px; text-align:center;">
-    <div id="myfaAdTimer" style="position:absolute; top:20px; right:20px; background:rgba(255,255,255,0.2); padding:10px 20px; border-radius:20px; font-weight:bold; font-size:1.2rem; color:white;">10s</div>
-    <img id="myfaAdImg" src="" style="width:100%; max-width:400px; border-radius:15px; margin-bottom:20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-    <h2 id="myfaAdTitle" style="font-size:2rem; margin-bottom:10px; color:white;"></h2>
-    <p id="myfaAdDesc" style="color:#94A3B8; margin-bottom:30px;"></p>
-    <button id="myfaAdLinkBtn" class="btn btn-secondary" style="margin-bottom:20px; width:100%; max-width:400px; padding:15px; border-radius:15px;" onclick="window.open(document.getElementById('myfaAdLinkBtn').dataset.url, '_blank')">Visit Link</button>
-    <button id="myfaAdClaimBtn" class="btn quantum-btn" style="display:none; width:100%; max-width:400px; padding:15px; border-radius:15px;" onclick="claimMyfaAd()">Claim Reward</button>
-</div>
-
-<!-- PROFILE MODAL -->
-<div id="profileModal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.95); backdrop-filter:blur(20px); z-index:99998; overflow-y:auto; padding:20px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px; position:sticky; top:0; background:rgba(15,23,42,0.9); padding:10px 0; z-index:1;">
-        <h2 style="font-size: 1.8rem; margin:0;"><i class="fa-solid fa-user-shield" style="color:var(--color-cyan);"></i> Profile & Security</h2>
-        <button class="btn btn-secondary" onclick="document.getElementById('profileModal').style.display='none'" style="width:40px; height:40px; border-radius:50%; padding:0; display:flex; align-items:center; justify-content:center;"><i class="fa-solid fa-xmark"></i></button>
-    </div>
     
-    <div class="card cyber-card" style="margin-bottom: 20px; padding: 20px;">
-        <h3 style="margin-bottom: 15px; color:var(--color-magenta);"><i class="fa-solid fa-lock"></i> Core Security</h3>
-        <div class="setting-row"><div><b>Passcode Lock</b><div class="sub-text">Require PIN on start</div></div><label class="switch"><input type="checkbox" id="pm-pin" onchange="togglePin(this.checked)"><span class="slider round"></span></label></div>
-        <div class="setting-row"><div><b>Privacy Mode</b><div class="sub-text">Hide balances</div></div><label class="switch"><input type="checkbox" id="pm-priv" onchange="togglePrivacy(this.checked)"><span class="slider round"></span></label></div>
-        <div class="setting-row"><div><b>Data Saver Mode</b><div class="sub-text">Disable animations</div></div><label class="switch"><input type="checkbox" id="pm-data" onchange="toggleDataSaver(this.checked)"><span class="slider round"></span></label></div>
-        <div class="setting-row" style="border:none;"><div><b>Clear App Cache</b><div class="sub-text">Reset all local data</div></div><button class="btn btn-secondary" style="width:auto; padding:5px 15px;" onclick="clearAppCache()">Clear</button></div>
-    </div>
-    
-    <div class="card cyber-card" style="margin-bottom: 20px; padding: 20px;">
-        <h3 style="margin-bottom: 15px; color:var(--color-cyan);"><i class="fa-solid fa-star"></i> Pro Features (20)</h3>
-        
-        <div class="setting-row"><div><b>1. Active Sessions</b><div class="sub-text">Manage logged-in devices</div></div><button class="btn btn-secondary" style="width:auto; padding:5px 15px;" onclick="handleRevokeSessions()">Revoke</button></div>
-        <div class="setting-row"><div><b>2. Username Color</b><div class="sub-text">Leaderboard identity</div></div><input type="color" onchange="updateProfileSetting('usernameColor', this.value)" style="background:transparent; border:none; height:30px;"></div>
-        <div class="setting-row"><div><b>3. Title Badges</b><div class="sub-text">Prefix display name</div></div><select onchange="updateProfileSetting('titleBadge', this.value)" style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:5px; color:white; padding:5px;"><option>None</option><option>[OG]</option><option>[VIP]</option></select></div>
-        <div class="setting-row"><div><b>4. Stealth Mode</b><div class="sub-text">Hide from leaderboard</div></div><label class="switch"><input type="checkbox" onchange="updateProfileSetting('stealthMode', this.checked)"><span class="slider round"></span></label></div>
-        <div class="setting-row"><div><b>5. Custom Tone</b><div class="sub-text">Notification sound</div></div><select onchange="changeTone(this.value)" style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:5px; color:white; padding:5px;"><option>Default</option><option>Chime</option></select></div>
-        <div class="setting-row"><div><b>6. Auto-Claim Bonus</b><div class="sub-text">Claim daily on boot</div></div><label class="switch"><input type="checkbox" onchange="updateProfileSetting('autoClaim', this.checked)"><span class="slider round"></span></label></div>
-        <div class="setting-row"><div><b>7. Panic Button</b><div class="sub-text">Log out everywhere</div></div><button class="btn btn-secondary" style="width:auto; padding:5px 15px; background:var(--danger-color);" onclick="handlePanic()">Trigger</button></div>
-        <div class="setting-row"><div><b>8. 2FA Phrase</b><div class="sub-text">Secure recovery</div></div><input type="password" placeholder="6 digits" onchange="updateProfileSetting('twoFactorPhrase', this.value)" style="width:80px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:5px; color:white; padding:5px; text-align:center;"></div>
-        <div class="setting-row"><div><b>9. Profile Bio</b><div class="sub-text">100 chars public bio</div></div><button class="btn btn-secondary" style="width:auto; padding:5px 15px;" onclick="updateProfileSetting('bio', prompt('Enter Bio:'))">Edit</button></div>
-        <div class="setting-row"><div><b>10. Display Fiat</b><div class="sub-text">Currency conversion</div></div><select onchange="changeFiat(this.value)" style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:5px; color:white; padding:5px;"><option>USD</option><option>ETB</option><option>EUR</option></select></div>
-        <div class="setting-row"><div><b>11. Ghost Viewer</b><div class="sub-text">Anonymous browsing</div></div><label class="switch"><input type="checkbox" onchange="updateProfileSetting('ghostViewer', this.checked)"><span class="slider round"></span></label></div>
-        <div class="setting-row"><div><b>12. Auto-Convert Gems</b><div class="sub-text">At 10,000 threshold</div></div><label class="switch"><input type="checkbox" onchange="updateProfileSetting('autoConvert', this.checked)"><span class="slider round"></span></label></div>
-        <div class="setting-row"><div><b>13. UI Scale Slider</b><div class="sub-text">Zoom level</div></div><input type="range" min="0.8" max="1.2" step="0.1" value="1" onchange="document.body.style.zoom=this.value"></div>
-        <div class="setting-row"><div><b>14. Tx Filter</b><div class="sub-text">History sorting</div></div><select onchange="updateProfileSetting('txFilter', this.value)" style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:5px; color:white; padding:5px;"><option>All</option><option>Earned</option><option>Spent</option></select></div>
-        <div class="setting-row"><div><b>15. Burn Gems</b><div class="sub-text">Increase deflation</div></div><button class="btn btn-secondary" style="width:auto; padding:5px 15px;" onclick="handleBurnGems()">Burn 100</button></div>
-        <div class="setting-row"><div><b>16. Pinned Task</b><div class="sub-text">Stick favorite to top</div></div><select onchange="updateProfileSetting('pinnedTask', this.value)" style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:5px; color:white; padding:5px;"><option>Daily Check-in</option></select></div>
-        <div class="setting-row"><div><b>17. Custom Icon</b><div class="sub-text">App shortcut icon</div></div><button class="btn btn-secondary" style="width:auto; padding:5px 15px;" onclick="changeAppIcon('gold')">Change</button></div>
-        <div class="setting-row"><div><b>18. Sound / Haptic</b><div class="sub-text">App feedback</div></div><label class="switch"><input type="checkbox" checked onchange="toggleHaptic(this.checked)"><span class="slider round"></span></label></div>
-        <div class="setting-row"><div><b>19. Music Loop</b><div class="sub-text">Background audio</div></div><label class="switch"><input type="checkbox" onchange="showToast('Music toggled', 'info')"><span class="slider round"></span></label></div>
-        <div class="setting-row" style="border:none;"><div><b>20. Account Export</b><div class="sub-text">Download JSON data</div></div><button class="btn btn-secondary" style="width:auto; padding:5px 15px;" onclick="showToast('Export sent to email.', 'success')">Export</button></div>
-    </div>
-</div>
-
-<div id="pinPad" style="display:none; position:fixed; inset:0; background:#0f172a; z-index:100000; flex-direction:column; align-items:center; justify-content:center;">
-    <h2 style="color:white; margin-bottom:20px;">Enter Passcode</h2>
-    <input type="password" id="pinInput" style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:15px; padding:15px; color:white; font-size:2rem; text-align:center; width:200px; margin-bottom:20px; outline:none;" readonly>
-    <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:15px;">
-        ${[1,2,3,4,5,6,7,8,9,0].map(n => `<button style="width:60px; height:60px; border-radius:50%; border:none; background:rgba(255,255,255,0.1); color:white; font-size:1.5rem;" onclick="document.getElementById('pinInput').value += '${n}'">${n}</button>`).join('')}
-        <button style="width:60px; height:60px; border-radius:50%; border:none; background:rgba(239,68,68,0.2); color:#ef4444; font-size:1.2rem;" onclick="document.getElementById('pinInput').value = ''"><i class="fa-solid fa-delete-left"></i></button>
-        <button style="width:60px; height:60px; border-radius:50%; border:none; background:rgba(16,185,129,0.2); color:#10b981; font-size:1.2rem;" onclick="verifyPin()"><i class="fa-solid fa-check"></i></button>
-    </div>
-</div>
-
-<script>
-    let myfaAdTimer = null;
-    let myfaTimeLeft = 10;
-    
-    async function openMyfaAd() {
-        try {
-            const res = await fetch(API_BASE_URL + '/api/myfa-ads/get');
-            const ad = await res.json();
-            if(!ad || !ad.imageUrl) throw new Error("No active campaigns");
-            
-            document.getElementById('myfaAdImg').src = ad.imageUrl;
-            document.getElementById('myfaAdTitle').innerText = ad.title || "Sponsored App";
-            document.getElementById('myfaAdDesc').innerText = ad.caption || "Check out this amazing platform!";
-            document.getElementById('myfaAdLinkBtn').dataset.url = ad.link || "#";
-            document.getElementById('myfaAdClaimBtn').dataset.id = ad.id;
-            
-            document.getElementById('myfaAdOverlay').style.display = 'flex';
-            document.getElementById('myfaAdClaimBtn').style.display = 'none';
-            document.getElementById('myfaAdTimer').style.display = 'block';
-            
-            myfaTimeLeft = 10;
-            document.getElementById('myfaAdTimer').innerText = myfaTimeLeft + 's';
-            
-            myfaAdTimer = setInterval(() => {
-                myfaTimeLeft--;
-                document.getElementById('myfaAdTimer').innerText = myfaTimeLeft + 's';
-                if(myfaTimeLeft <= 0) {
-                    clearInterval(myfaAdTimer);
-                    document.getElementById('myfaAdTimer').style.display = 'none';
-                    document.getElementById('myfaAdClaimBtn').style.display = 'block';
-                }
-            }, 1000);
-            
-        } catch(e) {
-            showToast("No ads available right now.", "error");
-        }
-    }
-    
-    document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === 'hidden' && document.getElementById('myfaAdOverlay').style.display === 'flex' && myfaTimeLeft > 0) {
-            clearInterval(myfaAdTimer);
-            document.getElementById('myfaAdOverlay').style.display = 'none';
-            showToast("Ad closed early. No reward.", "error");
-        }
-    });
-    
-    async function claimMyfaAd() {
-        try {
-            const campaignId = document.getElementById('myfaAdClaimBtn').dataset.id;
-            const res = await fetch(API_BASE_URL + '/api/myfa-ads/claim', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ userId: userId, campaignId })
-            });
-            const data = await res.json();
-            if (res.ok && data.success) {
-                currentUser.points += data.reward;
-                if(document.getElementById('headerBalance')) document.getElementById('headerBalance').innerText = currentUser.points;
-                confetti();
-                showToast(`+${data.reward} Gems!`, 'success');
-            } else {
-                showToast("Failed to claim reward", 'error');
-            }
-        } catch (e) {
-            showToast("Network Error", "error");
-        }
-        document.getElementById('myfaAdOverlay').style.display = 'none';
-    }
-
-    function togglePin(checked) {
-        if(checked) {
-            localStorage.setItem('appPin', '1234');
-            showToast('PIN set to 1234', 'success');
-        } else {
-            localStorage.removeItem('appPin');
-            showToast('PIN disabled', 'info');
-        }
-    }
-
-    function verifyPin() {
-        if (document.getElementById('pinInput').value === localStorage.getItem('appPin')) {
-            document.getElementById('pinPad').style.display = 'none';
-        } else {
-            document.getElementById('pinInput').value = '';
-            showToast('Incorrect PIN', 'error');
-        }
-    }
-
-    function togglePrivacy(checked) {
-        const els = document.querySelectorAll('.odometer, #pageHeaderBalance, #pageHeaderRealBalance, #headerBalance');
-        els.forEach(el => {
-            if(checked) {
-                el.dataset.orig = el.innerText;
-                el.innerText = '****';
-            } else {
-                if(el.dataset.orig) el.innerText = el.dataset.orig;
-            }
-        });
-    }
-
-    function toggleDataSaver(checked) {
-        if(checked) {
-            const style = document.createElement('style');
-            style.id = 'dataSaverStyle';
-            style.innerHTML = '* { animation: none !important; transition: none !important; backdrop-filter: none !important; }';
-            document.head.appendChild(style);
-        } else {
-            const style = document.getElementById('dataSaverStyle');
-            if(style) style.remove();
-        }
-    }
-
-    function clearAppCache() {
-        localStorage.clear();
-        sessionStorage.clear();
-        window.location.reload();
-    }
-    
-    // Check PIN on load
-    document.addEventListener('DOMContentLoaded', () => {
-        if (localStorage.getItem('appPin')) {
-            document.getElementById('pinPad').style.display = 'flex';
-        }
-    });
-
-    async function updateProfileSetting(key, value) {
-        try {
-            currentUser[key] = value;
-            await fetch(API_BASE_URL + '/api/profile/update', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ userId, updates: { [key]: value } })
-            });
-            showToast('Setting updated!', 'success');
-        } catch(e) {
-            showToast('Network Error', 'error');
-        }
-    }
-
-    async function handleBurnGems() {
-        try {
-            const res = await fetch(API_BASE_URL + '/api/profile/burn', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ userId, amount: 100 })
-            });
-            const data = await res.json();
-            if(data.success) {
-                currentUser.points = data.newPoints;
-                if(document.getElementById('headerBalance')) document.getElementById('headerBalance').innerText = currentUser.points;
-                showToast('100 Gems Burned!', 'success');
-            } else {
-                showToast(data.error, 'error');
-            }
-        } catch(e) {
-            showToast('Network Error', 'error');
-        }
-    }
-
-    async function handlePanic() {
-        try {
-            await fetch(API_BASE_URL + '/api/profile/panic', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ userId })
-            });
-            showToast('All other sessions destroyed. You must re-login.', 'success');
-            setTimeout(() => window.location.reload(), 2000);
-        } catch(e) {
-            showToast('Network Error', 'error');
-        }
-    }
-
-    async function handleRevokeSessions() {
-        try {
-            await fetch(API_BASE_URL + '/api/profile/sessions', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ userId, action: 'revoke' })
-            });
-            showToast('Active sessions revoked.', 'success');
-        } catch(e) {
-            showToast('Network Error', 'error');
-        }
-    }
-    
-    function changeFiat(currency) {
-        updateProfileSetting('fiatCurrency', currency);
-        let rate = 1;
-        if(currency === 'ETB') rate = 115;
-        if(currency === 'EUR') rate = 0.92;
-        if(currency === 'GBP') rate = 0.78;
-        
-        const realEls = document.querySelectorAll('.bal-real span, #pageHeaderRealBalance');
-        realEls.forEach(el => {
-            const val = currentUser.realBalance || 0;
-            el.innerText = (val * rate).toFixed(2) + ' ' + currency;
-        });
-    }
-    
-    function changeAppIcon(icon) {
-        updateProfileSetting('appIcon', icon);
-        let link = document.querySelector("link[rel~='icon']");
-        if (!link) {
-            link = document.createElement('link');
-            link.rel = 'icon';
-            document.head.appendChild(link);
-        }
-        link.href = (icon === 'gold') ? 'https://cdn-icons-png.flaticon.com/512/1036/1036814.png' : 'https://cdn-icons-png.flaticon.com/512/3233/3233483.png';
-    }
-    
-    function changeTone(tone) {
-        updateProfileSetting('notifTone', tone);
-        const audioUrl = tone === 'Chime' ? 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3' : 'https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3';
-        let audio = document.getElementById('successAudio');
-        if(!audio) {
-            audio = document.createElement('audio');
-            audio.id = 'successAudio';
-            document.body.appendChild(audio);
-        }
-        audio.src = audioUrl;
-        audio.play().catch(e=>{});
-    }
-
-    function toggleHaptic(checked) {
-        soundEnabled = checked;
-        localStorage.setItem('appSound', soundEnabled);
-        if(checked && window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
-            window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
-        }
-    }
-
-</script>
-</body>
-</html>
-

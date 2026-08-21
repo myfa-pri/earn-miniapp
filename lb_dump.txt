@@ -1,0 +1,301 @@
+1104:        async function renderLeaderboard(c) {
+1105-            c.innerHTML = `
+1106-                <style>
+1107-                    /* Leaderboard Custom CSS */
+1108-                    .skeleton-row {
+1109-                        height: 60px;
+1110-                        background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0.05) 75%);
+1111-                        background-size: 200% 100%;
+1112-                        animation: shimmer 1.5s infinite;
+1113-                        border-radius: 16px;
+1114-                        margin-bottom: 8px;
+1115-                    }
+1116-                    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+1117-                    
+1118-                    .podium-container {
+1119-                        display: flex;
+1120-                        align-items: flex-end;
+1121-                        justify-content: center;
+1122-                        gap: 15px;
+1123-                        margin-bottom: 30px;
+1124-                        margin-top: 40px;
+1125-                    }
+1126-                    
+1127-                    .podium-tier {
+1128-                        display: flex;
+1129-                        flex-direction: column;
+1130-                        align-items: center;
+1131-                        text-align: center;
+1132-                    }
+1133-                    
+1134-                    .podium-avatar {
+1135-                        border-radius: 50%;
+1136-                        object-fit: cover;
+1137-                        background: var(--bg-color);
+1138-                        z-index: 2;
+1139-                        position: relative;
+1140-                    }
+1141-                    
+1142-                    /* Gold - Rank 1 */
+1143-                    .podium-tier.rank-1 .podium-avatar {
+1144-                        width: 80px; height: 80px;
+1145-                        border: 4px solid #FFD700;
+1146-                        box-shadow: 0 0 25px rgba(255, 215, 0, 0.6);
+1147-                    }
+1148-                    /* Silver - Rank 2 */
+1149-                    .podium-tier.rank-2 .podium-avatar {
+1150-                        width: 65px; height: 65px;
+1151-                        border: 3px solid #C0C0C0;
+1152-                        box-shadow: 0 0 15px rgba(192, 192, 192, 0.6);
+1153-                    }
+1154-                    /* Bronze - Rank 3 */
+1155-                    .podium-tier.rank-3 .podium-avatar {
+1156-                        width: 65px; height: 65px;
+1157-                        border: 3px solid #CD7F32;
+1158-                        box-shadow: 0 0 15px rgba(205, 127, 50, 0.6);
+1159-                    }
+1160-                    
+1161-                    .podium-crown { font-size: 1.5rem; margin-bottom: -15px; z-index: 3; position: relative; }
+1162-                    .rank-1 .podium-crown { color: #FFD700; filter: drop-shadow(0 0 10px #FFD700); font-size: 2rem; margin-bottom: -20px; }
+1163-                    .rank-2 .podium-crown { color: #C0C0C0; filter: drop-shadow(0 0 8px #C0C0C0); }
+1164-                    .rank-3 .podium-crown { color: #CD7F32; filter: drop-shadow(0 0 8px #CD7F32); }
+1165-                    
+1166-                    .podium-name {
+1167-                        font-weight: 800; color: white;
+1168-                        margin-top: 10px;
+1169-                        max-width: 90px;
+1170-                        text-overflow: ellipsis; white-space: nowrap; overflow: hidden;
+1171-                    }
+1172-                    .rank-1 .podium-name { font-size: 1.1rem; max-width: 110px; }
+1173-                    
+1174-                    .podium-gems { font-size: 0.9rem; font-weight: 900; margin-top: 5px; display:flex; align-items:center; justify-content:center; gap:5px;}
+1175-                    .rank-1 .podium-gems { color: #FFD700; text-shadow: 0 0 10px rgba(255,215,0,0.8); }
+1176-                    .rank-2 .podium-gems { color: #C0C0C0; }
+1177-                    .rank-3 .podium-gems { color: #CD7F32; }
+1178-
+1179-                    .lb-list-item {
+1180-                        display: flex; align-items: center; justify-content: space-between;
+1181-                        background: rgba(255, 255, 255, 0.05);
+1182-                        border: 1px solid rgba(255, 255, 255, 0.1);
+1183-                        border-radius: 16px; margin-bottom: 8px; padding: 10px 15px;
+1184-                        backdrop-filter: blur(16px);
+1185-                    }
+1186-                    
+1187-                    .lb-badge {
+1188-                        width: 25px; height: 25px; border-radius: 50%;
+1189-                        background: rgba(255,255,255,0.1);
+1190-                        display: flex; align-items: center; justify-content: center;
+1191-                        font-size: 0.8rem; font-weight: bold; color: #94A3B8;
+1192-                        margin-right: 12px;
+1193-                    }
+1194-                    
+1195-                    .lb-avatar {
+1196-                        width: 45px; height: 45px; border-radius: 50%; object-fit: cover;
+1197-                        margin-right: 12px;
+1198-                    }
+1199-                    
+1200-                    .lb-name {
+1201-                        flex: 1; font-weight: 800; color: white;
+1202-                        text-overflow: ellipsis; white-space: nowrap; overflow: hidden;
+1203-                    }
+1204-                    
+1205-                    .lb-gems {
+1206-                        font-weight: 900; color: var(--color-cyan);
+1207-                        display: flex; align-items: center; gap: 5px;
+1208-                    }
+1209-                    
+1210-                    .lb-sticky-footer {
+1211-                        position: fixed; bottom: 80px; left: 0; right: 0; z-index: 90;
+1212-                        background: rgba(10, 10, 10, 0.7);
+1213-                        backdrop-filter: blur(16px);
+1214-                        border-top: 2px solid transparent;
+1215-                        border-image: linear-gradient(90deg, #00F2FE, #4FACFE, #F093FB) 1;
+1216-                        padding: 10px 20px;
+1217-                        display: flex; justify-content: space-between; align-items: center;
+1218-                    }
+1219-                </style>
+1220-                <div style="text-align:center; padding: 20px 0;">
+1221-                    <h2><i class="fa-solid fa-trophy" style="color:var(--gold-color); font-size: 2rem; margin-bottom: 10px; display:inline-block; filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.5));"></i><br>Top 100 Players</h2>
+1222-                    <p style="font-size:0.85rem; color:#94A3B8;">The best of the best.</p>
+1223-                </div>
+1224-                
+1225-                <div id="leaderboardLoading" style="padding: 0 15px;">
+1226-                    <div class="skeleton-row"></div>
+1227-                    <div class="skeleton-row"></div>
+1228-                    <div class="skeleton-row"></div>
+1229-                    <div class="skeleton-row"></div>
+1230-                    <div class="skeleton-row"></div>
+1231-                </div>
+1232-                
+1233-                <div id="podiumContainer" class="podium-container" style="display:none;"></div>
+1234-                <div id="leaderboardList" style="padding: 0 15px; margin-bottom: 140px; display:none;"></div>
+1235-                <div id="leaderboardFooter" class="lb-sticky-footer" style="display:none;"></div>
+1236-            `;
+1237-            
+1238-            try {
+1239-                const res = await fetch(`${API_BASE_URL}/api/leaderboard/${userId}`);
+1240-                const data = await res.json();
+1241-                
+1242-                const loader = document.getElementById('leaderboardLoading');
+1243-                if (loader) loader.style.display = 'none';
+1244-
+1245-                const listContainer = document.getElementById('leaderboardList');
+1246-                if (!listContainer) return; // user navigated away
+1247-
+1248-                if (data.frozen) {
+1249-                    const banner = document.createElement('div');
+1250-                    banner.style = "background:var(--danger-color); color:white; text-align:center; padding:10px; font-weight:bold; position:sticky; top:0; z-index:99; margin-bottom:15px;";
+1251-                    banner.innerHTML = "🏆 Leaderboard is Currently Frozen for Payouts";
+1252-                    listContainer.parentNode.insertBefore(banner, document.getElementById('podiumContainer'));
+1253-                }
+1254-                
+1255-                const top100 = data.byPoints || [];
+1256-                
+1257-                // --- PODIUM (Top 3) ---
+1258-                const podiumCont = document.getElementById('podiumContainer');
+1259-                const top3 = top100.slice(0, 3);
+1260-                
+1261-                if (top3.length > 0) {
+1262-                    // Order for layout: 2nd, 1st, 3rd
+1263-                    const order = [1, 0, 2];
+1264-                    let podiumHtml = '';
+1265-                    
+1266-                    order.forEach(idx => {
+1267-                        const u = top3[idx];
+1268-                        if(!u) return;
+1269-                        
+1270-                        const rank = idx + 1;
+1271-                        const realName = u.accountName || u.username || 'Anonymous';
+1272-                    const fbUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(realName)}&background=B026FF&color=fff`;
+1273-                    const avatarUrl = u.id ? `${API_BASE_URL}/api/avatar/${u.id}` : fbUrl;
+1274-                    
+1275-                    const nameColor = u.usernameColor ? `color: ${u.usernameColor} !important;` : '';
+1276-                    const badge = u.titleBadge && u.titleBadge !== 'None' ? `<span style="font-size:0.6rem; background:rgba(255,255,255,0.2); padding:2px 5px; border-radius:4px; margin-right:3px;">${u.titleBadge}</span>` : '';
+1277-                    
+1278-                    listHtml += `
+1279-                        <div class="lb-list-item">
+1280-                            <div class="lb-badge">${rank}</div>
+1281-                            <img loading="lazy" src="${avatarUrl}" class="lb-avatar" loading="lazy" onerror="this.onerror=null; this.src='${fbUrl}';">
+1282-                            <div class="lb-name" style="${nameColor}">${badge}${realName}</div>
+1283-                            <div class="lb-gems">${Number(u.points || 0).toLocaleString()} <i class="fa-solid fa-gem"></i></div>
+1284-                        </div>
+1285-                    `;
+1286-                }
+1287-                listContainer.innerHTML = listHtml;
+1288-                listContainer.style.display = 'block';
+1289-
+1290-                // --- STICKY FOOTER (99+) ---
+1291-                const footer = document.getElementById('leaderboardFooter');
+1292-                const userRank = data.userRankPoints;
+1293-                
+1294-                let myName = currentUser.accountName || currentUser.username || 'Anonymous';
+1295-                let myAvatar = currentUser.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(myName)}&background=B026FF&color=fff`;
+1296-                
+1297-                let displayRank = (userRank && userRank >= 1 && userRank <= 100) ? userRank : '99+';
+1298-                let rankColor = displayRank === '99+' ? 'var(--color-magenta)' : 'white';
+1299-
+1300-                footer.innerHTML = `
+1301-                    <div style="display:flex; align-items:center; gap:10px; max-width: 45%;">
+1302-                        <img loading="lazy" src="${myAvatar}" style="width:40px; height:40px; border-radius:50%; border:2px solid var(--color-cyan);">
+1303-                        <div style="text-overflow: ellipsis; white-space: nowrap; overflow: hidden; max-width: 100%;">
+1304-                            <div style="font-weight:800; font-size:1rem; color:white; text-overflow: ellipsis; white-space: nowrap; overflow: hidden;">${myName}</div>
+1305-                        </div>
+1306-                    </div>
+1307-                    <div style="text-align:center;">
+1308-                        <div style="font-weight:bold; font-size:0.75rem; color:#94A3B8;">Rank</div>
+1309-                        <div style="font-weight:900; font-size:1.1rem; color:${rankColor};">${displayRank === '99+' ? displayRank : '#' + displayRank}</div>
+1310-                    </div>
+1311-                    <div style="text-align:right;">
+1312-                        <div style="font-weight:bold; font-size:0.75rem; color:#94A3B8;">Gems</div>
+1313-                        <div style="font-weight:900; font-size:1.1rem; color:var(--color-cyan); display:flex; align-items:center; gap:5px; justify-content:flex-end;">
+1314-                            ${Number(currentUser.points).toLocaleString()} <i class="fa-solid fa-gem"></i>
+1315-                        </div>
+1316-                    </div>
+1317-                `;
+1318-                footer.style.display = 'flex';
+1319-                
+1320-            } catch(e) {
+1321-                const loader = document.getElementById('leaderboardLoading');
+1322-                if (loader) loader.innerHTML = "<div style='color:var(--danger-color); padding: 20px;'>Failed to load leaderboard.</div>";
+1323-            }
+1324-        }
+1325-
+1326-        function openGame(gameId) {
+1327-            if(gameId === 'ludo') {
+1328-                window.location.href = '/ludo.html?userId=' + (typeof userId !== 'undefined' ? userId : '');
+1329-                return;
+1330-            }
+1331-            if(gameId === 'chickenroad') {
+1332-                window.location.href = '/chicken.html?userId=' + (typeof userId !== 'undefined' ? userId : '');
+1333-                return;
+1334-            }
+1335-            const main = document.getElementById('mainContent');
+1336-            const wrapper = document.getElementById('gameCanvasWrapper');
+1337-            const canvasArea = document.getElementById('activeGameCanvas');
+1338-            const header = document.getElementById('pageHeader');
+1339-            if(!main || !wrapper || !canvasArea) return console.error("DOM missing");
+1340-
+1341-            if (header) header.style.display = 'none';
+1342-            main.style.display = 'none';
+1343-            wrapper.style.display = 'block';
+1344-            canvasArea.innerHTML = ''; // Clear previous
+1345-
+1346-            if(gameId === 'aviator') renderAviatorGame(canvasArea);
+1347-            else if(gameId === 'multiox') renderMultiOxGame(canvasArea);
+1348-            else if(gameId === 'dailycombo') renderDailyComboGame(canvasArea);
+1349-            else if(gameId === 'prospin') renderProSpinGame(canvasArea);
+1350-            else if(gameId === 'scratchcard') renderScratchCardGame(canvasArea);
+1351-        };
+1352-
+1353-        function closeGame() { if(typeof window.clearAllGameLoops === "function") window.clearAllGameLoops();
+1354-            const main = document.getElementById('mainContent');
+1355-            const wrapper = document.getElementById('gameCanvasWrapper');
+1356-            const canvasArea = document.getElementById('activeGameCanvas');
+1357-            const header = document.getElementById('pageHeader');
+1358-            
+1359-            if(typeof aviatorActive !== 'undefined') window.aviatorActive = false;
+1360-            if(typeof avGameState !== 'undefined') window.avGameState = 'IDLE';
+1361-            if(typeof avReq !== 'undefined') cancelAnimationFrame(window.avReq);
+1362-            if(typeof chatInterval !== 'undefined') clearInterval(window.chatInterval);
+1363-            if(typeof avBetTimer !== 'undefined') clearInterval(window.avBetTimer);
+1364-            if(typeof stopEngineSound === 'function') stopEngineSound();
+1365-            
+1366-            if (wrapper) wrapper.style.display = 'none';
+1367-            if (canvasArea) canvasArea.innerHTML = '';
+1368-            if (main) main.style.display = 'block';
+1369-            if (header) header.style.display = 'flex';
+1370-            
+1371-            updateUI();
+1372-        };
+1373-
+1374-        // ==========================================
+1375-        // AVIATOR 20 FEATURES OVERHAUL & STRICT 5-SECOND LOOP
+1376-        // ==========================================
+1377-        let aviatorRound = null;
+1378-        let avReq;
+1379-        let avGameState = 'IDLE'; // IDLE, BETTING, FLYING, CRASHED
+1380-        let avBetTimer = null;
+1381-        let avBetTimeLeft = 5;
+1382-
+1383-        function renderAviatorGame(c) {
+1384-            c.innerHTML = `
+1385-                <div class="game-sticky-header" style="position:sticky; top:0; z-index:100; display:flex; justify-content:space-between; align-items:center; background:rgba(15,23,42,0.9); backdrop-filter:blur(10px); padding:10px 15px; border-bottom:1px solid rgba(255,255,255,0.1);">
+1386-                    <button class="btn btn-secondary" onclick="closeGame()" style="width:auto; padding:5px 15px; font-size:0.9rem;"><i class="fa-solid fa-arrow-left"></i> Back to Hub</button>
+1387-                    <div style="font-weight:bold; color:var(--accent-color);"><i class="fa-solid fa-gem"></i> <span id="avHeaderBal">${currentUser.points}</span></div>
+1388-                </div>
+1389-                <div class="card cyber-card" style="padding: 10px; position: relative;">
+1390-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+1391-                        <div style="display:flex; align-items:center; gap:10px;">
+1392-                            <h2 style="color:var(--danger-color); margin:0;"><i class="fa-solid fa-plane-up"></i> Aviator</h2>
+1393-                            <button onclick="document.getElementById('pfModal').style.display='flex'" style="background:none; border:none; color:#94A3B8; cursor:pointer;"><i class="fa-solid fa-shield-halved"></i></button>
+1394-                        </div>
+1395-
+1396-                    </div>
+1397-
+1398-                    <!-- 1. Multiplier History Bar -->
+1399-                    <div class="aviator-history-bar" id="avHistory" style="display:flex; overflow-x:auto; gap:8px; padding-bottom:10px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom:15px; scrollbar-width:none;"></div>
+1400-
+1401-                    <!-- 3. Altitude/Atmosphere Canvas Shifts & 4. Dynamic Zoom -->
+1402-                    <div class="aviator-wrapper" id="avWrapper" style="position:relative; width:100%; height:350px; background:linear-gradient(to bottom, #0F172A, #1E293B); overflow:hidden; border-radius:15px; margin-bottom:20px; border: 2px solid #EF4444; box-shadow: inset 0 0 50px rgba(0,0,0,0.5), 0 0 20px rgba(239,68,68,0.3);">
+1403-                        <!-- 17. Highest Win Banner -->
+1404-                        <div class="highest-win-banner" id="avBanner" style="position:absolute; top:10px; left:50%; transform:translateX(-50%); background:rgba(239, 68, 68, 0.2); border:1px solid rgba(239, 68, 68, 0.5); padding:5px 15px; border-radius:20px; font-size:0.75rem; color:white; z-index:10; white-space:nowrap; transition:0.3s;"><i class="fa-solid fa-fire" style="color:#ef4444;"></i> Mesechebo won 15,000 Gems at 15.2x!</div>

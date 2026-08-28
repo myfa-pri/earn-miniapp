@@ -3,7 +3,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "/index.js"
+      "destination": "/api/index.js"
     },
     {
       "source": "/ad-studio-pro",

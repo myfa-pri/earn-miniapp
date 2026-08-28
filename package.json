@@ -4,9 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js",
-    "build": "echo 'No build step required'"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
@@ -21,7 +19,6 @@
   },
   "homepage": "https://github.com/myfa-pri/earn-miniapp#readme",
   "dependencies": {
-    "acorn": "^8.18.0",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "node-fetch": "^3.3.2",

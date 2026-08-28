@@ -1757,6 +1757,90 @@ app.post('/api/admin/css-inject', checkAdmin, async (req, res) => {
     res.json({ success: true });
 });
 
+
+// ============================================================================
+// AD STUDIO PRO V5 API COMPATIBILITY
+// Existing Mini App callers use the non-v3 routes. Keep those callers working
+// while the v3 service remains available for the new Ad Studio interface.
+// ============================================================================
+
+app.get('/api/ad-studio/inventory', async (req, res) => {
+    try {
+        const placement = String(req.query.placement || 'home').slice(0, 40);
+        const all = await dbGet('campaigns') || {};
+        const inventory = Object.values(all)
+            .filter(campaign => campaign && campaign.isAdvertisement)
+            .filter(campaign => !campaign.paused)
+            .filter(campaign => {
+                const budget = Number(campaign.impressionBudget || 0);
+                const impressions = Number(campaign.impressions || campaign.views || 0);
+                return budget > impressions;
+            })
+            .filter(campaign => {
+                if (!Array.isArray(campaign.placements) || !campaign.placements.length) {
+                    return true;
+                }
+                return campaign.placements.includes(placement);
+            })
+            .slice(0, 50);
+
+        res.json(inventory);
+    } catch (error) {
+        console.error('[Ad Studio compatibility inventory]', error.message);
+        res.status(500).json({ error: 'Advertisement inventory unavailable' });
+    }
+});
+
+app.get('/api/ad-studio/dashboard/:userId', async (req, res) => {
+    try {
+        const userId = String(req.params.userId || '');
+        const user = await dbGet(`users/${userId}`);
+
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const all = await dbGet('campaigns') || {};
+        const campaigns = Object.values(all)
+            .filter(campaign => String(campaign.userId) === userId)
+            .map(aspV3Normalize);
+
+        res.json({
+            success: true,
+            user,
+            campaigns,
+            metrics: campaigns.reduce((result, campaign) => {
+                result.campaigns += 1;
+                result.impressions += campaign.impressions;
+                result.clicks += campaign.adClicks;
+                result.spend += campaign.adSpend;
+                result.reserved += campaign.escrowReserved;
+                return result;
+            }, {
+                campaigns: 0,
+                impressions: 0,
+                clicks: 0,
+                spend: 0,
+                reserved: 0
+            })
+        });
+    } catch (error) {
+        console.error('[Ad Studio compatibility dashboard]', error.message);
+        res.status(500).json({ error: 'Advertiser dashboard unavailable' });
+    }
+});
+
+app.get('/api/ad-studio/campaigns/:userId', async (req, res) => {
+    try {
+        const userId = String(req.params.userId || '');
+        const campaigns = await aspV3Owned(userId);
+        res.json({ success: true, campaigns });
+    } catch (error) {
+        console.error('[Ad Studio compatibility campaigns]', error.message);
+        res.status(500).json({ error: 'Campaigns unavailable' });
+    }
+});
+
 export default app;
 
 

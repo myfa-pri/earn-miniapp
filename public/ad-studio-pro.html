@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Ad Studio PRO — MYFA BIRR</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="stylesheet" href="ad-studio-pro.css">
+</head>
+<body>
+<div id="adStudioApp" class="asp-app">
+<header class="asp-topbar">
+<button class="asp-icon" data-back><i class="fa-solid fa-arrow-left"></i></button>
+<div class="asp-logo"><span><i class="fa-solid fa-bullhorn"></i></span><div><b>Ad Studio</b><small>PRO</small></div></div>
+<div class="asp-wallet"><i class="fa-solid fa-gem"></i><strong id="aspBalance">0</strong></div>
+</header>
+<nav class="asp-nav">
+<button class="active" data-view="dashboard"><i class="fa-solid fa-table-cells-large"></i><span>Overview</span></button>
+<button data-view="create"><i class="fa-solid fa-plus"></i><span>Create</span></button>
+<button data-view="campaigns"><i class="fa-solid fa-layer-group"></i><span>Campaigns</span></button>
+<button data-view="analytics"><i class="fa-solid fa-chart-line"></i><span>Analytics</span></button>
+<button data-view="wallet"><i class="fa-solid fa-wallet"></i><span>Wallet</span></button>
+</nav>
+<main id="aspContent" class="asp-content"><div class="asp-loading"><i class="fa-solid fa-spinner fa-spin"></i><span>Loading advertiser workspace</span></div></main>
+<div id="aspToast" class="asp-toast"></div>
+<div id="aspModal" class="asp-modal" aria-hidden="true"></div>
+</div>
+<script src="ad-studio-pro.js"></script>
+</body>
+</html>

@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import fetch from 'node-fetch';
 import crypto from 'crypto';
+import path from 'path';
 
 // ============================================================================
 // 1. SYSTEM CONFIGURATION & SECURITY
@@ -26,6 +27,30 @@ const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 const app = express();
 app.use(express.json());
 app.use(cors());
+
+// ============================================================================
+// AD STUDIO PRO V4 STATIC ASSET ROUTES
+// ============================================================================
+
+const ASP_PUBLIC_ROOT = process.cwd();
+
+app.get('/ad-studio-pro.js', (req, res) => {
+    res.sendFile(path.join(ASP_PUBLIC_ROOT, 'ad-studio-pro.js'));
+});
+
+app.get('/ad-studio-pro.css', (req, res) => {
+    res.sendFile(path.join(ASP_PUBLIC_ROOT, 'ad-studio-pro.css'));
+});
+
+app.get('/ad-studio-pro.html', (req, res) => {
+    res.sendFile(path.join(ASP_PUBLIC_ROOT, 'ad-studio-pro.html'));
+});
+
+app.get('/ad-studio-pro', (req, res) => {
+    res.sendFile(path.join(ASP_PUBLIC_ROOT, 'ad-studio-pro.html'));
+});
+
+
 
 // ============================================================================
 // 2. FIREBASE DATABASE CORE HELPER FUNCTIONS

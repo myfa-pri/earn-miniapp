@@ -112,6 +112,8 @@
         <div class="nav-link active" onclick="nav('master')"><i class="fa-solid fa-server"></i> Master Config (32)</div>
         <div class="nav-link" onclick="nav('users')"><i class="fa-solid fa-users-gear"></i> Moderation (8)</div>
         <div class="nav-link" onclick="nav('tasks')"><i class="fa-solid fa-gift"></i> Tasks & Promos (8)</div>
+        <div class="nav-link" onclick="nav('games')"><i class="fa-solid fa-gamepad"></i> Game Settings</div>
+        <div class="nav-link" onclick="nav('firstopen')"><i class="fa-solid fa-sparkles"></i> First-Open Exp</div>
         <div class="nav-link" onclick="nav('withdrawals')"><i class="fa-solid fa-money-bill-wave"></i> Withdrawals (5)</div>
         <div class="nav-link" onclick="nav('channel')"><i class="fa-solid fa-bullhorn"></i> Official Channel</div>
         <div class="nav-link" onclick="nav('logs')"><i class="fa-solid fa-clock-rotate-left"></i> Admin Logs</div>
@@ -279,7 +281,17 @@
                 <div class="grid-2">
                     <div>
                         <div class="input-group"><label>42. Task Name</label><input type="text" id="task_name" placeholder="e.g. Join TG Channel"></div>
-                        <div class="input-group"><label>Reward (Gems)</label><input type="number" id="task_reward" placeholder="500"></div>
+                        <div class="input-group">
+                            <label>Reward Type</label>
+                            <select id="task_reward_type">
+                                <option value="gems">Gems</option>
+                                <option value="money">Money</option>
+                                <option value="spin">Spin Chance</option>
+                                <option value="scratch">Scratch Chance</option>
+                                <option value="drop">Drop Play Chance</option>
+                            </select>
+                        </div>
+                        <div class="input-group"><label>Reward Amount</label><input type="number" id="task_reward" placeholder="500"></div>
                         <div class="input-group"><label>Target URL / Channel ID</label><input type="text" id="task_url" placeholder="@my_channel"></div>
                         <div class="input-group">
                             <label>43. Task Icon Selector (FontAwesome)</label>
@@ -329,6 +341,144 @@
                         <p style="text-align:center;">No pending verifications.</p>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- ==========================================
+             CATEGORY I: GAMES SETTINGS
+             ========================================== -->
+        <div id="games" class="section">
+            <div class="panel glass">
+                <h2><i class="fa-solid fa-gamepad"></i> MYFA Drop Settings</h2>
+                <div class="grid-2">
+                    <div class="input-group">
+                        <label>Daily Free Drops</label>
+                        <input type="number" id="cfg_drop_limit" placeholder="e.g. 3">
+                        <small>Number of free plays per user per day.</small>
+                    </div>
+                </div>
+            </div>
+            <div class="panel glass" style="margin-top:20px;">
+                <h2><i class="fa-solid fa-arrows-spin"></i> Spin Wheel Settings</h2>
+                <div class="grid-2">
+                    <div class="input-group">
+                        <label>Wheel Slices (Comma separated)</label>
+                        <input type="text" id="cfg_spin_slices" placeholder="e.g. 10, 50, 100, 200, 500, 1000">
+                    </div>
+                    <div class="input-group">
+                        <label>Spin Cost (Gems)</label>
+                        <input type="number" id="cfg_spin_cost" placeholder="10">
+                    </div>
+                    <div class="input-group">
+                        <label>Forced Reward (0 = Off)</label>
+                        <input type="number" id="cfg_spin_force" placeholder="0">
+                        <small>Force the wheel to always land on this value.</small>
+                    </div>
+                </div>
+            </div>
+            <div class="panel glass" style="margin-top:20px;">
+                <h2><i class="fa-solid fa-ticket"></i> Scratch Card Settings</h2>
+                <div class="grid-2">
+                    <div class="input-group">
+                        <label>Scratch Cost (Gems)</label>
+                        <input type="number" id="cfg_scratch_cost" placeholder="50">
+                    </div>
+                    <div class="input-group">
+                        <label>Min Reward</label>
+                        <input type="number" id="cfg_scratch_min" placeholder="10">
+                    </div>
+                    <div class="input-group">
+                        <label>Max Reward</label>
+                        <input type="number" id="cfg_scratch_max" placeholder="100">
+                    </div>
+                    <div class="input-group">
+                        <label>Jackpot Chance %</label>
+                        <input type="number" id="cfg_scratch_jackpot" placeholder="5">
+                    </div>
+                </div>
+            </div>
+            <button class="action-btn success" style="margin-top:20px;" onclick="saveMasterConfig()"><i class="fa-solid fa-floppy-disk"></i> Save Game Settings</button>
+        </div>
+
+        <!-- ==========================================
+             CATEGORY J: FIRST-OPEN EXPERIENCE
+             ========================================== -->
+        <div id="firstopen" class="section">
+            <div class="panel glass">
+                <h2><i class="fa-solid fa-sparkles"></i> 3-Page Welcome Flow Settings</h2>
+                
+                <div class="input-group" style="display:flex; align-items:center; gap:15px; margin-bottom: 20px;">
+                    <label class="switch">
+                        <input type="checkbox" id="cfg_enableFirstOpen">
+                        <span class="slider round"></span>
+                    </label>
+                    <div style="font-weight:600; color:#fff;">Enable First-Open Experience for New Users</div>
+                </div>
+
+                <h3>Page 1: Welcome</h3>
+                <div class="grid-2">
+                    <div class="input-group">
+                        <label>Title</label>
+                        <input type="text" id="cfg_fopTitle1" placeholder="Welcome to MYFA">
+                    </div>
+                    <div class="input-group">
+                        <label>Subtitle</label>
+                        <input type="text" id="cfg_fopSub1" placeholder="We're glad you're here!">
+                    </div>
+                </div>
+
+                <h3>Page 2: Discover</h3>
+                <div class="input-group">
+                    <label>Title</label>
+                    <input type="text" id="cfg_fopTitle2" placeholder="Discover MYFA">
+                </div>
+
+                <h3>Page 3: Start</h3>
+                <div class="grid-2">
+                    <div class="input-group">
+                        <label>Title</label>
+                        <input type="text" id="cfg_fopTitle3" placeholder="WELCOME TO MYFA">
+                    </div>
+                    <div class="input-group">
+                        <label>Subtitle</label>
+                        <input type="text" id="cfg_fopSub3" placeholder="Your journey starts here.">
+                    </div>
+                    <div class="input-group" style="grid-column: span 2;">
+                        <label>Button Text</label>
+                        <input type="text" id="cfg_fopCtaText" placeholder="GET STARTED">
+                    </div>
+                </div>
+                
+                <h3 style="margin-top:20px;">First-User Reward</h3>
+                <div class="input-group" style="display:flex; align-items:center; gap:15px; margin-bottom:15px;">
+                    <label class="switch">
+                        <input type="checkbox" id="cfg_enableFirstOpenReward">
+                        <span class="slider round"></span>
+                    </label>
+                    <div>Enable Welcome Bonus</div>
+                </div>
+                <div class="grid-2">
+                    <div class="input-group">
+                        <label>Reward Type</label>
+                        <select id="cfg_firstOpenRewardType">
+                            <option value="gems">Gems</option>
+                            <option value="money">Real Money</option>
+                            <option value="spin">Free Spins</option>
+                            <option value="scratch">Free Scratches</option>
+                            <option value="drop">MYFA Drop Plays</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Reward Amount</label>
+                        <input type="number" id="cfg_firstOpenRewardAmount" placeholder="1000">
+                    </div>
+                </div>
+                
+                <div style="margin-top:15px; color:#aaa; font-size:0.9rem;">
+                    * The user must also pass the Mandatory Official Channel check (if enabled in Category F) right after clicking 'GET STARTED'.
+                </div>
+
+                <button class="action-btn success" style="margin-top:20px;" onclick="saveMasterConfig()"><i class="fa-solid fa-floppy-disk"></i> Save Settings</button>
             </div>
         </div>
 
@@ -613,6 +763,29 @@
             document.getElementById('cfg_combo_reward').value = c.comboReward || 1000;
             document.getElementById('cfg_ox_win').value = c.oxWinRate || 75;
             document.getElementById('cfg_spin_reward').value = c.spinRiggedReward || '50';
+            
+            // GAMES SETTINGS
+            if (document.getElementById('cfg_drop_limit')) document.getElementById('cfg_drop_limit').value = c.dropDailyLimit || 3;
+            if (document.getElementById('cfg_spin_slices')) document.getElementById('cfg_spin_slices').value = c.spinSlices || '10, 50, 100, 200, 500, 1000';
+            if (document.getElementById('cfg_spin_cost')) document.getElementById('cfg_spin_cost').value = c.spinCost || 10;
+            if (document.getElementById('cfg_spin_force')) document.getElementById('cfg_spin_force').value = c.spinForcedReward || 0;
+            if (document.getElementById('cfg_scratch_cost')) document.getElementById('cfg_scratch_cost').value = c.scratchCost || 50;
+            if (document.getElementById('cfg_scratch_min')) document.getElementById('cfg_scratch_min').value = c.scratchMin || 10;
+            if (document.getElementById('cfg_scratch_max')) document.getElementById('cfg_scratch_max').value = c.scratchMax || 100;
+            if (document.getElementById('cfg_scratch_jackpot')) document.getElementById('cfg_scratch_jackpot').value = c.scratchJackpotChance || 5;
+            
+            // FIRST-OPEN SETTINGS
+            if (document.getElementById('cfg_enableFirstOpen')) document.getElementById('cfg_enableFirstOpen').checked = !!c.enableFirstOpen;
+            if (document.getElementById('cfg_fopTitle1')) document.getElementById('cfg_fopTitle1').value = c.fopTitle1 || '';
+            if (document.getElementById('cfg_fopSub1')) document.getElementById('cfg_fopSub1').value = c.fopSub1 || '';
+            if (document.getElementById('cfg_fopTitle2')) document.getElementById('cfg_fopTitle2').value = c.fopTitle2 || '';
+            if (document.getElementById('cfg_fopTitle3')) document.getElementById('cfg_fopTitle3').value = c.fopTitle3 || '';
+            if (document.getElementById('cfg_fopSub3')) document.getElementById('cfg_fopSub3').value = c.fopSub3 || '';
+            if (document.getElementById('cfg_fopCtaText')) document.getElementById('cfg_fopCtaText').value = c.fopCtaText || '';
+            if (document.getElementById('cfg_enableFirstOpenReward')) document.getElementById('cfg_enableFirstOpenReward').checked = !!c.enableFirstOpenReward;
+            if (document.getElementById('cfg_firstOpenRewardType')) document.getElementById('cfg_firstOpenRewardType').value = c.firstOpenRewardType || 'gems';
+            if (document.getElementById('cfg_firstOpenRewardAmount')) document.getElementById('cfg_firstOpenRewardAmount').value = c.firstOpenRewardAmount || '';
+
             document.getElementById('cfg_scratch_min').value = c.scratchMin || 10;
             document.getElementById('cfg_scratch_max').value = c.scratchMax || 100;
             document.getElementById('cfg_req_ref').value = c.reqReferrals || 3;
@@ -713,8 +886,24 @@ document.getElementById('cfg_support').value = c.supportChannel || '';
                 comboReward: document.getElementById('cfg_combo_reward').value,
                 oxWinRate: document.getElementById('cfg_ox_win').value,
                 spinRewardText: document.getElementById('cfg_spin_reward').value,
+                dropDailyLimit: parseInt(document.getElementById('cfg_drop_limit') ? document.getElementById('cfg_drop_limit').value : 3),
+                spinSlices: document.getElementById('cfg_spin_slices') ? document.getElementById('cfg_spin_slices').value : '10, 50, 100, 200, 500, 1000',
+                spinCost: parseInt(document.getElementById('cfg_spin_cost') ? document.getElementById('cfg_spin_cost').value : 10),
+                spinForcedReward: parseInt(document.getElementById('cfg_spin_force') ? document.getElementById('cfg_spin_force').value : 0),
+                scratchCost: parseInt(document.getElementById('cfg_scratch_cost') ? document.getElementById('cfg_scratch_cost').value : 50),
                 scratchMin: parseFloat(document.getElementById('cfg_scratch_min').value) || 10,
-                scratchMax: document.getElementById('cfg_scratch_max').value,
+                scratchMax: parseFloat(document.getElementById('cfg_scratch_max').value) || 100,
+                scratchJackpotChance: parseInt(document.getElementById('cfg_scratch_jackpot') ? document.getElementById('cfg_scratch_jackpot').value : 5),
+                enableFirstOpen: document.getElementById('cfg_enableFirstOpen') ? document.getElementById('cfg_enableFirstOpen').checked : false,
+                fopTitle1: document.getElementById('cfg_fopTitle1') ? document.getElementById('cfg_fopTitle1').value : '',
+                fopSub1: document.getElementById('cfg_fopSub1') ? document.getElementById('cfg_fopSub1').value : '',
+                fopTitle2: document.getElementById('cfg_fopTitle2') ? document.getElementById('cfg_fopTitle2').value : '',
+                fopTitle3: document.getElementById('cfg_fopTitle3') ? document.getElementById('cfg_fopTitle3').value : '',
+                fopSub3: document.getElementById('cfg_fopSub3') ? document.getElementById('cfg_fopSub3').value : '',
+                fopCtaText: document.getElementById('cfg_fopCtaText') ? document.getElementById('cfg_fopCtaText').value : '',
+                enableFirstOpenReward: document.getElementById('cfg_enableFirstOpenReward') ? document.getElementById('cfg_enableFirstOpenReward').checked : false,
+                firstOpenRewardType: document.getElementById('cfg_firstOpenRewardType') ? document.getElementById('cfg_firstOpenRewardType').value : 'gems',
+                firstOpenRewardAmount: parseFloat(document.getElementById('cfg_firstOpenRewardAmount') ? document.getElementById('cfg_firstOpenRewardAmount').value : 0),
                 airdropDate: document.getElementById('cfg_airdrop').value,
                 autoWithdrawEnabled: document.getElementById('cfg_auto_withdraw').checked,
                 receiptGenEnabled: document.getElementById('cfg_receipt_gen').checked,
@@ -771,8 +960,9 @@ document.getElementById('cfg_support').value = c.supportChannel || '';
             list.innerHTML = '';
             Object.keys(tasks).forEach(k => {
                 const t = tasks[k];
+                const rType = t.rewardType || 'gems';
                 list.innerHTML += `<div style="border:1px dashed #555; padding:10px; border-radius:8px; margin-bottom:10px; cursor:grab;">
-                    <i class="fa-brands ${t.icon}"></i> ${t.name} (${t.reward} Gems) 
+                    <i class="fa-brands ${t.icon}"></i> ${t.name} (${t.reward} ${rType.toUpperCase()}) 
                     <button class="action-btn danger" style="padding:4px 8px; font-size:0.7rem; float:right;" onclick="deleteTask('${k}')">44. Delete</button>
                 </div>`;
             });
@@ -781,6 +971,7 @@ document.getElementById('cfg_support').value = c.supportChannel || '';
         function createTask() {
             const task = {
                 name: document.getElementById('task_name').value,
+                rewardType: document.getElementById('task_reward_type') ? document.getElementById('task_reward_type').value : 'gems',
                 reward: parseInt(document.getElementById('task_reward').value),
                 url: document.getElementById('task_url').value,
                 icon: document.getElementById('task_icon').value,

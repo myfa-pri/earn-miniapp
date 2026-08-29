@@ -321,8 +321,6 @@ app.get('/api/user/:id', async (req, res) => {
     }
 
     
-        }
-    });
 
     // TASK 1: ALWAYS ON GATE CHECK
     if (config.gateEnabled && config.officialChannels && config.officialChannels.length > 0) {

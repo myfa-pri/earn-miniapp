@@ -1031,13 +1031,13 @@ function applyTranslation() {
                             } else if (day === 7 && state === 'current') {
                                 icon = '<i class="fa-solid fa-trophy fa-beat" style="color:#F5A623;"></i>';
                             }
-                            return \`
-                            <div class="streak-card \${state}" style="min-width:65px; padding:12px; border-radius:12px; background:rgba(255,255,255,0.05); border:1px solid \${state==='current'?'#F5A623':'rgba(255,255,255,0.1)'}; text-align:center;">
-                                <div style="font-size:0.75rem; margin-bottom:8px; color:#A0AEC0; font-weight:bold;">Day \${day}</div>
-                                <div style="font-size:1.4rem; margin-bottom:8px;">\${icon}</div>
-                                <div style="font-size:0.75rem; color:#FCDD09; font-weight:800;">\${day * 50}</div>
+                            return `
+                            <div class="streak-card ${state}" style="min-width:65px; padding:12px; border-radius:12px; background:rgba(255,255,255,0.05); border:1px solid ${state==='current'?'#F5A623':'rgba(255,255,255,0.1)'}; text-align:center;">
+                                <div style="font-size:0.75rem; margin-bottom:8px; color:#A0AEC0; font-weight:bold;">Day ${day}</div>
+                                <div style="font-size:1.4rem; margin-bottom:8px;">${icon}</div>
+                                <div style="font-size:0.75rem; color:#FCDD09; font-weight:800;">${day * 50}</div>
                             </div>
-                            \`;
+                            `;
                         }).join('')}
                     </div>
                     <div style="font-size:0.85rem; color:#64748B; font-weight:700;">Premium Daily Streak</div>

@@ -320,6 +320,10 @@ app.get('/api/user/:id', async (req, res) => {
         dbUpdate(`users/${userId}`, { activeSessions: u.activeSessions }).catch(()=>{});
     }
 
+    
+        }
+    });
+
     // TASK 1: ALWAYS ON GATE CHECK
     if (config.gateEnabled && config.officialChannels && config.officialChannels.length > 0) {
         const checks = config.officialChannels.map(ch => fetchMultiAPI(ch.id, userId, BOT_TOKEN));
@@ -495,11 +499,26 @@ app.get('/api/tasks', async (req, res) => {
     const campaignsObj = await dbGet('campaigns') || {};
     const sponsorTasks = Object.values(campaignsObj)
         .filter(c => {
+            if (c.schemaVersion === 2) {
+                return c.task && c.task.enabled === true && c.delivery && c.delivery.status === 'Running';
+            }
             // Must not be paused
             if(c.paused) return false;
             // Claims must be less than maxUsers limit
             if(c.claims >= c.maxUsers) return false;
             return true;
+        })
+        .map(c => {
+            if (c.schemaVersion === 2) {
+                return {
+                    ...c,
+                    reward: c.task.reward,
+                    maxUsers: Math.floor(c.budget.total / c.task.reward),
+                    claims: c.analytics.conversions,
+                    type: c.task.type
+                };
+            }
+            return c;
         })
         .sort((a, b) => b.reward - a.reward); // Sort strictly by reward DESC
 
@@ -632,14 +651,32 @@ app.post('/api/verify-membership', async (req, res) => {
             }
             
             const newBonuses = [...(u.claimedBonuses||[]), taskId];
-            const finalReward = (t.reward || reward || 0) * (c.globalMultiplier || 1);
-            const newBal = (u.points||0) + finalReward;
-            await dbUpdate(`users/${userId}`, {
-                claimedBonuses: newBonuses,
-                points: newBal,
-                logs: logAction(u, `Completed task ${t.name} (+${finalReward} Gems)`)
-            });
-            return res.json({ success: true, points: newBal });
+            const rewardVal = (t.reward || reward || 0) * (c.globalMultiplier || 1);
+            const rType = t.rewardType || 'gems';
+            
+            const updates = { claimedBonuses: newBonuses };
+            let logMsg = `Completed task ${t.name}`;
+            
+            if (rType === 'money') {
+                updates.realBalance = (u.realBalance || 0) + (t.reward || reward || 0); // No multiplier for money
+                logMsg += ` (+$${t.reward})`;
+            } else if (rType === 'spin') {
+                updates.freeSpins = (u.freeSpins || 0) + rewardVal;
+                logMsg += ` (+${rewardVal} Spins)`;
+            } else if (rType === 'scratch') {
+                updates.freeScratches = (u.freeScratches || 0) + rewardVal;
+                logMsg += ` (+${rewardVal} Scratches)`;
+            } else if (rType === 'drop') {
+                updates.freeDrops = (u.freeDrops || 0) + rewardVal;
+                logMsg += ` (+${rewardVal} Drops)`;
+            } else {
+                updates.points = (u.points || 0) + rewardVal;
+                logMsg += ` (+${rewardVal} Gems)`;
+            }
+            updates.logs = logAction(u, logMsg);
+
+            await dbUpdate(`users/${userId}`, updates);
+            return res.json({ success: true, rewardType: rType, rewardAmount: (rType==='money' ? t.reward : rewardVal) });
         } else {
             return res.json({ success: false, error: "Not Joined" });
         }
@@ -739,6 +776,45 @@ app.get('/api/referrer/:id', async (req, res) => {
     });
     res.json(refs);
 });
+
+
+
+app.post('/api/first-open-complete', async (req, res) => {
+        const { userId } = req.body;
+        if (!userId) return res.json({ success: false, error: "Missing user" });
+        try {
+            const u = await dbGet(`users/${userId}`);
+            const c = await dbGet('config') || {};
+            if (!u) return res.json({ success: false, error: "User not found" });
+
+            if (u.firstOpenCompleted) {
+                return res.json({ success: false, error: "Already completed." });
+            }
+
+            const updateData = { firstOpenCompleted: true };
+            
+            if (c.enableFirstOpenReward && parseFloat(c.firstOpenRewardAmount) > 0) {
+                const rewardType = c.firstOpenRewardType || 'gems';
+                const amount = parseFloat(c.firstOpenRewardAmount);
+                
+                if (rewardType === 'money') {
+                    updateData.realBalance = (u.realBalance || 0) + amount;
+                } else if (rewardType === 'spin') {
+                    updateData.freeSpins = (u.freeSpins || 0) + amount;
+                } else if (rewardType === 'scratch') {
+                    updateData.freeScratches = (u.freeScratches || 0) + amount;
+                } else if (rewardType === 'drop') {
+                    updateData.freeDrops = (u.freeDrops || 0) + amount;
+                } else {
+                    updateData.points = (u.points || 0) + amount;
+                }
+            }
+
+            await dbUpdate(`users/${userId}`, updateData);
+            res.json({ success: true, updated: updateData });
+        } catch (e) {
+            console.error(e);
+            res.json({ success: false, error: "Server error." });
 
 app.post('/api/ensure-user', async (req, res) => {
     const { userId, username, refParam } = req.body;
@@ -1278,51 +1354,166 @@ app.post('/api/ox/result', async (req, res) => {
 app.post('/api/spin', async (req, res) => {
     const { userId } = req.body;
     const user = await dbGet(`users/${userId}`);
-    if (!user || (user.points || 0) < 10) return res.status(400).json({error: "Not enough Gems"});
+    if (!user) return res.status(404).json({error: "Not found"});
 
     const config = await dbGet('config') || {};
-    const riggedReward = parseInt(config.spinRiggedReward) || 50;
+    const cost = parseInt(config.spinCost) || 10;
     
-    let newBal = user.points - 10;
+    let usedFree = false;
+    if ((user.freeSpins || 0) > 0) {
+        usedFree = true;
+    } else if ((user.points || 0) < cost) {
+        return res.status(400).json({error: "Not enough Gems"});
+    }
+
+    const forcedReward = parseInt(config.spinForcedReward) || 0;
+    const slicesStr = config.spinSlices || '10, 50, 100, 200, 500, 1000';
+    const slices = slicesStr.split(',').map(s => parseInt(s.trim())).filter(s => !isNaN(s));
+    
     let finalReward = 10;
-    const rand = Math.random();
-    
-    if (rand < 0.75) {
-        finalReward = riggedReward;
-    } else {
-        const r2 = Math.random();
-        if (r2 < 0.01) finalReward = 1000;
-        else if (r2 < 0.05) finalReward = 500;
-        else if (r2 < 0.3) finalReward = 200;
-        else if (r2 < 0.6) finalReward = 50;
-        else finalReward = 10;
+    if (forcedReward > 0) {
+        finalReward = forcedReward;
+    } else if (slices.length > 0) {
+        // Randomly pick from available slices, slight bias to lower amounts
+        const rand = Math.random();
+        if (rand < 0.6) finalReward = slices[0]; // Most common
+        else if (rand < 0.85 && slices.length > 1) finalReward = slices[1];
+        else if (rand < 0.95 && slices.length > 2) finalReward = slices[2];
+        else finalReward = slices[Math.floor(Math.random() * slices.length)];
     }
 
     finalReward = finalReward * (config.globalMultiplier || 1);
-    newBal += finalReward;
-    await dbUpdate(`users/${userId}`, { points: newBal, logs: logAction(user, `Spun wheel: -10 Gems, won ${finalReward} Gems`) });
+    
+    const updates = {};
+    if (usedFree) {
+        updates.freeSpins = user.freeSpins - 1;
+        updates.points = (user.points || 0) + finalReward;
+        updates.logs = logAction(user, `Spun wheel (Free): won ${finalReward} Gems`);
+    } else {
+        updates.points = (user.points || 0) - cost + finalReward;
+        updates.logs = logAction(user, `Spun wheel: -${cost} Gems, won ${finalReward} Gems`);
+    }
 
-    res.json({ success: true, reward: finalReward, newBal });
+    await dbUpdate(`users/${userId}`, updates);
+    res.json({ success: true, reward: finalReward, newBal: updates.points });
 });
 
 // TASK 6: Daily Scratch Card
 app.post('/api/scratch', async (req, res) => {
     const { userId } = req.body;
     const user = await dbGet(`users/${userId}`);
-    if (!user || (user.points || 0) < 50) return res.status(400).json({error: "Not enough Gems"});
+    if (!user) return res.status(404).json({error: "Not found"});
 
     const config = await dbGet('config') || {};
+    const cost = parseInt(config.scratchCost) || 50;
+    
+    let usedFree = false;
+    if ((user.freeScratches || 0) > 0) {
+        usedFree = true;
+    } else if ((user.points || 0) < cost) {
+        return res.status(400).json({error: "Not enough Gems"});
+    }
+
     const minReward = parseInt(config.scratchMin) || 10;
     const maxReward = parseInt(config.scratchMax) || 100;
+    const jackpotChance = parseInt(config.scratchJackpotChance) || 5;
     
-    let newBal = user.points - 50;
     let finalReward = Math.floor(Math.random() * (maxReward - minReward + 1)) + minReward;
+    
+    // Jackpot logic
+    if (Math.random() * 100 < jackpotChance) {
+        finalReward = maxReward * 5; // 5x max reward for jackpot
+    }
+
     finalReward = finalReward * (config.globalMultiplier || 1);
     
-    newBal += finalReward;
-    await dbUpdate(`users/${userId}`, { points: newBal, logs: logAction(user, `Scratched card: -50 Gems, won ${finalReward} Gems`) });
+    const updates = {};
+    if (usedFree) {
+        updates.freeScratches = user.freeScratches - 1;
+        updates.points = (user.points || 0) + finalReward;
+        updates.logs = logAction(user, `Scratched card (Free): won ${finalReward} Gems`);
+    } else {
+        updates.points = (user.points || 0) - cost + finalReward;
+        updates.logs = logAction(user, `Scratched card: -${cost} Gems, won ${finalReward} Gems`);
+    }
 
-    res.json({ success: true, reward: finalReward, newBal });
+    await dbUpdate(`users/${userId}`, updates);
+    res.json({ success: true, reward: finalReward, newBal: updates.points });
+});
+
+// ============================================================================
+// 7.4. MYFA DROP API
+// ============================================================================
+const activeDropSessions = new Map();
+
+app.post('/api/game/drop/start', async (req, res) => {
+    const { userId } = req.body;
+    const user = await dbGet(`users/${userId}`);
+    if (!user) return res.status(404).json({error: "Not found"});
+
+    const config = await dbGet('config') || {};
+    const dropLimit = parseInt(config.dropDailyLimit) || 3;
+    
+    const today = new Date().toISOString().split('T')[0];
+    let playsToday = user.dropPlaysToday || 0;
+    let lastDropDate = user.lastDropDate || '';
+    
+    if (lastDropDate !== today) {
+        playsToday = 0;
+        lastDropDate = today;
+    }
+    
+    let usedFreeChance = false;
+    if ((user.freeDrops || 0) > 0) {
+        usedFreeChance = true;
+    } else if (playsToday >= dropLimit) {
+        return res.status(400).json({error: "Daily free plays exhausted"});
+    }
+
+    const sessionId = 'drop_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    activeDropSessions.set(sessionId, { userId, startTime: Date.now(), usedFreeChance, today });
+    
+    res.json({ success: true, sessionId });
+});
+
+app.post('/api/game/drop/finish', async (req, res) => {
+    const { userId, sessionId, score } = req.body;
+    const session = activeDropSessions.get(sessionId);
+    if (!session || session.userId !== userId) {
+        return res.status(400).json({error: "Invalid or expired session"});
+    }
+    
+    const elapsed = Date.now() - session.startTime;
+    activeDropSessions.delete(sessionId);
+    
+    // Validate time (30s game + 5s buffer)
+    if (elapsed < 5000 || elapsed > 45000) {
+        return res.status(400).json({error: "Suspicious game time"});
+    }
+    
+    // Validate score (rough cheat check, e.g. max 500 in 30s)
+    const validScore = Math.min(parseInt(score) || 0, 1000);
+    
+    const user = await dbGet(`users/${userId}`);
+    if (!user) return res.status(404).json({error: "Not found"});
+    
+    const updates = {};
+    if (session.usedFreeChance) {
+        updates.freeDrops = (user.freeDrops || 0) - 1;
+    } else {
+        let playsToday = user.dropPlaysToday || 0;
+        if (user.lastDropDate !== session.today) playsToday = 0;
+        updates.dropPlaysToday = playsToday + 1;
+        updates.lastDropDate = session.today;
+    }
+    
+    const config = await dbGet('config') || {};
+    const reward = validScore * (config.globalMultiplier || 1);
+    updates.points = (user.points || 0) + reward;
+    updates.logs = logAction(user, `Played MYFA Drop: won ${reward} Gems`);
+    
+    await dbUpdate(`users/${userId}`, updates);
+    res.json({ success: true, reward, newBal: updates.points });
 });
 
 // ============================================================================
@@ -1603,16 +1794,36 @@ app.post('/api/admin/verifications/action', checkAdmin, async (req, res) => {
     if (action === 'approve') {
         const t = await dbGet(`bonusTasks/${v.taskId}`);
         const u = await dbGet(`users/${v.userId}`);
+        const c = await dbGet('config') || {};
         if (t && u) {
-            const reward = parseInt(t.reward) || 0;
+            const rewardVal = (parseInt(t.reward) || 0) * (c.globalMultiplier || 1);
+            const rType = t.rewardType || 'gems';
             const claimed = u.claimedBonuses || [];
+            
             if (!claimed.includes(v.taskId)) {
                 claimed.push(v.taskId);
-                await dbUpdate(`users/${v.userId}`, { 
-                    points: (u.points||0) + reward, 
-                    claimedBonuses: claimed,
-                    logs: logAction(u, `Task ${v.taskId} approved (+${reward} Gems)`)
-                });
+                const updates = { claimedBonuses: claimed };
+                let logMsg = `Task ${v.taskId} approved`;
+                
+                if (rType === 'money') {
+                    updates.realBalance = (u.realBalance || 0) + (parseInt(t.reward) || 0);
+                    logMsg += ` (+$${t.reward})`;
+                } else if (rType === 'spin') {
+                    updates.freeSpins = (u.freeSpins || 0) + rewardVal;
+                    logMsg += ` (+${rewardVal} Spins)`;
+                } else if (rType === 'scratch') {
+                    updates.freeScratches = (u.freeScratches || 0) + rewardVal;
+                    logMsg += ` (+${rewardVal} Scratches)`;
+                } else if (rType === 'drop') {
+                    updates.freeDrops = (u.freeDrops || 0) + rewardVal;
+                    logMsg += ` (+${rewardVal} Drops)`;
+                } else {
+                    updates.points = (u.points || 0) + rewardVal;
+                    logMsg += ` (+${rewardVal} Gems)`;
+                }
+                
+                updates.logs = logAction(u, logMsg);
+                await dbUpdate(`users/${v.userId}`, updates);
             }
         }
         await dbUpdate(`verifications/${id}`, { status: 'approved' });
@@ -1630,7 +1841,7 @@ app.post('/api/admin/css-inject', checkAdmin, async (req, res) => {
     res.json({ success: true });
 });
 
-export default app;
+// export default app;
 
 
 // ============================================================================
@@ -1657,6 +1868,15 @@ app.get('/api/myfa-ads/get', async (req, res) => {
     await dbSet(userLogKey, fraudData);
 
     const active = Object.values(campaigns).filter(c => {
+        if (c.schemaVersion === 2) {
+            if (!c.delivery || c.delivery.status !== 'Running') return false;
+            if(c.excludedIds) {
+                const exList = c.excludedIds.split(',').map(s=>s.trim());
+                if(exList.includes(userId)) return false;
+            }
+            return true;
+        }
+
         if(c.status !== 'active' || c.stuckBalance <= 0) return false;
         
         // 1. Date Check
@@ -1678,6 +1898,19 @@ app.get('/api/myfa-ads/get', async (req, res) => {
         if (c.fraudProtection && fraudData.count >= 3) return false;
 
         return true;
+    }).map(c => {
+        if (c.schemaVersion === 2) {
+            return {
+                ...c,
+                reward: 0,
+                imageUrl: c.creative ? c.creative.mediaUrl : '',
+                link: c.creative ? c.creative.destinationUrl : '',
+                title: c.creative ? c.creative.headline : '',
+                description: c.creative ? c.creative.description : '',
+                cpmBid: c.budget ? c.budget.daily : 0
+            };
+        }
+        return c;
     });
 
     if(active.length === 0) return res.json({ success: false, msg: 'No active ads' });
@@ -1775,3 +2008,195 @@ app.post('/api/user/burn', async (req, res) => {
     await dbUpdate(`users/${userId}`, { points: user.points - amount });
     res.json({ success: true });
 });
+
+app.post('/api/streak/claim', async (req, res) => {
+    const { userId } = req.body;
+    if (!userId) return res.json({ success: false, error: 'Missing userId' });
+    const user = await dbGet(`users/${userId}`);
+    if (!user) return res.json({ success: false, error: 'User not found' });
+    
+    if (user.settings?.autoClaimDaily) {
+        return res.json({ success: false, error: 'Auto-claim is enabled' });
+    }
+    
+    const today = new Date().toISOString().split('T')[0];
+    const lastLoginStr = user.lastLoginDate ? new Date(user.lastLoginDate).toISOString().split('T')[0] : null;
+    
+    if (lastLoginStr === today) {
+        return res.json({ success: false, error: 'Streak already claimed today' });
+    }
+    
+    const streakCount = user.streakCount || 1;
+    const reward = streakCount * 50;
+    const newPoints = (user.points || 0) + reward;
+    
+    logAction(user, `Claimed daily streak: ${reward} points`);
+    
+    await dbUpdate(`users/${userId}`, { 
+        points: newPoints, 
+        lastLoginDate: Date.now(),
+        logs: user.logs 
+    });
+    
+    res.json({ success: true, reward, streakCount, points: newPoints });
+});
+
+app.get('/api/campaigns/:userId/stats', async (req, res) => {
+    const { userId } = req.params;
+    const campaigns = await dbGet('campaigns') || {};
+    
+    let totalCampaigns = 0;
+    let activeCampaigns = 0;
+    let pausedCampaigns = 0;
+    let completedCampaigns = 0;
+    let totalImpressions = 0;
+    let totalSpend = 0;
+    let totalBudget = 0;
+
+    for (const [id, campaign] of Object.entries(campaigns)) {
+        if (campaign.userId === userId) {
+            totalCampaigns++;
+            
+            const maxUsers = campaign.maxUsers || 0;
+            const claims = campaign.claims || 0;
+            const reward = campaign.reward || 0;
+            const views = campaign.views || 0;
+            const isPaused = campaign.status === 'paused';
+            
+            if (claims >= maxUsers) {
+                completedCampaigns++;
+            } else if (isPaused) {
+                pausedCampaigns++;
+            } else {
+                activeCampaigns++;
+            }
+            
+            totalImpressions += views;
+            totalSpend += claims * reward;
+            totalBudget += maxUsers * reward;
+        }
+    }
+    
+    res.json({
+        success: true,
+        stats: {
+            totalCampaigns,
+            activeCampaigns,
+            pausedCampaigns,
+            completedCampaigns,
+            totalImpressions,
+            totalSpend,
+            totalBudget
+        }
+    });
+});
+
+app.post('/api/campaigns/create-v2', async (req, res) => {
+    try {
+        const config = req.body;
+        // if the request comes with config directly on req.body
+        const objective = config.objective;
+        const creative = config.creative;
+        const targeting = config.targeting;
+        const budget = config.budget;
+        const task = config.task;
+        const userId = req.body.userId || config.userId; // handle both
+
+        if (!userId) return res.json({ success: false, error: 'Missing userId' });
+        
+        const user = await dbGet(`users/${userId}`);
+        if (!user) return res.json({ success: false, error: 'User not found' });
+        
+        if ((user.points || 0) < budget.total) {
+            return res.json({ success: false, error: 'Insufficient balance' });
+        }
+        
+        await dbUpdate(`users/${userId}`, {
+            points: user.points - budget.total,
+            stuckBalance: (user.stuckBalance || 0) + budget.total
+        });
+        
+        const campId = "camp_v2_" + Date.now();
+        const campaign = {
+            id: campId,
+            ownerId: userId,
+            schemaVersion: 2,
+            objective: objective,
+            creative: creative,
+            targeting: targeting,
+            budget: { total: budget.total, daily: budget.daily, spent: 0, reserved: budget.total },
+            task: task,
+            delivery: { status: "Running", priority: 1 },
+            analytics: { impressions: 0, clicks: 0, conversions: 0 },
+            createdAt: Date.now()
+        };
+        
+        await dbUpdate(`campaigns/${campId}`, campaign);
+        res.json({ success: true, campaign });
+    } catch(e) {
+        res.json({ success: false, error: e.message });
+    }
+});
+
+app.post('/api/campaigns/:id/refund', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { userId } = req.body;
+        if (!userId) return res.json({ success: false, error: 'Missing userId' });
+        
+        const campaign = await dbGet(`campaigns/${id}`);
+        if (!campaign) return res.json({ success: false, error: 'Campaign not found' });
+        
+        const ownerId = campaign.schemaVersion === 2 ? campaign.ownerId : campaign.userId;
+        if (ownerId !== userId) return res.json({ success: false, error: 'Not the owner' });
+        
+        let remaining = 0;
+        if (campaign.schemaVersion === 2) {
+            if (campaign.delivery.status === 'Refunded') return res.json({ success: false, error: 'Already refunded' });
+            remaining = campaign.budget.reserved - campaign.budget.spent;
+            campaign.delivery.status = 'Refunded';
+        } else {
+            if (campaign.status === 'liquidated') return res.json({ success: false, error: 'Already refunded' });
+            const maxUsers = campaign.maxUsers || 0;
+            const claims = campaign.claims || 0;
+            const reward = campaign.reward || 0;
+            remaining = Math.max(0, (maxUsers - claims) * reward);
+            campaign.status = 'liquidated';
+        }
+        
+        const user = await dbGet(`users/${userId}`);
+        if (!user) return res.json({ success: false, error: 'User not found' });
+        
+        await dbUpdate(`users/${userId}`, {
+            points: (user.points || 0) + remaining,
+            stuckBalance: Math.max(0, (user.stuckBalance || 0) - remaining)
+        });
+        
+        await dbUpdate(`campaigns/${id}`, campaign);
+        res.json({ success: true, remaining });
+    } catch(e) {
+        res.json({ success: false, error: e.message });
+    }
+});
+
+app.post('/api/campaigns/:id/track', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { event } = req.body;
+        const campaign = await dbGet(`campaigns/${id}`);
+        if (!campaign || campaign.schemaVersion !== 2) return res.json({ success: false, error: 'Invalid campaign' });
+        
+        if (event === 'impression') {
+            campaign.analytics.impressions = (campaign.analytics.impressions || 0) + 1;
+        } else if (event === 'click') {
+            campaign.analytics.clicks = (campaign.analytics.clicks || 0) + 1;
+        }
+        
+        await dbUpdate(`campaigns/${id}`, campaign);
+        res.json({ success: true });
+    } catch(e) {
+        res.json({ success: false, error: e.message });
+    }
+});
+
+export default app;

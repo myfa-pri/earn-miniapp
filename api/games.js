@@ -22,7 +22,7 @@ async function dbGet(path) { return await dbCall(path, 'GET'); }
 async function dbUpdate(path, partialData) { return await dbCall(path, 'PATCH', partialData); }
 
 // Ludo Payout
-router.post('/ludo/payout', async (req, res) => {
+router.post(['/ludo/payout', '/ludo/result'], async (req, res) => {
     try {
         const { userId, wager, isWin, payout } = req.body;
         if (!userId) return res.status(400).json({ error: 'Missing userId' });

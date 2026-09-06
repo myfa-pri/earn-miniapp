@@ -3,7 +3,7 @@
   const app=document.getElementById('ongoing-app');
   const screens=[...document.querySelectorAll('.screen')];
   const params=new URLSearchParams(location.search);
-  const preview=params.has('ongoing') && params.get('ongoing') !== 'preview-complete';
+  const preview=params.has('ongoing');
   const explicitTestUser=params.get('test_user');
   const tg=window.Telegram?.WebApp;
   let tgUser=tg?.initDataUnsafe?.user||null;
@@ -72,7 +72,13 @@
       const d=await r.json().catch(()=>({}));
       if(!(d.success || d.error==='Already completed.'))throw new Error(d.error||'Could not complete onboarding');
       try{tg?.HapticFeedback?.notificationOccurred?.('success')}catch(_e){}
-      location.replace('/');
+      // Preserve browser test mode when returning to the real Mini App shell.
+      // Normal Telegram users still return to the normal root URL.
+      if (explicitTestUser && /^\d+$/.test(explicitTestUser)) {
+        location.replace('/?test_user=' + encodeURIComponent(explicitTestUser));
+      } else {
+        location.replace('/');
+      }
     }catch(e){status(e.message||'Please try again');busy=false}
   }
   function skip(){completeAndRoute()}
@@ -87,13 +93,7 @@
 
   // Browser preview is deliberately auth-free. Production/real-account path reads existing first-open state.
   (async function init(){
-    // Browser preview (?ongoing or ?ongoing=preview) is intentionally auth-free.
-    // Never show the Telegram-only error during this preview path.
-    if(preview && !explicitTestUser && !tgUser){
-      app.classList.add('preview');
-      document.getElementById('error')?.setAttribute('hidden','');
-      return;
-    }
+    if(preview && !explicitTestUser && !tgUser){return;}
     if(!tgUser?.id){
       if(!preview){
         document.querySelector('.screen.active')?.classList.remove('active');

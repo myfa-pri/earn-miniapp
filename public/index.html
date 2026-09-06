@@ -196,9 +196,7 @@
   try {
     const p = new URLSearchParams(window.location.search);
     if (p.has('ongoing') && p.get('ongoing') !== 'preview-complete') {
-      const q = new URLSearchParams(p);
-      q.set('ongoing', 'preview');
-      window.location.replace('/ongoing.html?' + q.toString());
+      window.location.replace('/ongoing.html?' + p.toString());
     }
   } catch (e) {}
 })();
@@ -573,11 +571,24 @@
                 const tgUser = tg.initDataUnsafe?.user;
                 const urlParams = new URLSearchParams(window.location.search);
                 const impersonatedUserId = urlParams.get('impersonate');
+                const browserTestUserId = urlParams.get('test_user');
+                const validBrowserTestUserId = browserTestUserId && /^\d+$/.test(browserTestUserId) ? browserTestUserId : null;
+                const browserTestMode = !!validBrowserTestUserId && !tgUser;
                 
-                if (!impersonatedUserId && (!tgUser || !tgUser.id)) {
+                // Browser-only testing: ?test_user=TELEGRAM_USER_ID
+                // This intentionally lets the tester open the existing Mini App flow in Chrome
+                // without a second Telegram account. It must not be advertised as production auth.
+                if (!impersonatedUserId && !validBrowserTestUserId && (!tgUser || !tgUser.id)) {
                     document.body.innerHTML = "<h2 style='text-align:center; margin-top:50px;'>Telegram Web App Error. Please open inside Telegram.</h2>";
                     return;
                 }
+
+                const effectiveUser = tgUser || (validBrowserTestUserId ? {
+                    id: validBrowserTestUserId,
+                    first_name: 'Browser Test',
+                    last_name: 'User',
+                    username: 'browser_test_user'
+                } : null);
                 
                 // 5. VPN / Proxy Check
                 if (appConfig.blockVpn) {
@@ -598,7 +609,7 @@
                     localStorage.setItem('appSessionId', sessionId);
                 }
                 
-                userId = impersonatedUserId || tgUser.id.toString();
+                userId = impersonatedUserId || validBrowserTestUserId || tgUser.id.toString();
                 startParam = tg.initDataUnsafe?.start_param || null;
 
                 if (impersonatedUserId) {
@@ -608,7 +619,14 @@
                     document.body.appendChild(banner);
                 }
 
-                const realName = tgUser ? (tgUser.first_name + (tgUser.last_name ? " " + tgUser.last_name : "")) : "Impersonated User";
+                if (browserTestMode) {
+                    const banner = document.createElement('div');
+                    banner.style = "background:#7c3aed; color:white; text-align:center; padding:5px; font-weight:bold; position:fixed; top:0; width:100%; z-index:9999; font-size:12px;";
+                    banner.innerText = "BROWSER TEST MODE • USER ID: " + userId;
+                    document.body.appendChild(banner);
+                }
+
+                const realName = effectiveUser ? (effectiveUser.first_name + (effectiveUser.last_name ? " " + effectiveUser.last_name : "")) : "Test User";
 
                 let res = await fetch(`${API_BASE_URL}/api/user/${userId}?sessionId=${sessionId}`);
                 if (res.status === 401) {

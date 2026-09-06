@@ -449,45 +449,334 @@ app.get('/api/leaderboard/:id', async (req, res) => {
     res.json({ frozen: false, byPoints: top100, userRankPoints: userRank });
 });
 
-// TASK 1: LIGHT-SPEED TELEGRAM MEMBERSHIP API
-async function fetchMultiAPI(channelId, userId, botToken) {
+// ============================================================================
+// PRODUCTION TELEGRAM MEMBERSHIP ENGINE
+// ----------------------------------------------------------------------------
+// This is the single membership checker used by:
+//   1) Official-channel gate
+//   2) Auto-verified bonus tasks
+//   3) Sponsor auto-verification
+//   4) Existing 7-day sponsored-channel audits
+//
+// IMPORTANT: This code intentionally keeps the Admin Panel as the source of
+// truth for official channels. Nothing is hard-coded into the frontend.
+// ============================================================================
+
+const MEMBERSHIP_ENGINE = Object.freeze({
+    timeoutMs: 9000,
+    retries: 2,
+    retryBaseMs: 250,
+    cacheMs: 12000,
+    maxConcurrentChecks: 8,
+    validStatuses: new Set(['creator', 'administrator', 'member', 'restricted']),
+    invalidStatuses: new Set(['left', 'kicked']),
+    transientHttp: new Set([408, 425, 429, 500, 502, 503, 504])
+});
+
+// Very short-lived cache reduces duplicate Telegram calls when the same page
+// immediately asks the gate and then asks a task to verify the same channel.
+// It is never used as a permanent membership record.
+const membershipCache = new Map();
+
+function membershipKey(channelId, userId) {
+    return `${String(channelId).trim()}::${String(userId).trim()}`;
+}
+
+function cleanChannelId(channelId) {
+    if (channelId === undefined || channelId === null) return null;
+    const value = String(channelId).trim();
+    if (!value) return null;
+    // Accept @channel, t.me/channel and numeric Telegram chat IDs from the
+    // Admin Panel. Telegram's API accepts @username and numeric IDs directly.
+    if (/^https?:\/\/t\.me\//i.test(value)) {
+        const tail = value.replace(/^https?:\/\/t\.me\//i, '').split(/[/?#]/)[0];
+        return tail ? `@${tail.replace(/^@/, '')}` : null;
+    }
+    if (/^t\.me\//i.test(value)) {
+        const tail = value.replace(/^t\.me\//i, '').split(/[/?#]/)[0];
+        return tail ? `@${tail.replace(/^@/, '')}` : null;
+    }
+    if (/^-?\d+$/.test(value)) return value;
+    return `@${value.replace(/^@/, '')}`;
+}
+
+function isRealMemberResult(result) {
+    if (!result || typeof result !== 'object') return false;
+    const status = String(result.status || '').toLowerCase();
+    if (MEMBERSHIP_ENGINE.invalidStatuses.has(status)) return false;
+    if (!MEMBERSHIP_ENGINE.validStatuses.has(status)) return false;
+    // Telegram can return restricted members. They are members only when
+    // is_member is explicitly true. Never infer membership from restrictions.
+    if (status === 'restricted' && result.is_member !== true) return false;
+    return true;
+}
+
+function membershipCacheGet(key) {
+    const hit = membershipCache.get(key);
+    if (!hit) return null;
+    if (Date.now() - hit.at > MEMBERSHIP_ENGINE.cacheMs) {
+        membershipCache.delete(key);
+        return null;
+    }
+    return hit.value;
+}
+
+function membershipCacheSet(key, value) {
+    // Keep memory bounded in a long-running local Express process.
+    if (membershipCache.size > 5000) {
+        const first = membershipCache.keys().next().value;
+        if (first) membershipCache.delete(first);
+    }
+    membershipCache.set(key, { at: Date.now(), value });
+}
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function telegramMembershipRequest(channelId, userId, botToken, attempt = 0) {
+    const chatId = cleanChannelId(channelId);
+    const uid = String(userId || '').trim();
+    if (!chatId) return { success: false, status: 'error', code: 'INVALID_CHANNEL', error: 'Invalid channel configuration.' };
+    if (!/^\d+$/.test(uid)) return { success: false, status: 'error', code: 'INVALID_USER', error: 'Invalid Telegram user ID.' };
+
+    const url = `https://api.telegram.org/bot${botToken}/getChatMember?chat_id=${encodeURIComponent(chatId)}&user_id=${encodeURIComponent(uid)}`;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), MEMBERSHIP_ENGINE.timeoutMs);
+
     try {
-        const url = `https://api.telegram.org/bot${botToken}/getChatMember?chat_id=${channelId}&user_id=${userId}`;
-        const response = await fetch(url);
-        const data = await response.json();
-        
-        if (data.ok && ['creator', 'administrator', 'member', 'restricted'].includes(data.result.status)) {
-            return { success: true, status: data.result.status };
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' },
+            signal: controller.signal
+        });
+
+        let data = null;
+        try { data = await response.json(); } catch (_) {}
+
+        if (data && data.ok === true && data.result) {
+            const result = data.result;
+            const status = String(result.status || '').toLowerCase();
+            const success = isRealMemberResult(result);
+            return {
+                success,
+                status: status || 'unknown',
+                userId: uid,
+                channelId: chatId,
+                checkedAt: Date.now(),
+                isMember: success,
+                telegramResult: {
+                    status,
+                    is_member: result.is_member === true,
+                    can_send_messages: result.can_send_messages === true,
+                    can_invite_users: result.can_invite_users === true
+                }
+            };
         }
-        
-        // Return clear error if bot is not admin or user not found
-        if (!data.ok) {
-            console.error("TG API Error:", data.description);
-            if (data.description.includes('bot is not a member') || data.description.includes('chat not found')) {
-                return { success: false, status: 'error', error: "Bot must be an admin in the channel/group!" };
-            }
+
+        const description = String((data && data.description) || `Telegram HTTP ${response.status}`);
+        const lower = description.toLowerCase();
+        const botPermissionError =
+            lower.includes('bot is not a member') ||
+            lower.includes('administrator rights') ||
+            lower.includes('chat not found') ||
+            lower.includes('user not found') ||
+            lower.includes('have no rights');
+
+        // Telegram 429 includes retry_after. Honor it, but never wait beyond
+        // the small retry budget of this request.
+        const retryAfter = Number(data?.parameters?.retry_after || 0);
+        const canRetry = attempt < MEMBERSHIP_ENGINE.retries &&
+            (MEMBERSHIP_ENGINE.transientHttp.has(response.status) || retryAfter > 0);
+
+        if (canRetry) {
+            const wait = Math.min(3000, retryAfter > 0 ? retryAfter * 1000 : MEMBERSHIP_ENGINE.retryBaseMs * (attempt + 1));
+            await sleep(wait);
+            return telegramMembershipRequest(channelId, userId, botToken, attempt + 1);
         }
-        
-        return { success: false, status: data.ok ? data.result.status : 'error' };
+
+        return {
+            success: false,
+            status: 'error',
+            code: botPermissionError ? 'TELEGRAM_PERMISSION' : `TELEGRAM_${response.status || 'ERROR'}`,
+            error: botPermissionError
+                ? 'Telegram could not verify this channel. Make sure the bot is an administrator and the channel is configured correctly.'
+                : description,
+            channelId: chatId,
+            checkedAt: Date.now()
+        };
     } catch (e) {
-        console.error("Fetch Error:", e.message);
-        return { success: false, status: 'error' };
+        const transient = e?.name === 'AbortError' || /network|fetch|timeout/i.test(String(e?.message || ''));
+        if (transient && attempt < MEMBERSHIP_ENGINE.retries) {
+            await sleep(MEMBERSHIP_ENGINE.retryBaseMs * (attempt + 1));
+            return telegramMembershipRequest(channelId, userId, botToken, attempt + 1);
+        }
+        return {
+            success: false,
+            status: 'error',
+            code: e?.name === 'AbortError' ? 'TELEGRAM_TIMEOUT' : 'TELEGRAM_NETWORK',
+            error: 'Telegram membership verification is temporarily unavailable.',
+            channelId: chatId,
+            checkedAt: Date.now()
+        };
+    } finally {
+        clearTimeout(timer);
     }
 }
 
-async function nativeTelegramCheck(channelId, userId) {
-    try {
-        const url = `https://api.telegram.org/bot${BOT_TOKEN}/getChatMember?chat_id=${channelId}&user_id=${userId}`;
-        const response = await fetch(url);
-        const data = await response.json();
-        if (data.ok && ['creator', 'administrator', 'member', 'restricted'].includes(data.result.status)) {
-            return { success: true, status: data.result.status };
-        }
-        return { success: false, status: data.ok ? data.result.status : 'error' };
-    } catch (e) {
-        return { success: false, status: 'error' };
+async function fetchMultiAPI(channelId, userId, botToken) {
+    const key = membershipKey(channelId, userId);
+    const cached = membershipCacheGet(key);
+    if (cached) return { ...cached, cached: true };
+
+    const result = await telegramMembershipRequest(channelId, userId, botToken);
+    // Cache both success and definitive membership states briefly, but do not
+    // cache operational errors. A temporary Telegram outage must recover fast.
+    if (result.code !== 'TELEGRAM_TIMEOUT' && result.code !== 'TELEGRAM_NETWORK') {
+        membershipCacheSet(key, result);
     }
+    return result;
 }
+
+async function nativeTelegramCheck(channelId, userId) {
+    return fetchMultiAPI(channelId, userId, BOT_TOKEN);
+}
+
+function uniqueChannels(channels) {
+    const seen = new Set();
+    const out = [];
+    for (const raw of Array.isArray(channels) ? channels : []) {
+        const value = cleanChannelId(raw?.id ?? raw?.channelId ?? raw?.username ?? raw);
+        if (!value || seen.has(value)) continue;
+        seen.add(value);
+        out.push({
+            ...((raw && typeof raw === 'object') ? raw : {}),
+            id: value
+        });
+    }
+    return out;
+}
+
+async function runLimited(items, worker, limit = MEMBERSHIP_ENGINE.maxConcurrentChecks) {
+    const values = Array.isArray(items) ? items : [];
+    if (!values.length) return [];
+    const results = new Array(values.length);
+    let cursor = 0;
+    const runners = Array.from({ length: Math.min(limit, values.length) }, async () => {
+        while (true) {
+            const index = cursor++;
+            if (index >= values.length) return;
+            try {
+                results[index] = await worker(values[index], index);
+            } catch (e) {
+                results[index] = {
+                    success: false,
+                    status: 'error',
+                    code: 'CHECK_EXCEPTION',
+                    error: 'Membership verification failed.'
+                };
+            }
+        }
+    });
+    await Promise.all(runners);
+    return results;
+}
+
+async function verifyChannelsStrict(channels, userId, options = {}) {
+    const list = uniqueChannels(channels);
+    if (!list.length) {
+        return {
+            success: true,
+            checked: 0,
+            results: [],
+            failed: [],
+            verifiedAt: Date.now(),
+            reason: 'NO_CHANNELS'
+        };
+    }
+
+    const results = await runLimited(list, ch => fetchMultiAPI(ch.id, userId, BOT_TOKEN));
+    const failed = results
+        .map((result, index) => ({ channel: list[index], result }))
+        .filter(x => !x.result || x.result.success !== true);
+
+    const success = failed.length === 0;
+    return {
+        success,
+        checked: list.length,
+        results,
+        failed,
+        verifiedAt: Date.now(),
+        mode: options.mode || 'strict'
+    };
+}
+
+async function getOfficialChannelGate(userId) {
+    const config = await dbGet('config') || {};
+    // Existing Admin Panel toggle remains authoritative.
+    if (config.gateEnabled !== true) {
+        return { enabled: false, success: true, checked: 0, results: [], failed: [] };
+    }
+    const channels = uniqueChannels(config.officialChannels || []);
+    if (!channels.length) {
+        // Enabled + empty is treated as no configured requirement, preserving
+        // the old application's behavior instead of locking everybody out.
+        return { enabled: true, success: true, checked: 0, results: [], failed: [] };
+    }
+    const result = await verifyChannelsStrict(channels, userId, { mode: 'official-gate' });
+    return { enabled: true, ...result };
+}
+
+async function requireOfficialMembership(userId) {
+    const gate = await getOfficialChannelGate(userId);
+    return gate.success ? gate : { ...gate, success: false };
+}
+
+function membershipFailureMessage(check, fallback = 'You must join all required channels to continue!') {
+    if (!check || check.success) return null;
+    const permissionFailure = (check.failed || []).some(x => x?.result?.code === 'TELEGRAM_PERMISSION');
+    if (permissionFailure) {
+        return 'Membership verification could not be completed. Please contact the administrator; the bot must be an administrator in the required channel.';
+    }
+    const operationalFailure = (check.failed || []).some(x => String(x?.result?.code || '').startsWith('TELEGRAM_'));
+    if (operationalFailure) {
+        return 'Telegram membership verification is temporarily unavailable. Please try again.';
+    }
+    return fallback;
+}
+
+// ============================================================================
+// MEMBERSHIP AUDIT HELPERS
+// ============================================================================
+// These helpers deliberately do not award anything. They only answer whether
+// Telegram currently says the user is a member. Rewarding remains inside the
+// existing task handlers below.
+
+async function verifyOfficialGateForUser(userId) {
+    const result = await requireOfficialMembership(userId);
+    return {
+        success: result.success === true,
+        enabled: result.enabled === true,
+        checked: result.checked || 0,
+        failed: result.failed || [],
+        message: membershipFailureMessage(result)
+    };
+}
+
+async function verifySingleTaskChannel(channelId, userId) {
+    if (!channelId) {
+        return { success: false, status: 'error', code: 'INVALID_CHANNEL', error: 'Task channel is missing.' };
+    }
+    return fetchMultiAPI(channelId, userId, BOT_TOKEN);
+}
+
+async function verifySponsorChannel(channelId, userId) {
+    return verifySingleTaskChannel(channelId, userId);
+}
+
+// ============================================================================
+// END PRODUCTION TELEGRAM MEMBERSHIP ENGINE
+// ============================================================================
 
 // Tasks & Referrals
 app.get('/api/tasks', async (req, res) => {
@@ -540,7 +829,8 @@ app.post('/api/sponsor/verify-auto', async (req, res) => {
     if(c.paused || c.claims >= c.maxUsers) return res.json({success: false, error: "Campaign is closed or full"});
 
     try {
-        const member = await fetchMultiAPI(channelId, userId, BOT_TOKEN);
+        const verifiedChannelId = c.channelId ?? c.channel ?? channelId;
+        const member = await verifySponsorChannel(verifiedChannelId, userId);
         if (member.status === 'error') {
             return res.json({ success: false, error: member.error || "Verification failed. Is the bot an admin in the channel?" });
         }
@@ -563,7 +853,7 @@ app.post('/api/sponsor/verify-auto', async (req, res) => {
             
             // TASK 5: Add to active7DayEscrows
             const newEscrows = [...(u.active7DayEscrows||[]), {
-                taskId, channelId, reward: finalReward, sponsorUserId: c.userId, timestamp: Date.now()
+                taskId, channelId: verifiedChannelId, reward: finalReward, sponsorUserId: c.userId, timestamp: Date.now()
             }];
             
             await dbUpdate(`users/${userId}`, {
@@ -634,7 +924,8 @@ app.post('/api/verify-membership', async (req, res) => {
     if((u.claimedBonuses||[]).includes(taskId)) return res.json({success:true, alreadyClaimed:true});
     
     try {
-        const member = await fetchMultiAPI(channelId, userId, BOT_TOKEN);
+        const verifiedChannelId = t.channelId ?? t.channel ?? channelId;
+        const member = await verifySingleTaskChannel(verifiedChannelId, userId);
         if (member.status === 'error') {
             return res.json({ success: false, error: member.error || "Verification failed. Is the bot an admin in the channel?" });
         }

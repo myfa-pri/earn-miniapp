@@ -196,7 +196,9 @@
   try {
     const p = new URLSearchParams(window.location.search);
     if (p.has('ongoing') && p.get('ongoing') !== 'preview-complete') {
-      window.location.replace('/ongoing.html?' + p.toString());
+      const q = new URLSearchParams(p);
+      q.set('ongoing', 'preview');
+      window.location.replace('/ongoing.html?' + q.toString());
     }
   } catch (e) {}
 })();

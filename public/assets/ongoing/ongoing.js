@@ -3,7 +3,7 @@
   const app=document.getElementById('ongoing-app');
   const screens=[...document.querySelectorAll('.screen')];
   const params=new URLSearchParams(location.search);
-  const preview=params.has('ongoing');
+  const preview=params.has('ongoing') && params.get('ongoing') !== 'preview-complete';
   const explicitTestUser=params.get('test_user');
   const tg=window.Telegram?.WebApp;
   let tgUser=tg?.initDataUnsafe?.user||null;
@@ -87,7 +87,13 @@
 
   // Browser preview is deliberately auth-free. Production/real-account path reads existing first-open state.
   (async function init(){
-    if(preview && !explicitTestUser && !tgUser){return;}
+    // Browser preview (?ongoing or ?ongoing=preview) is intentionally auth-free.
+    // Never show the Telegram-only error during this preview path.
+    if(preview && !explicitTestUser && !tgUser){
+      app.classList.add('preview');
+      document.getElementById('error')?.setAttribute('hidden','');
+      return;
+    }
     if(!tgUser?.id){
       if(!preview){
         document.querySelector('.screen.active')?.classList.remove('active');

@@ -1,0 +1,8 @@
+{
+  "purpose": "Layered MYFA onboarding assets. page1.png/page2.png/page3.png/reference-composite.png remain reference-only files and are not used by ongoing.html.",
+  "pages": {
+    "1": {"background":"CSS cosmic gradient", "skyStarsParticles":"DOM/CSS", "scenery":"scenery/p1_city_no_monument.png", "monument":"scenery/monument.png (independent clipped layer)", "flowers":"flowers/p1_*.png", "ribbons":"ribbons/p1_*.png", "logo":"HTML gradient text", "crown":"inline SVG where used", "text":"HTML", "icons":"inline SVG", "buttons":"HTML button"},
+    "2": {"background":"CSS cosmic gradient", "skyStarsParticles":"DOM/CSS", "scenery":"scenery/p2_left_foliage.png + p2_right_foliage.png", "flowers":"flowers/p2_*.png", "ribbons":"ribbons/p2_*.png", "heading":"HTML", "cards":"HTML", "icons":"inline SVG", "decorations":"DOM/CSS"},
+    "3": {"background":"CSS cosmic gradient", "skyStarsParticles":"DOM/CSS", "scenery":"scenery/p3_city_no_monument.png + p3_right_ribbon_foliage.png", "monument":"scenery/monument.png (independent clipped layer)", "flowers":"flowers/p3_*.png", "ribbons":"ribbons/p3_*.png", "logo":"HTML gradient text + inline SVG crown", "message":"HTML", "benefitIcons":"inline SVG", "text":"HTML", "button":"HTML button"}
+  }
+}

@@ -1,37 +1,16 @@
-# MYFA Ongoing — Final Implementation
+# MYFA Ongoing — Layered Animated Implementation
 
-## Browser visual test (no second Telegram account)
+## Browser visual test
+Open `/?ongoing` to preview the three onboarding pages in a normal browser without changing any Telegram account.
 
-Open:
+## Account-backed test
+For an existing test/owner Telegram user, `/?ongoing&test_user=YOUR_TELEGRAM_USER_ID` exercises the existing first-open completion endpoint. Do not use this as an admin bypass.
 
-`/?ongoing`
+## Production behavior
+The normal `index.html` first-open flow already routes users who have not completed `firstOpenCompleted` to `/ongoing.html`. Returning users continue directly through the existing MYFA app. After the onboarding completion endpoint succeeds, `/` is loaded again so the existing Official Channel gate (`requireGate`) or Mini App destination remains authoritative.
 
-This opens `public/ongoing.html` directly in browser preview mode. It does not modify a Telegram account. You can test Page 1 → Page 2 → Page 3, Continue, Skip, swipe navigation and animations.
+## Layering
+`public/ongoing.html` is a real DOM/CSS/SVG implementation. The supplied `public/assets/ongoing/page1.png`, `page2.png`, `page3.png`, and `reference-composite.png` are retained only as visual/reference files and are not referenced by the production onboarding UI. Scenic crops, flower crops and ribbon crops derived from the reference are separate assets; text and buttons are HTML; icons are independent inline SVG elements; stars/particles and glows are CSS/DOM layers.
 
-## Full account-backed browser test
-
-If you want to test the real `/api/first-open-complete` and normal MYFA routing using an existing Telegram user, open:
-
-`/?ongoing&test_user=YOUR_TELEGRAM_USER_ID`
-
-Use only your own/test account ID. This mode can change that account's `firstOpenCompleted` state.
-
-## Telegram production flow
-
-Normal Telegram launch remains unchanged:
-
-New user → Ongoing 1 → Ongoing 2 → Ongoing 3 → existing MYFA flow
-
-Returning user → skips Ongoing → existing MYFA flow
-
-The existing Official Toggle determines whether the user is shown the Official Channel Gate or the Mini App after onboarding.
-
-## Visual assets
-
-The three latest page PNGs supplied by the owner are stored at:
-
-`public/assets/ongoing/page1.png`
-`public/assets/ongoing/page2.png`
-`public/assets/ongoing/page3.png`
-
-They are used as the visual artwork; the navigation and first-open behavior are real HTML/JavaScript.
+## Canva source
+The three converted editable Canva source projects previously created from the owner reference are: Page 1 `DAHUdYzQizc`, Page 2 `DAHUdZpe4jU`, Page 3 `DAHUdYXJcnQ`. Raw native Canva asset-file export was not exposed by the available connector, so the web package uses reference-derived local layers rather than claiming a native Canva binary export.

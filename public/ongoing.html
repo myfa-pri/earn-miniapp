@@ -1,110 +1,131 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<meta name="theme-color" content="#03050d">
-<title>MYFA • Ongoing</title>
-<style>
-:root{--gold:#ffd43b;--green:#18e06f;--red:#ff315f;--blue:#20c9ff;--pink:#ff28d7;--violet:#7b2cff;--bg:#02040b}
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;width:100%;height:100%;background:var(--bg);overflow:hidden;font-family:Arial,Helvetica,sans-serif}body{display:flex;align-items:center;justify-content:center;color:#fff}
-#ongoing{position:relative;width:100%;height:100%;min-height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;background:radial-gradient(circle at 50% 20%,#182452 0,#080c20 42%,#01030a 100%)}
-#ongoing.preview-mode::before{content:"WEB PREVIEW • ?ongoing";position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:80;font-size:10px;font-weight:800;letter-spacing:.7px;color:#fff;background:rgba(3,8,22,.72);border:1px solid rgba(255,212,59,.45);padding:7px 11px;border-radius:999px;backdrop-filter:blur(10px);pointer-events:none}
-.bg-stars,.bg-stars:before,.bg-stars:after{position:absolute;inset:-20%;content:"";pointer-events:none;background-image:radial-gradient(circle,#fff 0 1px,transparent 1.5px),radial-gradient(circle,#65dfff 0 1px,transparent 1.5px),radial-gradient(circle,#ffd84a 0 1px,transparent 1.5px);background-size:97px 113px,151px 139px,211px 181px;opacity:.28;animation:stars 20s linear infinite}
-.bg-stars:before{inset:10%;opacity:.22;animation-duration:31s;transform:scale(1.3)}.bg-stars:after{inset:30%;opacity:.2;animation-duration:43s;transform:scale(1.7)}
-@keyframes stars{to{transform:translate3d(80px,60px,0) rotate(.5deg)}}
-.stage{position:relative;width:min(430px,100vw);height:min(100vh,760px);display:flex;align-items:center;justify-content:center;z-index:5}
-.screen{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;visibility:hidden;transform:translateX(34px) scale(.985);transition:opacity .42s ease,transform .55s cubic-bezier(.2,.8,.2,1),visibility .42s;pointer-events:none}
-.screen.active{opacity:1;visibility:visible;transform:none;pointer-events:auto}
-.art{position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden}
-.art img.page{width:100%;height:100%;object-fit:contain;display:block;filter:saturate(1.02);user-select:none;-webkit-user-drag:none;animation:artBreath 7s ease-in-out infinite}
-@keyframes artBreath{0%,100%{transform:scale(1)}50%{transform:scale(1.006)}}
-.art:after{content:"";position:absolute;inset:1.5% 3%;border-radius:9% 9% 8% 8%;pointer-events:none;box-shadow:inset 0 0 35px rgba(0,0,0,.28),inset 0 0 4px rgba(255,220,80,.2)}
-.sparkle{position:absolute;width:4px;height:4px;border-radius:50%;background:#fff;box-shadow:0 0 12px 3px rgba(255,230,80,.8);animation:twinkle 1.8s ease-in-out infinite;pointer-events:none}.s1{left:14%;top:19%;animation-delay:.2s}.s2{left:78%;top:25%;animation-delay:.8s}.s3{left:24%;top:72%;animation-delay:1.1s}.s4{left:86%;top:66%;animation-delay:.5s}
-@keyframes twinkle{0%,100%{opacity:.1;transform:scale(.5)}50%{opacity:1;transform:scale(1.6)}}
-.flowers{position:absolute;inset:0;pointer-events:none;overflow:hidden}.petal{position:absolute;font-size:20px;filter:drop-shadow(0 0 6px rgba(255,210,30,.5));animation:float 7s linear infinite;opacity:0}.p1{left:8%;top:-3%;animation-delay:0s}.p2{left:72%;top:7%;animation-delay:1.5s;font-size:15px}.p3{left:42%;top:-4%;animation-delay:3.2s;font-size:13px}.p4{left:88%;top:38%;animation-delay:4.2s;font-size:18px}.p5{left:18%;top:42%;animation-delay:2.2s;font-size:14px}
-@keyframes float{0%{transform:translate3d(0,-20px,0) rotate(0);opacity:0}12%{opacity:.85}50%{transform:translate3d(16px,45vh,0) rotate(170deg);opacity:.75}88%{opacity:.35}100%{transform:translate3d(-10px,92vh,0) rotate(330deg);opacity:0}}
-.overlay-btn{position:absolute;border:0;background:transparent;cursor:pointer;z-index:20;touch-action:manipulation;outline:none}.overlay-btn:focus-visible{box-shadow:0 0 0 3px #fff,0 0 0 6px #00d9ff;border-radius:30px}.page1-next{left:14%;right:5%;bottom:8%;height:8%}.page2-next{left:14%;right:5%;bottom:8%;height:8%}.page3-next{left:14%;right:5%;bottom:8%;height:8%}.skip{right:4%;top:4%;width:22%;height:7%}
-.tap-ring{position:absolute;inset:0;pointer-events:none;opacity:0}.active .tap-ring{animation:softPulse 2.8s ease-in-out infinite}.tap-ring:before{content:"";position:absolute;left:15%;right:5%;bottom:8%;height:8%;border-radius:50px;box-shadow:0 0 0 0 rgba(255,255,255,.32)}
-@keyframes softPulse{0%,100%{opacity:0}50%{opacity:.7}}
-#status{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);z-index:50;font-size:11px;letter-spacing:.5px;color:rgba(255,255,255,.6);background:rgba(0,0,0,.38);padding:6px 10px;border-radius:999px;backdrop-filter:blur(8px);opacity:0;transition:opacity .2s}#status.show{opacity:1}
-#loading{position:absolute;z-index:60;inset:0;display:flex;align-items:center;justify-content:center;background:#02040b;transition:opacity .35s}.loader{width:46px;height:46px;border-radius:50%;border:3px solid rgba(255,255,255,.12);border-top-color:#ffd43b;border-right-color:#ff29d6;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
-#error{display:none;position:absolute;z-index:100;inset:0;align-items:center;justify-content:center;text-align:center;padding:30px;background:#02040b}.errorbox{max-width:340px;border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:25px;background:rgba(10,16,35,.9)}.errorbox h2{margin:0 0 10px}.errorbox p{color:#b9c3d9;line-height:1.5}
-@media(max-height:700px){.stage{height:100vh}.overlay-btn{transform:scale(.98)}}
-@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.001ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.001ms!important}}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="theme-color" content="#020711">
+  <meta name="color-scheme" content="dark">
+  <title>MYFA • Ongoing</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Montserrat:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/ongoing/ongoing.css">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-<div id="ongoing">
- <div class="bg-stars"></div>
- <div class="stage">
-  <section class="screen active" data-page="1" aria-label="MYFA onboarding page 1">
-   <div class="art"><img class="page" src="/assets/ongoing/page1.png" alt="MYFA onboarding page 1"><div class="sparkle s1"></div><div class="sparkle s2"></div><div class="sparkle s3"></div><div class="sparkle s4"></div><div class="flowers"><i class="petal p1">✦</i><i class="petal p2">✦</i><i class="petal p3">✦</i><i class="petal p4">✦</i><i class="petal p5">✦</i></div><div class="tap-ring"></div><button class="overlay-btn skip" data-action="skip" aria-label="Skip onboarding"></button><button class="overlay-btn page1-next" data-action="next" aria-label="Continue to page 2"></button></div>
-  </section>
-  <section class="screen" data-page="2" aria-label="MYFA onboarding page 2">
-   <div class="art"><img class="page" src="/assets/ongoing/page2.png" alt="MYFA onboarding page 2"><div class="sparkle s1"></div><div class="sparkle s2"></div><div class="sparkle s3"></div><div class="sparkle s4"></div><div class="flowers"><i class="petal p1">✦</i><i class="petal p2">✦</i><i class="petal p3">✦</i><i class="petal p4">✦</i><i class="petal p5">✦</i></div><div class="tap-ring"></div><button class="overlay-btn skip" data-action="skip" aria-label="Skip onboarding"></button><button class="overlay-btn page2-next" data-action="next" aria-label="Continue to page 3"></button></div>
-  </section>
-  <section class="screen" data-page="3" aria-label="MYFA onboarding page 3">
-   <div class="art"><img class="page" src="/assets/ongoing/page3.png" alt="MYFA onboarding page 3"><div class="sparkle s1"></div><div class="sparkle s2"></div><div class="sparkle s3"></div><div class="sparkle s4"></div><div class="flowers"><i class="petal p1">✦</i><i class="petal p2">✦</i><i class="petal p3">✦</i><i class="petal p4">✦</i><i class="petal p5">✦</i></div><div class="tap-ring"></div><button class="overlay-btn skip" data-action="skip" aria-label="Skip onboarding"></button><button class="overlay-btn page3-next" data-action="finish" aria-label="Get started"></button></div>
-  </section>
- </div>
- <div id="status" aria-live="polite"></div>
- <div id="loading"><div class="loader" aria-label="Loading"></div></div>
- <div id="error"><div class="errorbox"><h2>MYFA Ongoing</h2><p id="errorText">Open this page inside Telegram for the real account flow, or use <b>?ongoing</b> in your browser for a visual preview.</p></div></div>
+<div id="ongoing-app" aria-label="MYFA onboarding">
+  <div class="ambient" aria-hidden="true"></div>
+  <main class="viewport" id="onboarding-viewport">
+    <!-- PAGE 1 -->
+    <section class="screen page1 active" data-page="1" aria-label="MYFA onboarding page 1" aria-hidden="false">
+      <div class="phone">
+        <div class="base-bg layer"></div>
+        <div class="layer city p1" aria-hidden="true"></div>
+        <div class="layer city small p1" style="top:39%;height:10%;opacity:.28;" aria-hidden="true"></div>
+        <div class="monument p1-monument" aria-hidden="true"></div>
+        <div class="layer star-field" aria-hidden="true"><i class="star"></i><i class="star"></i><i class="star"></i><i class="star"></i><i class="star"></i><i class="star"></i><i class="star"></i></div>
+        <div class="layer" aria-hidden="true"><i class="particle p1"></i><i class="particle p2"></i><i class="particle p3"></i><i class="particle p4"></i><i class="particle p5"></i></div>
+
+        <div class="layer flower p1f1" style="left:-1%;top:11%;width:21%;height:13%;background-image:url('/assets/ongoing/flowers/p1_flower_top_left.png');--dur:6.7s;--x:1px;--y:-3px;--r:-1deg" aria-hidden="true"></div>
+        <div class="layer flower p1f2" style="left:-1%;top:32%;width:20%;height:14%;background-image:url('/assets/ongoing/flowers/p1_flower_mid_left.png');--dur:7.7s;--x:1px;--y:-5px;--r:1deg" aria-hidden="true"></div>
+        <div class="layer flower p1f3" style="right:-1%;top:32%;width:20%;height:14%;background-image:url('/assets/ongoing/flowers/p1_flower_mid_right.png');--dur:8.2s;--x:-1px;--y:-4px;--r:-1deg" aria-hidden="true"></div>
+        <div class="layer flower p1f4" style="left:-2%;top:67%;width:23%;height:14%;background-image:url('/assets/ongoing/flowers/p1_flower_bottom_left.png');--dur:7.2s;--x:1px;--y:-4px;--r:1deg" aria-hidden="true"></div>
+        <div class="layer flower p1f5" style="right:-2%;top:66%;width:21%;height:15%;background-image:url('/assets/ongoing/flowers/p1_flower_bottom_right.png');--dur:8.4s;--x:-1px;--y:-3px;--r:-1deg" aria-hidden="true"></div>
+        <div class="layer flower p1f6" style="left:-2%;bottom:1%;width:27%;height:18%;background-image:url('/assets/ongoing/flowers/p1_flower_footer_left.png');--dur:8.8s;--x:1px;--y:-2px;--r:-1deg" aria-hidden="true"></div>
+        <div class="layer flower p1f7" style="right:-1%;bottom:1%;width:25%;height:17%;background-image:url('/assets/ongoing/flowers/p1_flower_footer_right.png');--dur:9.1s;--x:-1px;--y:-3px;--r:1deg" aria-hidden="true"></div>
+
+        <div class="ribbons left" aria-hidden="true"></div><div class="ribbons right" aria-hidden="true"></div>
+        <div class="notch" aria-hidden="true"></div>
+        <div class="statusbar" aria-hidden="true"><span>9:41</span><span class="status-right"><span class="signal"><i></i><i></i><i></i><i></i></span><span class="battery"></span></span></div>
+        <div class="top-controls"><span class="counter">1 / 3</span><button class="skip" type="button" data-skip>Skip</button></div>
+
+        <div class="p1-welcome script">Welcome to</div>
+        <div class="logo p1-logo"><div class="logo-mark">MYF<span class="a">A</span></div><div class="logo-sub">PLAY • EARN • GROW</div></div>
+        <div class="p1-tag">A WORLD OF REWARDS<br>FOR REAL PLAYERS</div>
+
+        <div class="benefits p1-benefits">
+          <div class="benefit" style="--d:.35s"><span class="icon-bubble"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 5 56 18 48 50 32 59 16 50 8 18 32 5Z" fill="#35dfff" stroke="#d6fcff" stroke-width="2"/><path d="M32 12 38 25 53 27 42 37 45 51 32 44 19 51 22 37 11 27 26 25Z" fill="#fff" opacity=".9"/></svg></span><span>PLAY<br>MORE</span></div>
+          <div class="benefit" style="--d:.47s"><span class="icon-bubble"><svg viewBox="0 0 64 64" aria-hidden="true"><rect x="8" y="14" width="48" height="40" rx="8" fill="#ff35a8" stroke="#fff" stroke-width="2"/><path d="M22 14v-5h20v5" fill="none" stroke="#ffd65b" stroke-width="5" stroke-linecap="round"/><path d="m20 28 6 6 18-18" fill="none" stroke="#5dffb0" stroke-width="5" stroke-linecap="round"/></svg></span><span>EARN<br>REWARDS</span></div>
+          <div class="benefit" style="--d:.59s"><span class="icon-bubble"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="24" cy="21" r="9" fill="#7cf1ff"/><circle cx="44" cy="21" r="9" fill="#ffd65b"/><circle cx="34" cy="13" r="8" fill="#d795ff"/><path d="M8 55c0-13 9-20 20-20s20 7 20 20" fill="#24df83"/><path d="M27 55c0-14 9-22 20-22 6 0 11 2 15 6v16H27Z" fill="#00a9ff"/></svg></span><span>JOIN<br>COMMUNITY</span></div>
+          <div class="benefit" style="--d:.71s"><span class="icon-bubble"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M9 41c2-8 11-15 23-17l14-14 8 1-2 8-14 10c4 3 7 9 5 16-2 8-10 12-17 10l4-9-7-7-9 4-5-2Z" fill="#ff692f" stroke="#ffd65b" stroke-width="2"/><path d="M46 10 55 4" stroke="#fff" stroke-width="2"/><path d="M22 54 15 61" stroke="#ffd65b" stroke-width="2"/></svg></span><span>GROW<br>TOGETHER</span></div>
+        </div>
+        <div class="p1-small">“Small Steps Today<br>Big Rewards Tomorrow” <svg class="heart-svg" viewBox="0 0 24 24"><path d="M12 21s-7.2-4.35-9.5-8.5C.7 9.2 3.05 4.8 6.8 4.5 9.1 4.3 11 5.5 12 7.2c1-1.7 2.9-2.9 5.2-2.7 3.75.3 6.1 4.7 4.3 8-2.3 4.15-9.5 8.5-9.5 8.5Z"/></svg></div>
+        <button class="cta" type="button" data-next aria-label="Continue to page 2"><span>CONTINUE</span><b class="arrow" aria-hidden="true">→</b></button>
+        <div class="footer-copy"><span>PROUDLY</span><span class="small-line">ETHIOPIAN <svg class="heart-svg" viewBox="0 0 24 24"><path d="M12 21s-7.2-4.35-9.5-8.5C.7 9.2 3.05 4.8 6.8 4.5 9.1 4.3 11 5.5 12 7.2c1-1.7 2.9-2.9 5.2-2.7 3.75.3 6.1 4.7 4.3 8-2.3 4.15-9.5 8.5-9.5 8.5Z"/></svg></span></div>
+      </div>
+    </section>
+
+    <!-- PAGE 2 -->
+    <section class="screen page2" data-page="2" aria-label="MYFA onboarding page 2" aria-hidden="true">
+      <div class="phone">
+        <div class="base-bg layer"></div>
+        <div class="foliage left" aria-hidden="true"></div><div class="foliage right" aria-hidden="true"></div>
+        <div class="city small p1" style="top:37%;height:21%;opacity:.38;" aria-hidden="true"></div>
+        <div class="layer star-field" aria-hidden="true"><i class="star"></i><i class="star"></i><i class="star"></i><i class="star"></i><i class="star"></i></div>
+        <div class="layer" aria-hidden="true"><i class="particle p1"></i><i class="particle p2"></i><i class="particle p3"></i><i class="particle p4"></i><i class="particle p5"></i></div>
+        <div class="layer flower" style="left:-1%;top:9%;width:21%;height:15%;background-image:url('/assets/ongoing/flowers/p2_flower_top_left.png');--dur:7.1s;--x:1px;--y:-4px;--r:1deg"></div>
+        <div class="layer flower" style="right:-1%;top:8%;width:20%;height:15%;background-image:url('/assets/ongoing/flowers/p2_flower_top_right.png');--dur:8.3s;--x:-1px;--y:-3px;--r:-1deg"></div>
+        <div class="layer flower" style="left:-2%;bottom:9%;width:24%;height:15%;background-image:url('/assets/ongoing/flowers/p2_flower_bottom_left.png');--dur:8.6s;--x:1px;--y:-4px;--r:1deg"></div>
+        <div class="layer flower" style="right:-2%;bottom:9%;width:25%;height:17%;background-image:url('/assets/ongoing/flowers/p2_flower_bottom_right.png');--dur:7.7s;--x:-1px;--y:-3px;--r:-1deg"></div>
+        <div class="ribbons left" aria-hidden="true"></div><div class="ribbons right" aria-hidden="true"></div>
+        <div class="notch" aria-hidden="true"></div>
+        <div class="statusbar" aria-hidden="true"><span>9:41</span><span class="status-right"><span class="signal"><i></i><i></i><i></i><i></i></span><span class="battery"></span></span></div>
+        <div class="top-controls"><span class="counter">2 / 3</span><button class="skip" type="button" data-skip>Skip</button></div>
+        <div class="p2-heading">DISCOVER<br>WHAT MAKES<br><span class="multi">MYFA SPECIAL</span></div>
+        <div class="p2-sub">PLAY • COMPLETE • EARN • ENJOY</div>
+        <div class="cards-grid">
+          <article class="feature-card magenta" style="--delay:.05s"><div class="card-icon"><svg viewBox="0 0 80 80"><path d="m15 44 12-20 20-5 18 14-8 24-24 7-18-20Z" fill="#ee27de" stroke="#ffd65b" stroke-width="2"/><path d="m24 33 22 6 14-5" fill="none" stroke="#ffe56d" stroke-width="2"/><path d="m36 18 11 21" stroke="#6aeaff" stroke-width="2"/><path d="m52 29 13 6-6 9" fill="#1fe0ff"/></svg></div><div class="card-title">MYFA Drop</div><div class="card-desc">Exclusive Rewards<br>Just for You</div></article>
+          <article class="feature-card" style="--delay:.13s"><div class="card-icon"><svg viewBox="0 0 80 80"><rect x="19" y="17" width="42" height="49" rx="5" fill="#ff35a8" stroke="#ffd65b" stroke-width="2"/><rect x="25" y="25" width="30" height="6" rx="2" fill="#cfffff"/><path d="m28 42 5 5 13-13M28 54l5 5 13-13" fill="none" stroke="#59ffb0" stroke-width="4" stroke-linecap="round"/></svg></div><div class="card-title">Tasks</div><div class="card-desc">Complete &amp;<br>Earn Points</div></article>
+          <article class="feature-card green" style="--delay:.21s"><div class="card-icon"><svg viewBox="0 0 80 80"><circle cx="40" cy="40" r="24" fill="#ff3fb6" stroke="#2de4ff" stroke-width="2"/><path d="M40 18v44M18 40h44" stroke="#ffd85e" stroke-width="5"/><path d="m40 40 14-17" stroke="#fff" stroke-width="3"/></svg></div><div class="card-title">Spin</div><div class="card-desc">Spin &amp; Win<br>Big Prizes</div></article>
+          <article class="feature-card magenta" style="--delay:.29s"><div class="card-icon"><svg viewBox="0 0 80 80"><rect x="17" y="22" width="46" height="34" rx="7" transform="rotate(-5 40 39)" fill="#ff7bd9" stroke="#4fdcff" stroke-width="2"/><path d="m28 40 7 6 18-15" fill="none" stroke="#ffd35a" stroke-width="5" stroke-linecap="round"/></svg></div><div class="card-title">Scratch</div><div class="card-desc">Scratch &amp;<br>Reveal Rewards</div></article>
+          <article class="feature-card" style="--delay:.37s"><div class="card-icon"><svg viewBox="0 0 80 80"><rect x="19" y="19" width="42" height="45" rx="6" fill="#ff4ba1" stroke="#ffd65b" stroke-width="2"/><path d="M28 13v12M52 13v12" stroke="#ffd65b" stroke-width="5" stroke-linecap="round"/><path d="M30 38h20M30 48h13" stroke="#eefbff" stroke-width="4" stroke-linecap="round"/><path d="m56 52 7 8-7 8-7-8Z" fill="#ff5d36"/></svg></div><div class="card-title">Daily Streak</div><div class="card-desc">Play Daily<br>Get More</div></article>
+          <article class="feature-card green" style="--delay:.45s"><div class="card-icon"><svg viewBox="0 0 80 80"><path d="m38 12 25 13-13 43-34-22 8-28Z" fill="#2ee6ff" stroke="#c8faff" stroke-width="2"/><path d="m23 29 23 11 8-11M37 12l11 27 15-14" fill="none" stroke="#fff" stroke-width="2" opacity=".9"/></svg></div><div class="card-title">Gems Shop</div><div class="card-desc">Use Gems<br>For Special Items</div></article>
+        </div>
+        <div class="p2-community">“More Than a Game<br>A Community, A Family” <svg class="heart-svg" viewBox="0 0 24 24"><path d="M12 21s-7.2-4.35-9.5-8.5C.7 9.2 3.05 4.8 6.8 4.5 9.1 4.3 11 5.5 12 7.2c1-1.7 2.9-2.9 5.2-2.7 3.75.3 6.1 4.7 4.3 8-2.3 4.15-9.5 8.5-9.5 8.5Z"/></svg></div>
+        <div class="dots"><span class="dot"></span><span class="dot active"></span><span class="dot"></span></div>
+        <button class="page2-next-hit" type="button" data-next2 aria-label="Next onboarding page"></button>
+      </div>
+    </section>
+
+    <!-- PAGE 3 -->
+    <section class="screen page3" data-page="3" aria-label="MYFA onboarding page 3" aria-hidden="true">
+      <div class="phone">
+        <div class="base-bg layer"></div>
+        <div class="city p3" aria-hidden="true"></div>
+        <div class="monument p3-monument" aria-hidden="true"></div>
+        <div class="layer star-field" aria-hidden="true"><i class="star"></i><i class="star"></i><i class="star"></i><i class="star"></i><i class="star"></i><i class="star"></i></div>
+        <div class="layer" aria-hidden="true"><i class="particle p1"></i><i class="particle p2"></i><i class="particle p3"></i><i class="particle p4"></i><i class="particle p5"></i></div>
+        <div class="layer flower" style="left:-1%;top:35%;width:24%;height:20%;background-image:url('/assets/ongoing/flowers/p3_flower_left_center.png');--dur:8.2s;--x:1px;--y:-5px;--r:-1deg"></div>
+        <div class="layer flower" style="right:-3%;top:38%;width:29%;height:21%;background-image:url('/assets/ongoing/flowers/p3_flower_right_center.png');--dur:9s;--x:-1px;--y:-4px;--r:1deg"></div>
+        <div class="layer flower" style="left:-1%;bottom:1%;width:29%;height:17%;background-image:url('/assets/ongoing/flowers/p3_flower_left_bottom.png');--dur:8.7s;--x:1px;--y:-3px;--r:-1deg"></div>
+        <div class="layer flower" style="right:-2%;bottom:2%;width:23%;height:18%;background-image:url('/assets/ongoing/flowers/p3_flower_right_bottom.png');--dur:9.1s;--x:-1px;--y:-2px;--r:1deg"></div>
+        <div class="layer foliage right" style="top:11%;bottom:47%;width:24%;background-image:url('/assets/ongoing/scenery/p3_right_ribbon_foliage.png');opacity:.72" aria-hidden="true"></div>
+        <div class="ribbons left" aria-hidden="true"></div><div class="ribbons right" aria-hidden="true"></div>
+        <div class="notch" aria-hidden="true"></div>
+        <div class="statusbar" aria-hidden="true"><span>9:41</span><span class="status-right"><span class="signal"><i></i><i></i><i></i><i></i></span><span class="battery"></span></span></div>
+        <div class="top-controls"><span class="counter">3 / 3</span><button class="skip" type="button" data-skip>Skip</button></div>
+        <div class="p3-heading">Ready to Start<span class="line2">Your Journey? <svg class="heading-heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.2-4.35-9.5-8.5C.7 9.2 3.05 4.8 6.8 4.5 9.1 4.3 11 5.5 12 7.2c1-1.7 2.9-2.9 5.2-2.7 3.75.3 6.1 4.7 4.3 8-2.3 4.15-9.5 8.5-9.5 8.5Z"/></svg></span></div>
+        <div class="logo p3-logo small"><svg class="crown" viewBox="0 0 64 46"><defs><linearGradient id="goldFill" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff089"/><stop offset=".45" stop-color="#ffd039"/><stop offset="1" stop-color="#b87908"/></linearGradient></defs><path d="M7 15 17 22 25 6l7 16 7-16 8 16 10-7-5 25H12Z"/><circle cx="25" cy="6" r="3" fill="#fff4a3"/><circle cx="39" cy="6" r="3" fill="#fff4a3"/><circle cx="7" cy="15" r="3" fill="#fff4a3"/><circle cx="57" cy="15" r="3" fill="#fff4a3"/></svg><div class="logo-mark">MYF<span class="a">A</span></div><div class="logo-sub">PLAY • EARN • GROW</div></div>
+        <div class="p3-flagsub">PLAY • EARN • GROW <span class="together">TOGETHER <svg class="heart-svg" viewBox="0 0 24 24"><path d="M12 21s-7.2-4.35-9.5-8.5C.7 9.2 3.05 4.8 6.8 4.5 9.1 4.3 11 5.5 12 7.2c1-1.7 2.9-2.9 5.2-2.7 3.75.3 6.1 4.7 4.3 8-2.3 4.15-9.5 8.5-9.5 8.5Z"/></svg></span></div>
+        <div class="p3-message">New Beginnings<br>Brighter Rewards<br>Happier You <svg class="heart-svg pin-heart" viewBox="0 0 24 24"><path d="M12 21s-7.2-4.35-9.5-8.5C.7 9.2 3.05 4.8 6.8 4.5 9.1 4.3 11 5.5 12 7.2c1-1.7 2.9-2.9 5.2-2.7 3.75.3 6.1 4.7 4.3 8-2.3 4.15-9.5 8.5-9.5 8.5Z"/></svg></div>
+        <div class="benefits p3-benefits">
+          <div class="benefit" style="--d:.4s"><span class="icon-bubble"><svg viewBox="0 0 64 64"><path d="M32 5 56 18 48 50 32 59 16 50 8 18 32 5Z" fill="#35dfff" stroke="#d6fcff" stroke-width="2"/></svg></span><span>REAL<br>REWARDS</span></div>
+          <div class="benefit" style="--d:.52s"><span class="icon-bubble"><svg viewBox="0 0 64 64"><circle cx="24" cy="21" r="9" fill="#db8dff"/><circle cx="44" cy="21" r="9" fill="#ff8bcf"/><circle cx="34" cy="13" r="8" fill="#efb0ff"/><path d="M8 55c0-13 9-20 20-20s20 7 20 20" fill="#b13bff"/></svg></span><span>AMAZING<br>COMMUNITY</span></div>
+          <div class="benefit" style="--d:.64s"><span class="icon-bubble"><svg viewBox="0 0 64 64"><path d="M32 7 53 15v17c0 13-9 23-21 26C20 55 11 45 11 32V15Z" fill="#17dca8" stroke="#c6fff1" stroke-width="2"/><path d="m20 32 8 8 16-18" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/></svg></span><span>SAFE &amp;<br>TRUSTED</span></div>
+          <div class="benefit" style="--d:.76s"><span class="icon-bubble"><svg viewBox="0 0 64 64"><path d="M32 56C21 47 9 40 9 25A12 12 0 0 1 32 20 12 12 0 0 1 55 25c0 15-12 22-23 31Z" fill="#ff3c68" stroke="#ffd65b" stroke-width="2"/></svg></span><span>MADE WITH<br>LOVE</span></div>
+        </div>
+        <button class="cta p3-cta" type="button" data-finish aria-label="Get started"><span>GET STARTED</span><b class="arrow" aria-hidden="true">→</b></button>
+        <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot active"></span></div>
+        <div class="p3-footer"><span>Enkutatash</span><span class="big">A Brighter Tomorrow <svg class="heart-svg footer-heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.2-4.35-9.5-8.5C.7 9.2 3.05 4.8 6.8 4.5 9.1 4.3 11 5.5 12 7.2c1-1.7 2.9-2.9 5.2-2.7 3.75.3 6.1 4.7 4.3 8-2.3 4.15-9.5 8.5-9.5 8.5Z"/></svg></span></div>
+      </div>
+    </section>
+  </main>
+  <div id="error" hidden style="position:fixed;inset:0;z-index:200;display:grid;place-items:center;background:#020711;padding:24px;">
+    <div style="width:min(92vw,360px);padding:22px;border:1px solid rgba(255,255,255,.12);border-radius:20px;background:rgba(7,15,33,.95);text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.35)">
+      <h2 style="margin:0 0 8px">MYFA Ongoing</h2><p data-error style="margin:0;color:#b7c4dd;line-height:1.5;font-size:14px">Open MYFA inside Telegram to continue.</p>
+    </div>
+  </div>
 </div>
-<script>
-(function(){
- 'use strict';
- const screens=[...document.querySelectorAll('.screen')];
- const loading=document.getElementById('loading'), error=document.getElementById('error'), status=document.getElementById('status');
- let page=1, busy=false, tgUser=null;
- const tg=window.Telegram && window.Telegram.WebApp;
- const params=new URLSearchParams(window.location.search);
- const webPreview=params.has('ongoing');
- const testUser=params.get('test_user');
- if(tg){try{tg.ready();tg.expand();}catch(e){}}
- tgUser=tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user : null;
- if(testUser && /^\d+$/.test(testUser)) tgUser={id:testUser,first_name:'Web Test User'};
- if(webPreview) document.getElementById('ongoing').classList.add('preview-mode');
- function showStatus(t){status.textContent=t;status.classList.add('show');clearTimeout(showStatus.t);showStatus.t=setTimeout(()=>status.classList.remove('show'),1800)}
- function show(n){page=Math.max(1,Math.min(3,n));screens.forEach(s=>s.classList.toggle('active',Number(s.dataset.page)===page));}
- async function userState(){
-   if(!tgUser || !tgUser.id) return null;
-   const r=await fetch('/api/user/'+encodeURIComponent(tgUser.id),{cache:'no-store'});
-   if(!r.ok) throw new Error('Unable to load account');
-   return await r.json();
- }
- async function finish(){
-   if(busy)return;busy=true;showStatus('Starting MYFA…');
-   // ?ongoing without a Telegram account is a safe visual browser preview.
-   // It never changes a real account and lets the owner test all 3 pages.
-   if(webPreview && !testUser && !tgUser){
-     busy=false;
-     showStatus('Preview complete • no account changed');
-     busy=false;
-     return;
-   }
-   try{
-     if(!tgUser || !tgUser.id) throw new Error('Open MYFA in Telegram or add ?test_user=YOUR_TELEGRAM_ID');
-     const r=await fetch('/api/first-open-complete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:String(tgUser.id)})});
-     const d=await r.json().catch(()=>({}));
-     if(!(d.success || d.error==='Already completed.')) throw new Error(d.error||'Could not complete onboarding');
-     try{if(tg)tg.HapticFeedback&&tg.HapticFeedback.notificationOccurred('success')}catch(e){}
-     window.location.replace('/');
-   }catch(e){busy=false;showStatus(e.message||'Please try again');}
- }
- function skip(){ if(busy)return; finish(); }
- document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');if(!b)return;const a=b.dataset.action;if(a==='next')show(page+1);else if(a==='finish'||a==='skip')finish();});
- let sx=0,sy=0;document.addEventListener('touchstart',e=>{if(e.touches.length===1){sx=e.touches[0].clientX;sy=e.touches[0].clientY}},{passive:true});document.addEventListener('touchend',e=>{if(!sx)return;const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;sx=sy=0;if(Math.abs(dx)>70&&Math.abs(dx)>Math.abs(dy)){if(dx<0&&page<3)show(page+1);else if(dx>0&&page>1)show(page-1)}} ,{passive:true});
- document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'&&page<3)show(page+1);if(e.key==='ArrowLeft'&&page>1)show(page-1);if(e.key==='Escape')skip()});
- (async()=>{try{
-   // Browser preview: ?ongoing shows the onboarding without Telegram.
-   if(webPreview && !testUser && !tgUser){loading.style.opacity='0';setTimeout(()=>loading.style.display='none',360);return;}
-   if(!tgUser||!tgUser.id){loading.style.display='none';error.style.display='flex';return}
-   const u=await userState();
-   if(u&&u.firstOpenCompleted && !webPreview){window.location.replace('/');return}
-   loading.style.opacity='0';setTimeout(()=>loading.style.display='none',360);
- }catch(e){loading.style.display='none';error.style.display='flex';}})();
-})();
-</script>
-</body></html>
+<script src="/assets/ongoing/ongoing.js" defer></script>
+</body>
+</html>

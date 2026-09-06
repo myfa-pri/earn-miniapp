@@ -28,6 +28,62 @@ app.use(express.json());
 app.use(cors());
 
 // ============================================================================
+// PROTECTED BROWSER TEST MODE (NO ENVIRONMENT VARIABLES REQUIRED)
+// ============================================================================
+// Browser test URL:
+//   https://YOUR-DOMAIN/?test_user=123456789
+//
+// The frontend sends X-Earn-Test-User-ID for API requests. The backend then
+// uses that ID as the active test account. Normal Telegram users are unchanged.
+//
+// IMPORTANT: TEST MODE IS ENABLED IN CODE FOR YOUR REQUEST. Before a public
+// launch, set BROWSER_TEST_MODE_ENABLED to false below or remove this block.
+// Do not expose arbitrary account impersonation on a public production app.
+const BROWSER_TEST_MODE_ENABLED = true;
+
+function getBrowserTestUserId(req) {
+    if (!BROWSER_TEST_MODE_ENABLED) return null;
+
+    const headerId = String(req.headers['x-earn-test-user-id'] || '').trim();
+    const queryId = String(req.query?.test_user || '').trim();
+    const userId = headerId || queryId;
+
+    if (!/^\d{1,20}$/.test(userId)) return null;
+    return userId;
+}
+
+app.use('/api', (req, res, next) => {
+    const testUserId = getBrowserTestUserId(req);
+
+    if (!testUserId) return next();
+
+    req.__browserTestUserId = testUserId;
+
+    // Override client-supplied identity so ?test_user=ID actually opens
+    // and operates on that account. Never trust a second ID from the browser.
+    if (!req.body || typeof req.body !== 'object') req.body = {};
+    req.body.userId = testUserId;
+
+    // GET endpoints that identify the account through query parameters also
+    // receive the same server-selected test identity.
+    try {
+        req.query.userId = testUserId;
+        req.query.id = testUserId;
+    } catch (_) {}
+
+    next();
+});
+
+app.get('/api/test-mode', (req, res) => {
+    const id = getBrowserTestUserId(req) || String(req.query.userId || '').trim();
+    res.json({
+        enabled: BROWSER_TEST_MODE_ENABLED && /^\d{1,20}$/.test(id),
+        testMode: BROWSER_TEST_MODE_ENABLED,
+        userId: id || null
+    });
+});
+
+// ============================================================================
 // 2. FIREBASE DATABASE CORE HELPER FUNCTIONS
 // ============================================================================
 async function dbCall(path, method, data = null) {

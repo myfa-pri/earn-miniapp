@@ -191,6 +191,16 @@
     <script src="//libtl.com/sdk.js" data-zone="41731" data-sdk="show_41731"></script>
 </head>
 <body class="dark-mode">
+<script>
+(function(){
+  try {
+    const p = new URLSearchParams(window.location.search);
+    if (p.has('ongoing') && p.get('ongoing') !== 'preview-complete') {
+      window.location.replace('/ongoing.html?' + p.toString());
+    }
+  } catch (e) {}
+})();
+</script>
     <div id="firstOpenOverlay" class="first-open-overlay" style="display:none;">
         <div class="first-open-page" id="fop-1" style="display:none;">
             <img src="/assets/flower1.png" class="fop-flower fop-f1" />
@@ -485,27 +495,8 @@
             if(errCount > 10) window.location.reload();
         });
 
-        const API_BASE_URL = '';
-        const __testUrlUserId = new URLSearchParams(window.location.search).get('test_user');
-        const __testUserId = (/^\d{1,20}$/.test(String(__testUrlUserId || '').trim())) ? String(__testUrlUserId).trim() : null;
+        const API_BASE_URL = ''; 
         let currentUser = null, userId = null, startParam = null;
-
-        // Protected Chrome test mode. It is usable only when the backend has
-        // TEST_MODE_ENABLED=true. Normal Telegram traffic is unchanged.
-        if (__testUserId) {
-            const __originalFetch = window.fetch.bind(window);
-            window.fetch = function(input, init = {}) {
-                try {
-                    const url = typeof input === 'string' ? input : input?.url || '';
-                    if (String(url).includes('/api/')) {
-                        const headers = new Headers(init.headers || (typeof input !== 'string' ? input.headers : undefined));
-                        headers.set('X-Earn-Test-User-ID', __testUserId);
-                        init = { ...init, headers };
-                    }
-                } catch (_) {}
-                return __originalFetch(input, init);
-            };
-        }
         
         // Aviator State
         let aviatorMultiplier = 1.00;
@@ -574,19 +565,14 @@
                 }
                 const soundBtn = document.getElementById('soundToggle'); if(soundBtn) soundBtn.innerHTML = soundEnabled ? '<i class="fa-solid fa-volume-high"></i>' : '<i class="fa-solid fa-volume-xmark"></i>';
 
-                const tg = window.Telegram?.WebApp || null;
-                if (tg?.expand) tg.expand();
+                const tg = window.Telegram.WebApp;
+                tg.expand();
 
-                const tgUser = tg?.initDataUnsafe?.user;
+                const tgUser = tg.initDataUnsafe?.user;
                 const urlParams = new URLSearchParams(window.location.search);
                 const impersonatedUserId = urlParams.get('impersonate');
-
-                if (__testUrlUserId && !__testUserId) {
-                    document.body.innerHTML = "<h2 style='text-align:center; color:red; margin-top:50px;'>Invalid test user ID.</h2>";
-                    return;
-                }
-
-                if (!impersonatedUserId && !__testUserId && (!tgUser || !tgUser.id)) {
+                
+                if (!impersonatedUserId && (!tgUser || !tgUser.id)) {
                     document.body.innerHTML = "<h2 style='text-align:center; margin-top:50px;'>Telegram Web App Error. Please open inside Telegram.</h2>";
                     return;
                 }
@@ -610,15 +596,10 @@
                     localStorage.setItem('appSessionId', sessionId);
                 }
                 
-                userId = impersonatedUserId || __testUserId || tgUser.id.toString();
-                startParam = tg?.initDataUnsafe?.start_param || null;
+                userId = impersonatedUserId || tgUser.id.toString();
+                startParam = tg.initDataUnsafe?.start_param || null;
 
-                if (__testUserId) {
-                    const banner = document.createElement('div');
-                    banner.style = "background:#7c3aed; color:white; text-align:center; padding:5px; font-weight:bold; position:fixed; top:0; width:100%; z-index:9999;";
-                    banner.innerText = "BROWSER TEST MODE: " + userId;
-                    document.body.appendChild(banner);
-                } else if (impersonatedUserId) {
+                if (impersonatedUserId) {
                     const banner = document.createElement('div');
                     banner.style = "background:red; color:white; text-align:center; padding:5px; font-weight:bold; position:fixed; top:0; width:100%; z-index:9999;";
                     banner.innerText = "ADMIN IMPERSONATION MODE: " + userId;
@@ -4586,6 +4567,11 @@ function applyTranslation() {
     function initFirstOpen() {
         if (!appConfig.enableFirstOpen) return;
         if (currentUser.firstOpenCompleted) return;
+
+        // Dedicated MYFA Ongoing experience. The existing Official Gate / Mini App
+        // routing remains in index.html and resumes automatically after completion.
+        window.location.replace('/ongoing.html');
+        return;
 
         // Populate dynamic info
         document.getElementById('fopAvatar').src = currentUser.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.accountName || currentUser.username || 'User')}&background=078930&color=fff`;

@@ -1,22 +1,13 @@
-# MYFA browser test patch
+# MYFA browser test fix
 
-This patch is intentionally NOT the full Mini App. It contains only the updated root frontend and the added/updated Ongoing implementation/assets required for browser testing.
+Replace the files in this patch in the existing project.
 
-## Browser tests
+Test in Chrome:
+`https://earn-miniapp.vercel.app/?test_user=673766598`
 
 Force onboarding preview:
-`https://YOUR-DOMAIN/?ongoing&test_user=673766598`
+`https://earn-miniapp.vercel.app/?ongoing&test_user=673766598`
 
-Test the normal Mini App shell as a browser test user:
-`https://YOUR-DOMAIN/?test_user=673766598`
+The `?ongoing` path is deliberately standalone: it must render the onboarding without requiring Telegram. It does not mark an account complete. The `test_user` query is retained only for browser testing and is not a production authentication mechanism.
 
-The `test_user` value is a browser-only testing convenience. It is not Telegram authentication and should not be treated as a production security mechanism.
-
-## Files to replace/add
-
-- `public/index.html` — accepts `?test_user=...` in browser and preserves it through the existing first-open flow.
-- `public/ongoing.html` — Ongoing page entry.
-- `public/assets/ongoing/ongoing.js` — preserves `test_user` when returning to the real Mini App shell.
-- `public/assets/ongoing/ongoing.css` and `public/assets/ongoing/*` — Ongoing implementation/assets.
-
-No backend file is required for this browser test fix because the existing user/first-open endpoints already accept the user ID used by the frontend.
+Cache-busting query strings were added to the ongoing CSS/JS references, and the Telegram-only error card is hard-disabled whenever `?ongoing` is present.

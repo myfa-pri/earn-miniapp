@@ -128,3 +128,6 @@ button{font:inherit}
 @media(max-width:340px){.viewport{width:min(96vw,300px)}.p1-welcome{font-size:29px}.logo-mark{font-size:39px}.p1-tag{font-size:9.4px}.benefit{font-size:7px}.card-title{font-size:9.6px}.card-desc{font-size:7.2px}.p3-heading{font-size:29px}.p3-heading .line2{font-size:26px}}
 @media(min-width:401px){.viewport{width:min(78vw,300px)}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}}
+
+/* Browser test mode: ?ongoing must never show the Telegram-only error card. */
+html[data-myfa-browser-preview="1"] #error{display:none !important;visibility:hidden !important;pointer-events:none !important;}

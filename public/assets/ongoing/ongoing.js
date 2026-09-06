@@ -6,6 +6,7 @@
   const preview=params.has('ongoing');
   const explicitTestUser=params.get('test_user');
   const tg=window.Telegram?.WebApp;
+  const browserPreview=preview || window.__MYFA_BROWSER_PREVIEW__===true;
   let tgUser=tg?.initDataUnsafe?.user||null;
   if (explicitTestUser && /^\d+$/.test(explicitTestUser) && !tgUser) tgUser={id:explicitTestUser,first_name:'Web Test User'};
   if (preview) app.classList.add('preview');
@@ -65,8 +66,8 @@
   }
   async function completeAndRoute(){
     if(busy)return;busy=true;
-    if(preview && !explicitTestUser && !tg?.initDataUnsafe?.user){status('Preview complete • no account changed');busy=false;return;}
-    if(!tgUser?.id){status('Open MYFA in Telegram');busy=false;return;}
+    if(browserPreview && !explicitTestUser && !tg?.initDataUnsafe?.user){status('Browser preview • no account changed');busy=false;return;}
+    if(!tgUser?.id){if(browserPreview){status('Browser preview • no account changed');busy=false;return;}status('Open MYFA in Telegram');busy=false;return;}
     try{
       const r=await fetch('/api/first-open-complete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:String(tgUser.id)})});
       const d=await r.json().catch(()=>({}));
@@ -93,9 +94,9 @@
 
   // Browser preview is deliberately auth-free. Production/real-account path reads existing first-open state.
   (async function init(){
-    if(preview && !explicitTestUser && !tgUser){return;}
+    if(browserPreview && !explicitTestUser && !tgUser){return;}
     if(!tgUser?.id){
-      if(!preview){
+      if(!browserPreview){
         document.querySelector('.screen.active')?.classList.remove('active');
         const e=document.getElementById('error');if(e)e.hidden=false;
       }
@@ -106,7 +107,7 @@
       if(u?.isBanned){throw new Error('ACCOUNT BANNED');}
       if(u?.firstOpenCompleted && !preview){location.replace('/');return;}
     }catch(e){
-      if(!preview){const el=document.getElementById('error');if(el){el.hidden=false;el.querySelector('[data-error]')?.replaceChildren(document.createTextNode(e.message||'Unable to load account'));}}
+      if(!browserPreview){const el=document.getElementById('error');if(el){el.hidden=false;el.querySelector('[data-error]')?.replaceChildren(document.createTextNode(e.message||'Unable to load account'));}}
     }
   })();
 

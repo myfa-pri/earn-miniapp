@@ -1,15 +1,23 @@
-MYFA ONGOING REAL LAYERED FINAL PATCH
+# MYFA ONGOING — POWERFUL ELEMENT MOTION FINAL
 
-This is a patch, not the full Mini App. Replace/add only the files in this ZIP at the same paths.
+This is a patch for the MYFA Mini App onboarding.
 
-Key behavior:
-- ?ongoing opens the standalone onboarding in a browser without Telegram.
-- ?ongoing&test_user=673766598 also works for browser testing.
-- Page 1/2/3 are real layered HTML/CSS elements; the supplied page PNGs are reference-only and are not used as the production screen.
-- Text, icons, flowers, scenery, ribbons, buttons and progress controls are independent elements where available.
-- Continue, page-2 progress/next controls, Get Started, Skip, swipe and keyboard navigation work.
-- Returning users skip onboarding in the normal Telegram flow.
-- Existing Official Toggle routing remains in the main app.
-- No admin authorization bypass is added.
+## Visual rule
+The supplied three page artworks are preserved as the exact base artwork. The animation system is layered on top so the Ethiopian Addis Ababa / Enkutatash composition is not replaced or redesigned.
 
-IMPORTANT: This browser test mode is for testing only. Do not treat test_user as production authentication.
+## Motion system
+Each visual area has its own motion language instead of one global up/down animation:
+- Page 1: typing-style cursor/reveal sweep, MYFA logo breathing, diamond glint, gift-open burst, people bubbles, rocket launch trail, quote sweep, button energy and flower pulses.
+- Page 2: heading reveal sweep, six independently sequenced card glows, individual feature-icon motion, community pulse and progress-dot energy.
+- Page 3: script-writing sweep, crown/logo aura, four independent benefit-icon glints, greeting-card swing, CTA energy and flower/ribbon motion.
+- Fast staggered timing makes the screen feel alive rather than slow or repetitive.
+- Page transitions use a short cinematic slide/scale transition.
+- Continue/Get Started, Skip, swipe and keyboard navigation remain functional.
+- A 9-second automatic preview advances only while the onboarding is open; user interaction resets the timer.
+
+## Testing
+- `?ongoing` opens the standalone browser preview.
+- `?ongoing&test_user=673766598` also opens the preview.
+- This preview mechanism is for testing only and is not authentication.
+
+The patch does not remove or rewrite the existing Mini App features.

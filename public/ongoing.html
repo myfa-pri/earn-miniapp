@@ -1,79 +1,55 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<meta name="theme-color" content="#020711">
-<meta name="color-scheme" content="dark">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>MYFA Ongoing</title>
-<link rel="stylesheet" href="/assets/ongoing/ongoing.css?v=20260907c">
+<link rel="stylesheet" href="/assets/ongoing/ongoing.css?v=power6">
 </head>
 <body>
-<div id="ongoing-app" aria-label="MYFA Ongoing onboarding">
-<main class="stage" id="onboarding-stage">
-
-<section class="slide active" data-page="1" aria-hidden="false">
-  <div class="art">
-    <img class="artwork" src="/assets/ongoing/page1.png" alt="MYFA Ongoing page 1">
-    <div class="motion-layer" aria-hidden="true">
-      <i class="cinema-glow p1-sky"></i>
-      <i class="flower-pulse p1-f1"></i><i class="flower-pulse p1-f2"></i><i class="flower-pulse p1-f3"></i><i class="flower-pulse p1-f4"></i>
-      <i class="type-cursor p1-type1"></i><i class="type-sheen p1-type2"></i>
-      <i class="logo-aura p1-logo"></i>
-      <i class="icon-zone diamond-zone"></i><i class="icon-zone gift-zone"></i><i class="icon-zone people-zone"></i><i class="icon-zone rocket-zone"></i>
-      <i class="icon-glint diamond-glint"></i><i class="gift-burst"></i><i class="people-bubbles"></i><i class="rocket-trail"></i>
-      <i class="quote-sweep p1-quote"></i>
-      <i class="button-energy p1-button"></i><i class="arrow-energy p1-arrow"></i>
-      <i class="ribbon-light p1-ribbon"></i>
-      <span class="particle p1-particle a"></span><span class="particle p1-particle b"></span><span class="particle p1-particle c"></span>
-      <span class="particle p1-particle d"></span><span class="particle p1-particle e"></span>
-    </div>
-    <button class="hotspot skip" data-skip type="button" aria-label="Skip onboarding"></button>
-    <button class="hotspot next" data-next type="button" aria-label="Continue"></button>
-  </div>
-</section>
-
-<section class="slide" data-page="2" aria-hidden="true">
-  <div class="art">
-    <img class="artwork" src="/assets/ongoing/page2.png" alt="MYFA Ongoing page 2">
-    <div class="motion-layer" aria-hidden="true">
-      <i class="cinema-glow p2-sky"></i>
-      <i class="flower-pulse p2-f1"></i><i class="flower-pulse p2-f2"></i><i class="flower-pulse p2-f3"></i><i class="flower-pulse p2-f4"></i>
-      <i class="heading-sweep p2-heading"></i>
-      <i class="card-zone card1"></i><i class="card-zone card2"></i><i class="card-zone card3"></i><i class="card-zone card4"></i><i class="card-zone card5"></i><i class="card-zone card6"></i>
-      <i class="card-icon-motion drop-motion"></i><i class="card-icon-motion task-motion"></i><i class="card-icon-motion spin-motion"></i><i class="card-icon-motion scratch-motion"></i><i class="card-icon-motion streak-motion"></i><i class="card-icon-motion gems-motion"></i>
-      <i class="community-zone"></i>
-      <i class="dots-energy"></i><i class="ribbon-light p2-ribbon"></i>
-      <span class="particle p2-particle a"></span><span class="particle p2-particle b"></span><span class="particle p2-particle c"></span>
-      <span class="particle p2-particle d"></span><span class="particle p2-particle e"></span>
-    </div>
-    <button class="hotspot skip" data-skip type="button" aria-label="Skip onboarding"></button>
-    <button class="hotspot next p2" data-next type="button" aria-label="Continue to page 3"></button>
-  </div>
-</section>
-
-<section class="slide" data-page="3" aria-hidden="true">
-  <div class="art">
-    <img class="artwork" src="/assets/ongoing/page3.png" alt="MYFA Ongoing page 3">
-    <div class="motion-layer" aria-hidden="true">
-      <i class="cinema-glow p3-sky"></i>
-      <i class="flower-pulse p3-f1"></i><i class="flower-pulse p3-f2"></i><i class="flower-pulse p3-f3"></i><i class="flower-pulse p3-f4"></i>
-      <i class="script-writing p3-title"></i>
-      <i class="logo-aura p3-logo"></i>
-      <i class="icon-zone p3-real"></i><i class="icon-zone p3-community"></i><i class="icon-zone p3-safe"></i><i class="icon-zone p3-love"></i>
-      <i class="icon-glint p3-glint1"></i><i class="icon-glint p3-glint2"></i><i class="icon-glint p3-glint3"></i><i class="icon-glint p3-glint4"></i>
-      <i class="note-motion"></i><i class="button-energy p3-button"></i><i class="arrow-energy p3-arrow"></i>
-      <i class="ribbon-light p3-ribbon"></i>
-      <span class="particle p3-particle a"></span><span class="particle p3-particle b"></span><span class="particle p3-particle c"></span>
-      <span class="particle p3-particle d"></span><span class="particle p3-particle e"></span>
-    </div>
-    <button class="hotspot skip" data-skip type="button" aria-label="Skip onboarding"></button>
-    <button class="hotspot finish" data-finish type="button" aria-label="Get started"></button>
-  </div>
-</section>
-
-</main>
+<div id="ongoing-app" class="preview-ready" aria-label="MYFA Ongoing onboarding">
+  <main class="stage" id="stage">
+    <section class="slide active" data-page="1" aria-hidden="false">
+      <div class="art"><img class="artwork" src="/assets/ongoing/page1.png" alt="">
+        <div class="live-elements" aria-hidden="true">
+          <div class="type-mask p1-welcome" data-type="Welcome to"></div>
+          <div class="type-mask p1-brand" data-type="MYFA"></div>
+          <div class="type-mask p1-tagline" data-type="A WORLD OF REWARDS|FOR REAL PLAYERS"></div>
+          <div class="icon-live p1-play" data-motion="play"></div><div class="icon-live p1-gift" data-motion="gift"></div><div class="icon-live p1-people" data-motion="people"></div><div class="icon-live p1-rocket" data-motion="rocket"></div>
+          <div class="type-mask p1-quote" data-type="“Small Steps Today|Big Rewards Tomorrow”"></div>
+          <div class="real-button p1-cta"><span>CONTINUE</span><b>→</b></div>
+          <div class="bottom-live p1-bottom">PROUDLY<br>ETHIOPIAN <em>♥</em></div>
+          <div class="spark s1"></div><div class="spark s2"></div><div class="spark s3"></div>
+        </div>
+        <button class="hotspot skip" data-skip aria-label="Skip"></button><button class="hotspot next" data-next aria-label="Continue"></button>
+      </div>
+    </section>
+    <section class="slide" data-page="2" aria-hidden="true">
+      <div class="art"><img class="artwork" src="/assets/ongoing/page2.png" alt="">
+        <div class="live-elements" aria-hidden="true">
+          <div class="type-mask p2-heading" data-type="DISCOVER|WHAT MAKES|MYFA SPECIAL"></div>
+          <div class="type-mask p2-sub" data-type="PLAY • COMPLETE • EARN • ENJOY"></div>
+          <div class="card-live c1" data-motion="drop"></div><div class="card-live c2" data-motion="tasks"></div><div class="card-live c3" data-motion="spin"></div><div class="card-live c4" data-motion="scratch"></div><div class="card-live c5" data-motion="streak"></div><div class="card-live c6" data-motion="gems"></div>
+          <div class="type-mask p2-quote" data-type="“More Than a Game|A Community, A Family”"></div>
+          <div class="dots-live"><i></i><i></i><i></i></div>
+          <div class="spark s1"></div><div class="spark s2"></div><div class="spark s3"></div>
+        </div>
+        <button class="hotspot skip" data-skip aria-label="Skip"></button><button class="hotspot next p2" data-next aria-label="Next"></button>
+      </div>
+    </section>
+    <section class="slide" data-page="3" aria-hidden="true">
+      <div class="art"><img class="artwork" src="/assets/ongoing/page3.png" alt="">
+        <div class="live-elements" aria-hidden="true">
+          <div class="type-mask p3-title" data-type="Ready to Start|Your Journey?"></div>
+          <div class="crown-live">♛</div><div class="type-mask p3-brand" data-type="MYFA"></div><div class="type-mask p3-tag" data-type="PLAY • EARN • GROW|TOGETHER ♥"></div>
+          <div class="benefit b1" data-motion="real"></div><div class="benefit b2" data-motion="community"></div><div class="benefit b3" data-motion="safe"></div><div class="benefit b4" data-motion="love"></div>
+          <div class="note-live"></div><div class="real-button p3-cta"><span>GET STARTED</span><b>→</b></div>
+          <div class="bottom-live p3-bottom">Enkutatash<br><small>A Brighter Tomorrow</small> <em>♥</em></div>
+          <div class="spark s1"></div><div class="spark s2"></div><div class="spark s3"></div>
+        </div>
+        <button class="hotspot skip" data-skip aria-label="Skip"></button><button class="hotspot finish" data-finish aria-label="Get started"></button>
+      </div>
+    </section>
+  </main>
 </div>
-<script src="/assets/ongoing/ongoing.js?v=20260907c" defer></script>
-</body>
-</html>
+<script src="/assets/ongoing/ongoing.js?v=power6" defer></script>
+</body></html>

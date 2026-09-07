@@ -9,19 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Montserrat:wght@500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/assets/ongoing/ongoing.css?v=ongoing-final-20260907">
-  <script>
-  (function(){
-    try {
-      var p=new URLSearchParams(location.search);
-      if(p.has("ongoing")){
-        document.documentElement.setAttribute("data-myfa-browser-preview","1");
-        window.__MYFA_BROWSER_PREVIEW__=true;
-        window.__MYFA_TEST_USER_ID__=(p.get("test_user")||"").match(/^\d+$/)?.[0]||null;
-      }
-    } catch(e) {}
-  })();
-  </script>
+  <link rel="stylesheet" href="/assets/ongoing/ongoing.css">
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
@@ -132,29 +120,12 @@
       </div>
     </section>
   </main>
-  <div id="error" hidden style="display:none !important;position:fixed;inset:0;z-index:200;display:grid;place-items:center;background:#020711;padding:24px;">
+  <div id="error" hidden style="position:fixed;inset:0;z-index:200;display:grid;place-items:center;background:#020711;padding:24px;">
     <div style="width:min(92vw,360px);padding:22px;border:1px solid rgba(255,255,255,.12);border-radius:20px;background:rgba(7,15,33,.95);text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.35)">
       <h2 style="margin:0 0 8px">MYFA Ongoing</h2><p data-error style="margin:0;color:#b7c4dd;line-height:1.5;font-size:14px">Open MYFA inside Telegram to continue.</p>
     </div>
   </div>
 </div>
-<script src="/assets/ongoing/ongoing.js?v=ongoing-final-20260907" defer></script>
-<script>
-(function(){
-  try{
-    var p=new URLSearchParams(location.search);
-    if(p.has("ongoing")){
-      var e=document.getElementById("error");
-      if(e){e.hidden=true;e.style.setProperty("display","none","important");}
-      document.documentElement.setAttribute("data-myfa-browser-preview","1");
-      // If an older cached script tries to show the Telegram error, immediately hide it.
-      new MutationObserver(function(){
-        var x=document.getElementById("error");
-        if(x){x.hidden=true;x.style.setProperty("display","none","important");}
-      }).observe(document.documentElement,{subtree:true,attributes:true,attributeFilter:["style","hidden"]});
-    }
-  }catch(e){}
-})();
-</script>
+<script src="/assets/ongoing/ongoing.js" defer></script>
 </body>
 </html>

@@ -6,6 +6,8 @@
   const params = new URLSearchParams(window.location.search);
   const preview = params.has('ongoing');
   const explicitTestUser = params.get('test_user');
+  const errorPanel = document.getElementById('error');
+  if (preview && errorPanel) { errorPanel.hidden = true; errorPanel.style.display = 'none'; }
   const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
 
   let tgUser = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) || null;

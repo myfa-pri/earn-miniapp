@@ -684,6 +684,63 @@ app.post('/api/verify-membership', async (req, res) => {
     }
 });
 
+
+// ==================== DROP GAME API ====================
+app.post('/api/dropgame/start', async (req, res) => {
+    try {
+        const { userId } = req.body;
+        const u = await dbGet(`users/${userId}`);
+        if(!u) return res.status(404).json({success: false, error: "User not found"});
+
+        const now = new Date();
+        const lastPlay = new Date(u.lastDropGamePlay || 0);
+        let chances = u.dropGameChances !== undefined ? u.dropGameChances : 1;
+
+        // Daily reset logic
+        if(now.getDate() !== lastPlay.getDate() || now.getMonth() !== lastPlay.getMonth() || now.getFullYear() !== lastPlay.getFullYear()) {
+            chances = Math.max(chances, 1);
+        }
+
+        if(chances <= 0) {
+            return res.json({success: false, error: "No chances left today"});
+        }
+
+        await dbUpdate(`users/${userId}`, {
+            dropGameChances: chances - 1,
+            lastDropGamePlay: now.toISOString(),
+            currentDropGameScore: 0 // security measure to ensure valid play
+        });
+
+        res.json({success: true, chancesRemaining: chances - 1});
+    } catch(e) {
+        console.error(e);
+        res.status(500).json({success: false, error: e.message});
+    }
+});
+
+app.post('/api/dropgame/claim', async (req, res) => {
+    try {
+        const { userId, score } = req.body;
+        const u = await dbGet(`users/${userId}`);
+        if(!u) return res.status(404).json({success: false, error: "User not found"});
+
+        // Basic security check to prevent abuse, e.g. unrealistic score
+        if(score > 300) { // max possible in 15s is theoretically around 100-150 depending on spawn rate
+            return res.json({success: false, error: "Invalid score detected"});
+        }
+
+        const newPoints = (u.points || 0) + score;
+        await dbUpdate(`users/${userId}`, { points: newPoints });
+
+        res.json({success: true, points: newPoints,
+        dropGameChances: newDropChances, added: score});
+    } catch(e) {
+        console.error(e);
+        res.status(500).json({success: false, error: e.message});
+    }
+});
+// =======================================================
+
 // TASK 3: PROMO CODES
 app.post('/api/claim-promo', async (req, res) => {
     const { userId, code } = req.body;
@@ -991,6 +1048,7 @@ app.post('/api/promo/redeem', async (req, res) => {
     
     await dbUpdate(`users/${userId}`, { 
         points: newPoints,
+        dropGameChances: newDropChances,
         redeemedPromos: redeemed,
         logs: logAction(user, `Redeemed promo code ${code} for ${promo.reward} Gems`)
     });
@@ -1128,6 +1186,61 @@ app.get('/api/campaigns/:userId', async (req, res) => {
     });
     res.json(userCampaigns);
 });
+
+
+app.post('/api/campaigns/create-v2', async (req, res) => {
+    try {
+        const { userId, campaign } = req.body;
+        if (!userId) return res.json({ success: false, error: 'Missing userId' });
+
+        let budgetTotal, budgetDaily;
+        let finalCampaign = {};
+
+        if (campaign) {
+             budgetTotal = campaign.budget.total;
+             budgetDaily = campaign.budget.daily;
+             finalCampaign = campaign;
+        } else {
+             const config = req.body;
+             budgetTotal = config.budget ? config.budget.total : 0;
+             budgetDaily = config.budget ? config.budget.daily : 0;
+             finalCampaign = config;
+        }
+
+        if(!budgetTotal) return res.json({ success: false, error: 'Invalid budget' });
+
+        const user = await dbGet(`users/${userId}`);
+        if (!user) return res.json({ success: false, error: 'User not found' });
+
+        if ((user.points || 0) < budgetTotal) {
+            return res.json({ success: false, error: 'Insufficient balance' });
+        }
+
+        await dbUpdate(`users/${userId}`, {
+            points: user.points - budgetTotal,
+            stuckBalance: (user.stuckBalance || 0) + budgetTotal
+        });
+
+        const campId = "camp_v2_" + Date.now();
+        const campData = {
+            id: campId,
+            ownerId: userId,
+            schemaVersion: 2,
+            ...finalCampaign,
+            budget: { total: budgetTotal, daily: budgetDaily, spent: 0, reserved: budgetTotal },
+            delivery: { status: "Running", priority: 1 },
+            analytics: { impressions: 0, clicks: 0, conversions: 0 },
+            createdAt: Date.now()
+        };
+
+        await dbUpdate(`campaigns/${campId}`, campData);
+        res.json({ success: true, campId });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 
 app.post('/api/campaigns/create', async (req, res) => {
     const { userId, type, icon, name, link, desc, maxUsers, reward } = req.body;
@@ -2033,7 +2146,8 @@ app.post('/api/streak/claim', async (req, res) => {
     logAction(user, `Claimed daily streak: ${reward} points`);
     
     await dbUpdate(`users/${userId}`, { 
-        points: newPoints, 
+        points: newPoints,
+        dropGameChances: newDropChances,
         lastLoginDate: Date.now(),
         logs: user.logs 
     });
@@ -2091,52 +2205,6 @@ app.get('/api/campaigns/:userId/stats', async (req, res) => {
     });
 });
 
-app.post('/api/campaigns/create-v2', async (req, res) => {
-    try {
-        const config = req.body;
-        // if the request comes with config directly on req.body
-        const objective = config.objective;
-        const creative = config.creative;
-        const targeting = config.targeting;
-        const budget = config.budget;
-        const task = config.task;
-        const userId = req.body.userId || config.userId; // handle both
-
-        if (!userId) return res.json({ success: false, error: 'Missing userId' });
-        
-        const user = await dbGet(`users/${userId}`);
-        if (!user) return res.json({ success: false, error: 'User not found' });
-        
-        if ((user.points || 0) < budget.total) {
-            return res.json({ success: false, error: 'Insufficient balance' });
-        }
-        
-        await dbUpdate(`users/${userId}`, {
-            points: user.points - budget.total,
-            stuckBalance: (user.stuckBalance || 0) + budget.total
-        });
-        
-        const campId = "camp_v2_" + Date.now();
-        const campaign = {
-            id: campId,
-            ownerId: userId,
-            schemaVersion: 2,
-            objective: objective,
-            creative: creative,
-            targeting: targeting,
-            budget: { total: budget.total, daily: budget.daily, spent: 0, reserved: budget.total },
-            task: task,
-            delivery: { status: "Running", priority: 1 },
-            analytics: { impressions: 0, clicks: 0, conversions: 0 },
-            createdAt: Date.now()
-        };
-        
-        await dbUpdate(`campaigns/${campId}`, campaign);
-        res.json({ success: true, campaign });
-    } catch(e) {
-        res.json({ success: false, error: e.message });
-    }
-});
 
 app.post('/api/campaigns/:id/refund', async (req, res) => {
     try {

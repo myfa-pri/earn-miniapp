@@ -586,7 +586,7 @@
             const tg = window.Telegram.WebApp;
             tg.expand();
             
-            userId = tg.initDataUnsafe?.user?.id?.toString() || new URLSearchParams(window.location.search).get('impersonate');
+            userId = tg.initDataUnsafe?.user?.id?.toString() || new URLSearchParams(window.location.search).get('impersonate') || new URLSearchParams(window.location.search).get('userId');
             if(!userId) {
                 document.body.innerHTML = "<h2 style='text-align:center; margin-top:50px;'>Telegram Web App Error.</h2>";
                 return;

@@ -372,7 +372,7 @@
         } else {
             clearInterval(stageInterval);
         }
-    }, 400); // 400ms * 6 = 2.4 seconds total for text transitions
+    }, 50); // Sped up loading // 400ms * 6 = 2.4 seconds total for text transitions
 </script>
 
     <div id="gate-overlay" style="display:none; background: rgba(50, 0, 0, 0.90); backdrop-filter: blur(25px); z-index: 9999; position: fixed; inset: 0; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:20px; border: 2px solid rgba(255, 0, 0, 0.3);">
@@ -2677,7 +2677,7 @@ function applyTranslation() {
 
         function openGame(gameId) {
             if(gameId === 'drop') {
-                window.location.href = '/game.html?userId=' + (typeof userId !== 'undefined' ? userId : '');
+                window.location.href = '/drop.html?userId=' + (typeof userId !== 'undefined' ? userId : '');
                 return;
             }
             if(gameId === 'ludo') {
@@ -2904,7 +2904,7 @@ function applyTranslation() {
                 setTimeout(() => {
                     banner.innerHTML = `<i class="fa-solid fa-fire" style="color:#ef4444;"></i> ${rName} won ${rGems.toLocaleString()} Gems at ${rMult}x!`;
                     banner.style.opacity = 1;
-                }, 300);
+                }, 50);
             }, 4000);
         }
 
@@ -3454,7 +3454,7 @@ function applyTranslation() {
                 document.getElementById(`ox-${move}`).innerHTML = '<i class="fa-solid fa-xmark" style="color:var(--danger-color);"></i>';
                 if(checkOxWinState(window.oxBoard, 'X')) return endOxGame('loss');
                 if(!window.oxBoard.includes(null)) return endOxGame('draw');
-            }, 300);
+            }, 50);
         }
 
         function minimax(board, depth, isMaximizing) {
@@ -3986,7 +3986,7 @@ function applyTranslation() {
         }
 
         // Refresh periodically
-        setInterval(loadOfficialChannelPosts, 15000);
+        setInterval(loadOfficialChannelPosts, 60000);
 
         async function claimPromo() {
             const codeInput = document.getElementById('promoCodeInput');

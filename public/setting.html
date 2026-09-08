@@ -284,7 +284,10 @@
 <body>
 
     <!-- 1. TOP HEADER -->
-    <div class="header-bar" style="display:flex; justify-content:space-between; align-items:center; background:#0a0a1f; padding:15px 20px; border-bottom:1px solid rgba(255,255,255,0.1);">
+    <div class="header-bar" style="display:flex; justify-content:space-between; align-items:center; background:#0a0a1f; padding:15px 20px; border-bottom:1px solid rgba(255,255,255,0.1); position:sticky; top:0; z-index:100;">
+        <button onclick="window.location.href='/index.html?userId=' + (typeof userId !== 'undefined' ? userId : '')" style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); color:white; padding:8px 15px; border-radius:8px; font-weight:bold; cursor:pointer;">
+            <i class="fa-solid fa-arrow-left"></i> Hub
+        </button>
         <div style="font-weight:800; font-size:1.2rem; color:var(--eth-gold, #FCDD09);">
             <i class="fa-solid fa-gem"></i> <span id="headerBalance">0</span>
         </div>
@@ -595,7 +598,8 @@
                 showToast("Failed to load user", "error");
                 return;
             }
-            currentUser = await res.json();
+            currentUser = (await res.json()).user || await res.json();
+            updateUI();
             
             // 10. Negative Balance Protection Check
             if ((currentUser.stuckBalance || 0) < 0) {
@@ -613,7 +617,14 @@
         function switchTab(tabId) {
             document.querySelectorAll('.workspace-tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.section-panel').forEach(s => s.classList.remove('active'));
-            event.target.classList.add('active');
+
+            // Try to find the event from window if available, or just ignore since active styling might not be critical on the nav item
+            try {
+                if(window.event && window.event.currentTarget) {
+                    window.event.currentTarget.classList.add('active');
+                }
+            } catch(e) {}
+
             document.getElementById('section-' + tabId).classList.add('active');
         }
 
@@ -738,8 +749,6 @@
             let html = '';
             Object.keys(myCampaigns).forEach(id => {
                 const c = myCampaigns[id];
-                const claims = c.claims || 0;
-                
                 const claims = c.claims || 0;
                 const statusColor = c.paused ? '#FCDD09' : (claims >= c.maxUsers ? '#64748B' : '#078930');
                 const statusText = c.paused ? 'Paused' : (claims >= c.maxUsers ? 'Completed' : 'Active');

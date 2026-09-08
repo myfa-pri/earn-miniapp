@@ -429,9 +429,47 @@
 
                 <button class="btn-gradient" id="btnCreateV2" onclick="createCampaignV2()" style="background:var(--eth-green, #078930);"><i class="fa-solid fa-rocket"></i> Launch Campaign</button>
             </div>
+        </div></div>
+
+        <div id="section-create_task" class="section-panel">
+            <div class="glass-panel premium-card">
+                <h3 style="margin-top:0; color:white;"><i class="fa-solid fa-gift" style="color:#FCDD09;"></i> Create Sponsor Task</h3>
+                <p style="color:#94A3B8; font-size:0.9rem; margin-bottom:15px;">Pay users to join your Telegram Channel or Group.</p>
+
+                <div class="form-group">
+                    <label>Task Title</label>
+                    <input type="text" id="taskTitle" placeholder="e.g. Join MYFA Official">
+                </div>
+
+                <div class="form-group">
+                    <label>Telegram Channel/Group Link</label>
+                    <input type="text" id="taskLink" placeholder="https://t.me/yourchannel">
+                </div>
+
+                <div class="form-group">
+                    <label>Telegram Chat ID (For Auto-Verify)</label>
+                    <input type="text" id="taskChatId" placeholder="e.g. @yourchannel or -100123456">
+                </div>
+
+                <div class="form-group" style="display:flex; gap:10px;">
+                    <div style="flex:1;">
+                        <label>Reward / User (Gems)</label>
+                        <input type="number" id="taskReward" placeholder="e.g. 50" oninput="calcTaskTotal()">
+                    </div>
+                    <div style="flex:1;">
+                        <label>Max Users</label>
+                        <input type="number" id="taskMaxUsers" placeholder="e.g. 1000" oninput="calcTaskTotal()">
+                    </div>
+                </div>
+
+                <div style="margin:20px 0; padding:15px; background:rgba(0,0,0,0.3); border-radius:10px; text-align:center;">
+                    <span style="color:#94A3B8;">Total Escrow Required:</span><br>
+                    <strong style="font-size:1.5rem; color:var(--eth-gold);"><i class="fa-solid fa-gem"></i> <span id="taskTotalCost">0</span></strong>
+                </div>
+
+                <button class="btn-gradient" id="btnCreateTask" onclick="createSponsorTask()" style="background:var(--eth-green, #078930);"><i class="fa-solid fa-rocket"></i> Launch Task</button>
+            </div>
         </div>
-        
-    </div>
 
     <!-- 5. AD STUDIO BOTTOM NAV -->
     <div style="position:fixed; bottom:0; left:0; width:100%; background:#0a0a1f; border-top:1px solid rgba(255,255,255,0.1); display:flex; justify-content:space-around; padding:15px 0; z-index:1000;">
@@ -441,13 +479,16 @@
         <div onclick="switchTab('create')" style="text-align:center; cursor:pointer; color:#94A3B8;">
             <i class="fa-solid fa-plus-circle" style="font-size:1.2rem; display:block; margin-bottom:5px;"></i> Create
         </div>
+        <div onclick="switchTab('create_task')" style="text-align:center; cursor:pointer; color:#94A3B8;">
+            <i class="fa-solid fa-gift" style="font-size:1.2rem; display:block; margin-bottom:5px;"></i> Task
+        </div>
         <div onclick="switchTab('campaigns')" style="text-align:center; cursor:pointer; color:#94A3B8;">
             <i class="fa-solid fa-layer-group" style="font-size:1.2rem; display:block; margin-bottom:5px;"></i> Campaigns
         </div>
-        <div style="text-align:center; cursor:pointer; color:#94A3B8;">
+        <div onclick="switchTab('stats')" style="text-align:center; cursor:pointer; color:#94A3B8;">
             <i class="fa-solid fa-chart-bar" style="font-size:1.2rem; display:block; margin-bottom:5px;"></i> Stats
         </div>
-        <div style="text-align:center; cursor:pointer; color:#94A3B8;">
+        <div onclick="switchTab('wallet')" style="text-align:center; cursor:pointer; color:#94A3B8;">
             <i class="fa-solid fa-wallet" style="font-size:1.2rem; display:block; margin-bottom:5px;"></i> Wallet
         </div>
     </div>
@@ -598,7 +639,8 @@
                 showToast("Failed to load user", "error");
                 return;
             }
-            currentUser = (await res.json()).user || await res.json();
+            const data = await res.json();
+            currentUser = data.user || data;
             updateUI();
             
             // 10. Negative Balance Protection Check
@@ -640,6 +682,7 @@
         }
 
         function updateUI() {
+            if(document.getElementById('walletBal')) document.getElementById('walletBal').innerText = (currentUser.points || 0).toLocaleString();
             document.getElementById('headerBalance').innerText = (currentUser.points || 0).toLocaleString();
             document.getElementById('valEscrow').innerText = (currentUser.stuckBalance || 0).toLocaleString();
             document.getElementById('valPenalty').innerText = (currentUser.penaltyGems || 0).toLocaleString();
@@ -680,17 +723,20 @@
             if(imgUrl && !imgUrl.startsWith('https://')) return showToast('Image URL must start with https://', 'error');
             if((currentUser.points || 0) < total) return showToast("Not enough Gems in Main Balance!", "error");
 
+            const targetGeo = document.getElementById('v2TargetGeo')?.value || 'all';
+            const targetOS = document.getElementById('v2TargetOS')?.value || 'all';
+            const freqCap = document.getElementById('v2FreqCap')?.value || 'none';
+
             const payload = {
                 userId,
-                type: document.getElementById('taskCategory').value,
-                icon: document.getElementById('taskIcon').value,
-                name: document.getElementById('taskName').value,
-                imageUrl: document.getElementById('taskImage').value,
-                headline: document.getElementById('taskHeadline').value,
-                link: document.getElementById('taskLink').value,
-                desc: document.getElementById('taskDesc').value,
-                maxUsers: limit,
-                reward: reward
+                campaign: {
+                    format: format,
+                    media: { url: mediaUrl },
+                    content: { headline: headline, description: desc, cta: cta },
+                    budget: { total: totalBudget, daily: dailyBudget },
+                    targeting: { geo: targetGeo, os: targetOS },
+                    frequency: freqCap
+                }
             };
 
             const btn = document.getElementById('btnCreate');
@@ -798,7 +844,17 @@
             const spent = claims * c.reward;
             const total = c.maxUsers * c.reward;
             
+
             document.getElementById('mViews').innerText = c.views || 0;
+            const views = c.views || 0;
+            if(views > 0) {
+                document.getElementById('mCTR').innerText = ((claims / views) * 100).toFixed(2) + '%';
+                document.getElementById('meCPC').innerText = (spent / claims).toFixed(2);
+            } else {
+                document.getElementById('mCTR').innerText = '0.0%';
+                document.getElementById('meCPC').innerText = '0.00';
+            }
+
             document.getElementById('mClicks').innerText = claims;
             document.getElementById('mSpendText').innerText = `${spent} / ${total}`;
             document.getElementById('mSpendBar').style.width = `${(spent/total)*100}%`;
@@ -973,6 +1029,57 @@
             } else {
                 preview.style.display = 'none';
             }
+        }
+
+
+        function calcTaskTotal() {
+            const reward = parseInt(document.getElementById('taskReward').value) || 0;
+            const maxUsers = parseInt(document.getElementById('taskMaxUsers').value) || 0;
+            if(document.getElementById('taskTotalCost')) document.getElementById('taskTotalCost').innerText = (reward * maxUsers).toLocaleString();
+        }
+
+        async function createSponsorTask() {
+            const title = document.getElementById('taskTitle').value;
+            const link = document.getElementById('taskLink').value;
+            const chatId = document.getElementById('taskChatId').value;
+            const reward = parseInt(document.getElementById('taskReward').value) || 0;
+            const maxUsers = parseInt(document.getElementById('taskMaxUsers').value) || 0;
+            const totalBudget = reward * maxUsers;
+
+            if (totalBudget <= 0) return showToast("Budget must be greater than 0", "error");
+            if (!title || !link || !chatId) return showToast("Please fill all fields", "error");
+            if ((currentUser.points || 0) < totalBudget) return showToast("Not enough Gems!", "error");
+
+            const payload = {
+                userId,
+                campaign: {
+                    type: "telegram_join",
+                    title: title,
+                    url: link,
+                    channelId: chatId,
+                    reward: reward,
+                    maxUsers: maxUsers,
+                    budget: { total: totalBudget, daily: totalBudget }
+                }
+            };
+
+            const btn = document.getElementById('btnCreateTask');
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Launching...';
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/campaigns/create-v2`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if(data.success) {
+                    showToast("Task created!", "success");
+                    window.location.reload();
+                } else {
+                    showToast(data.error || "Failed", "error");
+                }
+            } catch(e) { showToast("Network error", "error"); }
+            btn.innerHTML = '<i class="fa-solid fa-rocket"></i> Launch Task';
         }
 
         async function createCampaignV2() {

@@ -431,36 +431,171 @@
             </div>
         </div></div>
 
+
+        <!-- TASK CREATION ENGINE (SPONSOR TASKS) -->
         <div id="section-create_task" class="section-panel">
+            <div class="glass-panel premium-card" style="position:relative; overflow:hidden;">
+
+                <!-- Background visual flair -->
+                <div style="position:absolute; top:-50px; right:-50px; width:150px; height:150px; background:var(--color-cyan); filter:blur(70px); opacity:0.3; border-radius:50%; z-index:0; pointer-events:none;"></div>
+                <div style="position:absolute; bottom:-50px; left:-50px; width:150px; height:150px; background:var(--color-magenta); filter:blur(70px); opacity:0.2; border-radius:50%; z-index:0; pointer-events:none;"></div>
+
+                <div style="position:relative; z-index:1;">
+                    <div style="text-align:center; margin-bottom:25px;">
+                        <i class="fa-solid fa-gift" style="font-size:3rem; color:var(--eth-gold); margin-bottom:10px; filter:drop-shadow(0 0 10px rgba(252,221,9,0.5));"></i>
+                        <h2 style="margin:0; color:white; font-size:1.8rem; font-weight:900;">Create Sponsor Task</h2>
+                        <p style="color:#A7F3D0; font-size:0.95rem; margin-top:5px;">Rapidly grow your Telegram Channel/Group using real MYFA users.</p>
+                    </div>
+
+                    <div class="form-group" style="background:rgba(0,0,0,0.3); padding:15px; border-radius:12px; border:1px solid rgba(255,255,255,0.05);">
+                        <label style="display:flex; justify-content:space-between;"><span><i class="fa-solid fa-heading"></i> Task Title</span> <span style="font-size:0.7rem; color:#94A3B8;">Required</span></label>
+                        <input type="text" id="taskTitle" placeholder="e.g. Join MYFA Official Channel" style="border-bottom:2px solid var(--color-cyan) !important;">
+                    </div>
+
+                    <div class="form-group" style="background:rgba(0,0,0,0.3); padding:15px; border-radius:12px; border:1px solid rgba(255,255,255,0.05);">
+                        <label style="display:flex; justify-content:space-between;"><span><i class="fa-solid fa-link"></i> Target Link</span> <span style="font-size:0.7rem; color:#94A3B8;">Required</span></label>
+                        <input type="text" id="taskLink" placeholder="https://t.me/yourchannel">
+                    </div>
+
+                    <div class="form-group" style="background:rgba(0,0,0,0.3); padding:15px; border-radius:12px; border:1px solid rgba(255,255,255,0.05); position:relative;">
+                        <label style="display:flex; justify-content:space-between;"><span><i class="fa-solid fa-robot"></i> Auto-Verify Chat ID</span> <span style="font-size:0.7rem; color:#94A3B8;">Required</span></label>
+                        <input type="text" id="taskChatId" placeholder="e.g. @yourchannel">
+                        <div style="font-size:0.75rem; color:#94A3B8; margin-top:5px; display:flex; align-items:center; gap:5px;">
+                            <i class="fa-solid fa-circle-info" style="color:var(--color-cyan);"></i> Bot must be admin in your channel.
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
+                        <div class="form-group" style="background:rgba(0,0,0,0.3); padding:15px; border-radius:12px; border:1px solid rgba(255,255,255,0.05); margin-bottom:0;">
+                            <label><i class="fa-solid fa-gem" style="color:var(--eth-gold);"></i> Reward / User</label>
+                            <input type="number" id="taskReward" placeholder="e.g. 50" oninput="calcTaskTotal()" style="font-size:1.2rem; font-weight:bold; color:var(--eth-gold);">
+                        </div>
+                        <div class="form-group" style="background:rgba(0,0,0,0.3); padding:15px; border-radius:12px; border:1px solid rgba(255,255,255,0.05); margin-bottom:0;">
+                            <label><i class="fa-solid fa-users" style="color:var(--color-cyan);"></i> Max Users</label>
+                            <input type="number" id="taskMaxUsers" placeholder="e.g. 1000" oninput="calcTaskTotal()" style="font-size:1.2rem; font-weight:bold;">
+                        </div>
+                    </div>
+
+                    <!-- Visual Total Estimator -->
+
+                    <div style="margin-top:20px; border-top:1px solid rgba(255,255,255,0.05); padding-top:15px;">
+                        <label style="display:flex; align-items:center; gap:5px; margin-bottom:10px;"><i class="fa-solid fa-shield-halved" style="color:var(--color-magenta);"></i> <strong>Anti-Fraud Protections</strong></label>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                            <label style="background:rgba(0,0,0,0.3); padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,0.05); display:flex; align-items:center; gap:10px; font-size:0.8rem; color:#94A3B8; cursor:pointer;">
+                                <input type="checkbox" id="taskAntiVPN" checked> Block VPNs/Proxies
+                            </label>
+                            <label style="background:rgba(0,0,0,0.3); padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,0.05); display:flex; align-items:center; gap:10px; font-size:0.8rem; color:#94A3B8; cursor:pointer;">
+                                <input type="checkbox" id="taskHoldEscrow" checked> 7-Day Hold Escrow
+                            </label>
+                        </div>
+                    </div>
+
+                    <div style="background:linear-gradient(135deg, rgba(7, 137, 48, 0.2), rgba(0, 0, 0, 0.5)); border:1px solid rgba(7, 137, 48, 0.4); padding:20px; border-radius:15px; text-align:center; margin-bottom:20px; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
+                        <div style="font-size:0.9rem; color:#A7F3D0; font-weight:bold; letter-spacing:1px; text-transform:uppercase;">Total Escrow Required</div>
+                        <div style="font-size:2.5rem; font-weight:900; color:white; display:flex; justify-content:center; align-items:center; gap:10px; margin:10px 0;">
+                            <i class="fa-solid fa-gem" style="color:var(--eth-gold); filter:drop-shadow(0 0 5px rgba(252,221,9,0.5));"></i> <span id="taskTotalCost">0</span>
+                        </div>
+                        <div style="font-size:0.8rem; color:#94A3B8;">Gems will be securely locked in smart-escrow.</div>
+                    </div>
+
+                    <button class="btn-gradient" id="btnCreateTask" onclick="createSponsorTask()" style="background:linear-gradient(45deg, #078930, #0a4f1e); box-shadow:0 5px 20px rgba(7, 137, 48, 0.4); font-size:1.1rem; padding:15px;"><i class="fa-solid fa-rocket"></i> Launch Task Campaign</button>
+                </div>
+            </div>
+        </div>
+
+
+
+        <!-- STATS SECTION -->
+        <div id="section-stats" class="section-panel">
             <div class="glass-panel premium-card">
-                <h3 style="margin-top:0; color:white;"><i class="fa-solid fa-gift" style="color:#FCDD09;"></i> Create Sponsor Task</h3>
-                <p style="color:#94A3B8; font-size:0.9rem; margin-bottom:15px;">Pay users to join your Telegram Channel or Group.</p>
-
-                <div class="form-group">
-                    <label>Task Title</label>
-                    <input type="text" id="taskTitle" placeholder="e.g. Join MYFA Official">
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:15px; margin-bottom:20px;">
+                    <h3 style="margin:0; color:white;"><i class="fa-solid fa-chart-line" style="color:var(--color-cyan);"></i> Analytics Hub</h3>
+                    <div style="background:rgba(255,255,255,0.1); padding:5px 15px; border-radius:20px; font-size:0.8rem; color:#94A3B8;">Last 30 Days</div>
                 </div>
 
-                <div class="form-group">
-                    <label>Telegram Channel/Group Link</label>
-                    <input type="text" id="taskLink" placeholder="https://t.me/yourchannel">
-                </div>
-
-                <div class="form-group">
-                    <label>Telegram Chat ID (For Auto-Verify)</label>
-                    <input type="text" id="taskChatId" placeholder="e.g. @yourchannel or -100123456">
-                </div>
-
-                <div class="form-group" style="display:flex; gap:10px;">
-                    <div style="flex:1;">
-                        <label>Reward / User (Gems)</label>
-                        <input type="number" id="taskReward" placeholder="e.g. 50" oninput="calcTaskTotal()">
+                <div class="dashboard-grid">
+                    <div style="background:linear-gradient(145deg, rgba(255,255,255,0.05), rgba(0,0,0,0.5)); padding:20px; border-radius:15px; border:1px solid rgba(255,255,255,0.05);">
+                        <div style="font-size:0.9rem; color:#94A3B8; margin-bottom:10px;"><i class="fa-solid fa-eye"></i> Total Impressions</div>
+                        <div style="font-size:2rem; font-weight:900; color:white;" id="statTotalImps">0</div>
+                        <div style="font-size:0.75rem; color:#078930; margin-top:5px;"><i class="fa-solid fa-arrow-trend-up"></i> +12.5%</div>
                     </div>
-                    <div style="flex:1;">
-                        <label>Max Users</label>
-                        <input type="number" id="taskMaxUsers" placeholder="e.g. 1000" oninput="calcTaskTotal()">
+                    <div style="background:linear-gradient(145deg, rgba(255,255,255,0.05), rgba(0,0,0,0.5)); padding:20px; border-radius:15px; border:1px solid rgba(255,255,255,0.05);">
+                        <div style="font-size:0.9rem; color:#94A3B8; margin-bottom:10px;"><i class="fa-solid fa-bullseye"></i> Conversions / Clicks</div>
+                        <div style="font-size:2rem; font-weight:900; color:var(--eth-gold);" id="statTotalConv">0</div>
+                        <div style="font-size:0.75rem; color:#078930; margin-top:5px;"><i class="fa-solid fa-arrow-trend-up"></i> +4.1%</div>
+                    </div>
+                    <div style="background:linear-gradient(145deg, rgba(255,255,255,0.05), rgba(0,0,0,0.5)); padding:20px; border-radius:15px; border:1px solid rgba(255,255,255,0.05);">
+                        <div style="font-size:0.9rem; color:#94A3B8; margin-bottom:10px;"><i class="fa-solid fa-percent"></i> Avg. CTR</div>
+                        <div style="font-size:2rem; font-weight:900; color:var(--color-cyan);" id="statAvgCTR">0.0%</div>
+                        <div style="font-size:0.75rem; color:#94A3B8; margin-top:5px;">Network avg: 4.2%</div>
+                    </div>
+                    <div style="background:linear-gradient(145deg, rgba(255,255,255,0.05), rgba(0,0,0,0.5)); padding:20px; border-radius:15px; border:1px solid rgba(255,255,255,0.05);">
+                        <div style="font-size:0.9rem; color:#94A3B8; margin-bottom:10px;"><i class="fa-solid fa-money-bill-wave"></i> Total Spent (Gems)</div>
+                        <div style="font-size:2rem; font-weight:900; color:#EF4444;" id="statTotalSpent">0</div>
                     </div>
                 </div>
+
+                <div style="margin-top:20px; padding:20px; background:rgba(0,0,0,0.3); border-radius:15px; border:1px solid rgba(255,255,255,0.05);">
+                    <h4 style="margin-top:0; color:white; margin-bottom:15px;">Traffic Breakdown Mockup</h4>
+                    <div style="height:150px; display:flex; align-items:flex-end; gap:10px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px; position:relative;">
+                        <div style="flex:1; background:linear-gradient(180deg, var(--color-cyan), transparent); height:40%; border-radius:5px 5px 0 0;"></div>
+                        <div style="flex:1; background:linear-gradient(180deg, var(--color-cyan), transparent); height:60%; border-radius:5px 5px 0 0;"></div>
+                        <div style="flex:1; background:linear-gradient(180deg, var(--color-cyan), transparent); height:30%; border-radius:5px 5px 0 0;"></div>
+                        <div style="flex:1; background:linear-gradient(180deg, var(--color-cyan), transparent); height:80%; border-radius:5px 5px 0 0;"></div>
+                        <div style="flex:1; background:linear-gradient(180deg, var(--color-cyan), transparent); height:50%; border-radius:5px 5px 0 0;"></div>
+                        <div style="flex:1; background:linear-gradient(180deg, var(--color-cyan), transparent); height:90%; border-radius:5px 5px 0 0;"></div>
+                        <div style="flex:1; background:linear-gradient(180deg, var(--color-cyan), transparent); height:70%; border-radius:5px 5px 0 0;"></div>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:#94A3B8; margin-top:5px;">
+                        <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- WALLET SECTION -->
+        <div id="section-wallet" class="section-panel">
+            <div class="glass-panel premium-card">
+                <div style="text-align:center; padding: 20px 0; border-bottom:1px solid rgba(255,255,255,0.1); margin-bottom:20px;">
+                    <i class="fa-solid fa-wallet" style="font-size:3rem; color:#FCDD09; margin-bottom:15px; filter:drop-shadow(0 0 10px rgba(252,221,9,0.3));"></i>
+                    <h2 style="margin:0; color:white;">Advertiser Wallet</h2>
+                    <p style="color:#94A3B8; font-size:0.9rem; margin-top:5px;">Manage funds for your network campaigns.</p>
+                </div>
+
+                <div style="background:linear-gradient(135deg, rgba(255,255,255,0.05), rgba(0,0,0,0.5)); border:1px solid rgba(255,255,255,0.1); padding:25px; border-radius:15px; text-align:center; margin-bottom:20px;">
+                    <div style="font-size:0.9rem; color:#94A3B8; text-transform:uppercase; letter-spacing:1px; font-weight:bold;">Available Gems (Main)</div>
+                    <h1 style="color:var(--color-cyan); margin:10px 0; font-size:3rem; font-weight:900;"><i class="fa-solid fa-gem"></i> <span id="walletBal2">0</span></h1>
+
+                    <div style="display:flex; justify-content:space-around; margin-top:20px; padding-top:15px; border-top:1px dashed rgba(255,255,255,0.1);">
+                        <div>
+                            <div style="font-size:0.8rem; color:#94A3B8;">In Escrow</div>
+                            <div style="font-weight:bold; color:var(--eth-gold);"><i class="fa-solid fa-lock"></i> <span id="walletEscrow">0</span></div>
+                        </div>
+                        <div>
+                            <div style="font-size:0.8rem; color:#94A3B8;">Total Value</div>
+                            <div style="font-weight:bold; color:white;"><i class="fa-solid fa-piggy-bank"></i> <span id="walletTotal">0</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:20px;">
+                    <button class="btn-gradient" style="background:linear-gradient(45deg, #078930, #0a4f1e); padding:15px;" onclick="window.location.href='/index.html'"><i class="fa-solid fa-plus-circle"></i> Earn Free Gems</button>
+                    <button class="btn-gradient" style="background:rgba(255,255,255,0.1); color:white; border:1px solid rgba(255,255,255,0.2); padding:15px;" onclick="showToast('Deposits are currently locked in simulation mode.', 'info')"><i class="fa-solid fa-credit-card"></i> Deposit Fiat/Crypto</button>
+                </div>
+
+                <h4 style="color:white; margin-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px;"><i class="fa-solid fa-clock-rotate-left"></i> Recent Transactions</h4>
+                <div id="walletHistory">
+                    <div style="text-align:center; padding:20px; color:#94A3B8; font-size:0.9rem;">
+                        <i class="fa-solid fa-receipt" style="font-size:2rem; margin-bottom:10px; opacity:0.5;"></i><br>
+                        Transaction history logic connected in background.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        </div>
+
 
                 <div style="margin:20px 0; padding:15px; background:rgba(0,0,0,0.3); border-radius:10px; text-align:center;">
                     <span style="color:#94A3B8;">Total Escrow Required:</span><br>
@@ -494,62 +629,65 @@
     </div>
 
 
+
     <!-- CAMPAIGN MANAGEMENT MODAL (10 FEATURES) -->
     <div class="modal-overlay" id="manageModal">
-        <div class="header-bar">
-            <button class="back-btn" onclick="closeManageModal()"><i class="fa-solid fa-times"></i></button>
-            <h3 style="margin:0; font-weight:800;">Manage Campaign</h3>
-            <div style="width:40px;"></div>
-        </div>
-        
-        <div class="glass-panel">
-            <h2 id="mName" style="margin-top:0; font-size:1.4rem;">Campaign Name</h2>
+        <div class="modal-content glass-panel" style="max-height:80vh; overflow-y:auto; width:95%; max-width:500px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px;">
+                <h2 style="margin:0; font-size:1.3rem;"><i class="fa-solid fa-gear" style="color:var(--color-cyan);"></i> Manage <span id="mIdSpan" style="font-size:0.8rem; color:#94A3B8;"></span></h2>
+                <button style="background:transparent; border:none; color:white; font-size:1.5rem; cursor:pointer;" onclick="closeManageModal()">&times;</button>
+            </div>
             
-            <!-- 2. Live Campaign Status Indicator -->
-            <div style="margin-bottom: 20px; font-weight:700; display:flex; align-items:center;">
-                <span id="mStatusDot" class="status-dot status-active"></span> 
-                <span id="mStatusText">Active</span>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; background:rgba(0,0,0,0.3); padding:10px; border-radius:10px;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <div class="status-dot status-active" id="mStatusDot"></div>
+                    <strong id="mStatusText" style="font-size:1.1rem;">Active</strong>
+                </div>
+                <div><strong style="color:var(--color-cyan);"><i class="fa-solid fa-gem"></i> <span id="mSpendText">0 / 0</span></strong></div>
             </div>
 
-            <!-- 7. Conversion Analytics -->
-            <div class="dashboard-grid" style="margin-top:0; margin-bottom:20px;">
-                <div class="dash-card">
-                    <div class="dash-val" id="mViews">0</div>
-                    <div class="dash-label">Impressions</div>
-                </div>
-                <div class="dash-card">
-                    <div class="dash-val" id="mClicks" style="color:var(--success-color);">0</div>
-                    <div class="dash-label">Valid Conversions</div>
+            <div style="background:rgba(0,0,0,0.5); padding:15px; border-radius:10px; margin-bottom:20px; border:1px solid rgba(255,255,255,0.05);">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; text-align:center;">
+                    <div>
+                        <div style="font-size:0.8rem; color:#94A3B8;">Impressions</div>
+                        <div style="font-size:1.2rem; font-weight:bold; color:white;" id="mViews">0</div>
+                    </div>
+                    <div>
+                        <div style="font-size:0.8rem; color:#94A3B8;">Conversions/Clicks</div>
+                        <div style="font-size:1.2rem; font-weight:bold; color:white;" id="mClicks">0</div>
+                    </div>
+                    <div>
+                        <div style="font-size:0.8rem; color:#94A3B8;">CTR</div>
+                        <div style="font-size:1.2rem; font-weight:bold; color:var(--color-cyan);" id="mCTR">0.0%</div>
+                    </div>
+                    <div>
+                        <div style="font-size:0.8rem; color:#94A3B8;">eCPC</div>
+                        <div style="font-size:1.2rem; font-weight:bold; color:var(--eth-green);" id="meCPC">0.00</div>
+                    </div>
                 </div>
             </div>
 
-            <!-- 3. Live Spend Tracker Bar -->
-            <div style="margin-bottom: 20px;">
-                <div style="display:flex; justify-content:space-between; font-size:0.85rem; font-weight:700; color:#94A3B8;">
+            <div style="margin-bottom:15px;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px; font-size:0.85rem; color:#94A3B8;">
                     <span>Budget Consumed</span>
-                    <span id="mSpendText">0 / 5000</span>
                 </div>
-                <div class="progress-bar-bg">
-                    <div class="progress-bar-fill" id="mSpendBar"></div>
-                </div>
+                <div class="progress-bar"><div class="progress-fill" id="mSpendBar"></div></div>
             </div>
 
-            <!-- 8. Safe Info Editor -->
             <div class="form-group">
-                <label>Edit Link (Safe)</label>
-                <input type="text" id="mLink" class="form-control">
+                <label>Target URL / Deep Link</label>
+                <input type="text" id="mLink">
             </div>
+
             <div class="form-group">
-                <label>Edit Description (Safe)</label>
-                <textarea id="mDesc" class="form-control" rows="2"></textarea>
+                <label>Description / Metadata</label>
+                <textarea id="mDesc" rows="2" style="width:100%; padding:10px; border-radius:10px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); color:white;"></textarea>
             </div>
-            <!-- Budget is locked -->
-            <div style="font-size:0.8rem; color:#F59E0B; margin-bottom:15px;"><i class="fa-solid fa-lock"></i> Escrow budget parameters are strictly locked by smart contract.</div>
             
-            <button class="btn-gradient" style="margin-bottom:20px;" onclick="saveSafeInfo()">Save Edits</button>
+            <button class="btn-gradient" style="background:var(--eth-green); margin-bottom:15px;" onclick="saveCampaign()"><i class="fa-solid fa-save"></i> Save Changes</button>
 
-            <!-- 9. Auto-Renew Toggle -->
-            <div style="background:rgba(255,255,255,0.05); padding:15px; border-radius:12px; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
+            <!-- ADVANCED TOGGLES -->
+            <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); padding:15px; border-radius:10px; margin-bottom:15px; border-left:4px solid #4FACFE;">
                 <div>
                     <div style="font-weight:700;">Auto-Renew Campaign</div>
                     <div style="font-size:0.75rem; color:#94A3B8;">Deduct from main balance when empty</div>
@@ -562,19 +700,17 @@
             </div>
 
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-                <!-- 4. One-Click Pause/Resume -->
                 <button class="btn-gradient" id="btnPause" style="background:#F59E0B; box-shadow:none; color:white;" onclick="togglePause()">Pause</button>
-                
-                <!-- 10. Task Duplicator -->
                 <button class="btn-gradient" style="background:rgba(255,255,255,0.1); box-shadow:none; color:white;" onclick="cloneCampaign()"><i class="fa-solid fa-copy"></i> Clone</button>
             </div>
 
-            <!-- 5. One-Click Liquidate/Refund -->
             <button class="btn-gradient" style="background:#EF4444; box-shadow:none; color:white; margin-top:10px;" onclick="liquidateCampaign()"><i class="fa-solid fa-fire"></i> Liquidate & Refund Escrow</button>
 
         </div>
+    </div>
 
-        <!-- 1. Manual Screenshot Approval Queue (Only shows for manual tasks) -->
+
+    <!-- 1. Manual Screenshot Approval Queue (Only shows for manual tasks) -->
         <div class="glass-panel" id="manualQueuePanel" style="display:none;">
             <h3 style="margin-top:0; color:white;"><i class="fa-solid fa-images" style="color:var(--color-cyan);"></i> Manual Approval Queue</h3>
             <div style="font-size:0.85rem; color:#94A3B8; margin-bottom:10px;">Review user screenshots for validation.</div>
@@ -667,7 +803,9 @@
                 }
             } catch(e) {}
 
-            document.getElementById('section-' + tabId).classList.add('active');
+            const targetSection = document.getElementById('section-' + tabId);
+            if(targetSection) targetSection.classList.add('active');
+            else console.error('Tab not found:', tabId);
         }
 
         function previewImage() {
@@ -682,15 +820,21 @@
         }
 
         function updateUI() {
-            if(document.getElementById('walletBal')) document.getElementById('walletBal').innerText = (currentUser.points || 0).toLocaleString();
-            document.getElementById('headerBalance').innerText = (currentUser.points || 0).toLocaleString();
-            document.getElementById('valEscrow').innerText = (currentUser.stuckBalance || 0).toLocaleString();
-            document.getElementById('valPenalty').innerText = (currentUser.penaltyGems || 0).toLocaleString();
-            document.getElementById('valVelocity').innerText = (currentUser.escrowVelocity || 0).toLocaleString();
-            document.getElementById('valYield').innerText = (currentUser.escrowYield || 0).toLocaleString();
+            const bal = (currentUser.points || 0);
+            const escrow = (currentUser.stuckBalance || 0);
+            document.getElementById('headerBalance').innerText = bal.toLocaleString();
 
-            if ((currentUser.stuckBalance || 0) < 100 && Object.keys(myCampaigns).length > 0) {
-                document.getElementById('reserveAlert').style.display = 'block';
+            // Dashboard overview
+            if(document.getElementById('valEscrow')) document.getElementById('valEscrow').innerText = escrow.toLocaleString();
+
+            // Wallet Update
+            if(document.getElementById('walletBal2')) document.getElementById('walletBal2').innerText = bal.toLocaleString();
+            if(document.getElementById('walletEscrow')) document.getElementById('walletEscrow').innerText = escrow.toLocaleString();
+            if(document.getElementById('walletTotal')) document.getElementById('walletTotal').innerText = (bal + escrow).toLocaleString();
+
+            // This restores whatever was originally inside updateUI (the reserve alert logic)
+            if (escrow > bal) {
+                 document.getElementById('reserveAlert').style.display = 'block';
             } else {
                 document.getElementById('reserveAlert').style.display = 'none';
             }
@@ -727,329 +871,12 @@
             const targetOS = document.getElementById('v2TargetOS')?.value || 'all';
             const freqCap = document.getElementById('v2FreqCap')?.value || 'none';
 
-            const payload = {
-                userId,
-                campaign: {
-                    format: format,
-                    media: { url: mediaUrl },
-                    content: { headline: headline, description: desc, cta: cta },
-                    budget: { total: totalBudget, daily: dailyBudget },
-                    targeting: { geo: targetGeo, os: targetOS },
-                    frequency: freqCap
-                }
-            };
+            const pacing = document.getElementById('v2Pacing')?.value || 'standard';
+            const dayparting = document.getElementById('v2Dayparting')?.value || '24/7';
+            const bidding = document.getElementById('v2Bidding')?.value || 'cpc';
 
-            const btn = document.getElementById('btnCreate');
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Locking Escrow...';
-            
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/campaigns/create`, {
-                    method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(payload)
-                });
-                const data = await res.json();
-                if(data.success) {
-                    showToast("Campaign created and Escrow Locked!", "success");
-                    window.location.reload();
-                } else {
-                    showToast(data.error || "Failed", "error");
-                }
-            } catch(e) { showToast("Network error", "error"); }
-            btn.innerHTML = 'Create & Lock Escrow';
-        }
-
-        async function fetchCampaigns() {
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/campaigns/${userId}`);
-                if(res.ok) {
-                    myCampaigns = await res.json();
-                    renderCampaigns();
-            
-            document.getElementById('dashGems').innerText = (currentUser.points || 0).toLocaleString();
-            document.getElementById('dashEscrow').innerText = (currentUser.stuckBalance || 0).toLocaleString();
-            document.getElementById('dashYield').innerText = (currentUser.escrowYield || 0).toLocaleString();
-            
-            let tCamp = 0, aCamp = 0, tImp = 0, tSpend = 0;
-            Object.values(myCampaigns).forEach(c => {
-                tCamp++;
-                if(!c.paused && (c.claims || 0) < c.maxUsers) aCamp++;
-                tImp += (c.views || 0);
-                tSpend += ((c.claims || 0) * c.reward);
-            });
-            document.getElementById('dashTotalCamp').innerText = tCamp.toLocaleString();
-            document.getElementById('dashActiveCamp').innerText = aCamp.toLocaleString();
-            document.getElementById('dashImpressions').innerText = tImp.toLocaleString();
-            document.getElementById('dashTotalSpend').innerText = tSpend.toLocaleString();
-
-                }
-            } catch(e){}
-        }
-
-        function renderCampaigns() {
-            const container = document.getElementById('campaignList');
-            if(Object.keys(myCampaigns).length === 0) {
-                container.innerHTML = '<div style="text-align:center; color:#94A3B8; padding:20px;">No active campaigns.</div>';
-                return;
-            }
-
-            let html = '';
-            Object.keys(myCampaigns).forEach(id => {
-                const c = myCampaigns[id];
-                const claims = c.claims || 0;
-                const statusColor = c.paused ? '#FCDD09' : (claims >= c.maxUsers ? '#64748B' : '#078930');
-                const statusText = c.paused ? 'Paused' : (claims >= c.maxUsers ? 'Completed' : 'Active');
-                const progressPct = Math.min(100, Math.round((claims / c.maxUsers) * 100));
-                
-                let imgHtml = '';
-                if(c.imageUrl) {
-                    imgHtml = `<img src="${c.imageUrl}" style="width:50px; height:50px; border-radius:8px; object-fit:cover; margin-right:12px;" onerror="this.style.display='none'"/>`;
-                }
-
-                html += `
-                    <div class="campaign-item" onclick="openManageModal('${id}')" style="border-left-color: ${statusColor}; display:block;">
-                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
-                            <div style="display:flex; align-items:center;">
-                                ${imgHtml}
-                                <div style="display:flex; align-items:center; gap:12px;">
-                                    <i class="fa-brands ${c.icon}" style="font-size:1.5rem; color:var(--color-cyan);"></i>
-                                    <div>
-                                        <div style="font-weight:700;">${c.headline || c.name}</div>
-                                        <div style="font-size:0.75rem; color:#94A3B8;"><span style="color:${statusColor}; font-weight:700;">${statusText}</span></div>
-                                    </div>
-                                </div>
-                            </div>
-                            <i class="fa-solid fa-chevron-right" style="color:#64748B;"></i>
-                        </div>
-                        <div style="background:rgba(255,255,255,0.05); height:6px; border-radius:3px; overflow:hidden;">
-                            <div style="height:100%; background:linear-gradient(90deg, #FCDD09, #078930); width:${progressPct}%;"></div>
-                        </div>
-                        <div style="font-size:0.7rem; color:#aaa; margin-top:5px; text-align:right;">${claims} / ${c.maxUsers} Filled (${progressPct}%)</div>
-                    </div>
-                `;
-
-            });
-            container.innerHTML = html;
-        }
-
-        function openManageModal(id) {
-            currentManageId = id;
-            const c = myCampaigns[id];
-            if(!c) return;
-            
-            document.getElementById('mName').innerText = c.name;
-            document.getElementById('mLink').value = c.link || '';
-            document.getElementById('mDesc').value = c.desc || '';
-            
-            const claims = c.claims || 0;
-            const spent = claims * c.reward;
-            const total = c.maxUsers * c.reward;
-            
-
-            document.getElementById('mViews').innerText = c.views || 0;
-            const views = c.views || 0;
-            if(views > 0) {
-                document.getElementById('mCTR').innerText = ((claims / views) * 100).toFixed(2) + '%';
-                document.getElementById('meCPC').innerText = (spent / claims).toFixed(2);
-            } else {
-                document.getElementById('mCTR').innerText = '0.0%';
-                document.getElementById('meCPC').innerText = '0.00';
-            }
-
-            document.getElementById('mClicks').innerText = claims;
-            document.getElementById('mSpendText').innerText = `${spent} / ${total}`;
-            document.getElementById('mSpendBar').style.width = `${(spent/total)*100}%`;
-            
-            const statusDot = document.getElementById('mStatusDot');
-            const statusText = document.getElementById('mStatusText');
-            
-            if(claims >= c.maxUsers) {
-                statusDot.className = 'status-dot status-completed';
-                statusText.innerText = 'Completed';
-                document.getElementById('btnPause').style.display = 'none';
-            } else if (c.paused) {
-                statusDot.className = 'status-dot status-paused';
-                statusText.innerText = 'Paused';
-                document.getElementById('btnPause').style.display = 'block';
-                document.getElementById('btnPause').innerText = 'Resume';
-            } else {
-                statusDot.className = 'status-dot status-active';
-                statusText.innerText = 'Active';
-                document.getElementById('btnPause').style.display = 'block';
-                document.getElementById('btnPause').innerText = 'Pause';
-            }
-
-            const cb = document.getElementById('mAutoRenew');
-            cb.checked = c.autoRenew || false;
-            document.getElementById('toggleNob').style.transform = cb.checked ? 'translateX(26px)' : 'translateX(0)';
-
-            if(c.type === 'manual') {
-                document.getElementById('manualQueuePanel').style.display = 'block';
-                loadQueue();
-            } else {
-                document.getElementById('manualQueuePanel').style.display = 'none';
-            }
-
-            document.getElementById('manageModal').classList.add('active');
-        }
-
-        function closeManageModal() {
-            document.getElementById('manageModal').classList.remove('active');
-            currentManageId = null;
-        }
-
-        async function saveSafeInfo() {
-            const link = document.getElementById('mLink').value;
-            const desc = document.getElementById('mDesc').value;
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/campaigns/update`, {
-                    method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ userId, campaignId: currentManageId, action: 'edit', link, desc })
-                });
-                if((await res.json()).success) showToast("Saved", "success");
-            } catch(e) {}
-        }
-
-        async function togglePause() {
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/campaigns/update`, {
-                    method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ userId, campaignId: currentManageId, action: 'togglePause' })
-                });
-                if((await res.json()).success) {
-                    await fetchCampaigns();
-                    openManageModal(currentManageId);
-                }
-            } catch(e) {}
-        }
-
-        async function toggleAutoRenew() {
-            const cb = document.getElementById('mAutoRenew');
-            document.getElementById('toggleNob').style.transform = cb.checked ? 'translateX(26px)' : 'translateX(0)';
-            try {
-                await fetch(`${API_BASE_URL}/api/campaigns/update`, {
-                    method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ userId, campaignId: currentManageId, action: 'autoRenew', value: cb.checked })
-                });
-            } catch(e) {}
-        }
-
-        async function liquidateCampaign() {
-            if(!confirm("Are you sure? This will terminate the campaign and return remaining Escrow to your Main Balance.")) return;
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/campaigns/liquidate`, {
-                    method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ userId, campaignId: currentManageId })
-                });
-                const data = await res.json();
-                if(data.success) {
-                    showToast(`Refunded ${data.refunded} Gems from Escrow to Main Balance!`, "success");
-                    window.location.reload();
-                }
-            } catch(e) {}
-        }
-        
-        function cloneCampaign() {
-            const c = myCampaigns[currentManageId];
-            if(!c) return;
-            closeManageModal();
-            document.getElementById('taskCategory').value = c.type;
-            document.getElementById('taskIcon').value = c.icon;
-            document.getElementById('taskName').value = c.name + " (Copy)";
-            document.getElementById('taskLink').value = c.link;
-            document.getElementById('taskDesc').value = c.desc;
-            document.getElementById('taskLimit').value = c.maxUsers;
-            document.getElementById('taskReward').value = c.reward;
-            calcEscrow();
-            window.scrollTo(0, document.body.scrollHeight);
-        }
-
-        function openTransferModal() {
-            showToast("Escrow Transfer Protocol initiated. (Visual Demo: Sweeping balance between smart contracts...)");
-        }
-
-        // QUEUE LOGIC (MOCK FOR NOW)
-        function loadQueue() {
-            const c = myCampaigns[currentManageId];
-            if(c.queue && c.queue.length > 0) {
-                currentQueueItem = c.queue[0];
-                document.getElementById('qImg').src = currentQueueItem.imgUrl;
-                document.getElementById('qImg').style.display = 'block';
-                document.getElementById('qEmpty').style.display = 'none';
-                document.getElementById('qUser').innerText = currentQueueItem.userId;
-            } else {
-                currentQueueItem = null;
-                document.getElementById('qImg').style.display = 'none';
-                document.getElementById('qEmpty').style.display = 'block';
-                document.getElementById('qUser').innerText = '-';
-            }
-        }
-
-        async function processQueueItem(action, reason = '') {
-            if(!currentQueueItem) return;
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/campaigns/review`, {
-                    method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ userId, campaignId: currentManageId, submissionId: currentQueueItem.id, action, reason })
-                });
-                if((await res.json()).success) {
-                    await fetchCampaigns();
-                    loadQueue();
-                }
-            } catch(e) {}
-        }
-
-        function approveScreenshot() { processQueueItem('approve'); }
-        function openRejectReason() {
-            if(!currentQueueItem) return;
-            document.getElementById('rejectModal').style.display = 'flex';
-        }
-        function submitReject() {
-            const r = document.getElementById('rejectReason').value;
-            processQueueItem('reject', r);
-            document.getElementById('rejectModal').style.display = 'none';
-            document.getElementById('rejectReason').value = '';
-        }
-
-        // --- V2 WIZARD LOGIC ---
-        function previewMediaV2() {
-            const format = document.getElementById('v2Format').value;
-            const url = document.getElementById('v2MediaUrl').value;
-            const preview = document.getElementById('v2MediaPreview');
-            
-            if(!url || !url.startsWith('https://')) {
-                preview.style.display = 'none';
-                return;
-            }
-            
-            preview.style.display = 'block';
-            if (format === 'video' || url.endsWith('.mp4')) {
-                preview.innerHTML = `<video src="${url}" autoplay muted loop style="width:100%; max-height:200px; object-fit:cover;"></video>`;
-            } else if (format === 'image') {
-                preview.innerHTML = `<img src="${url}" style="width:100%; max-height:200px; object-fit:cover;" onerror="this.parentElement.style.display='none'">`;
-            } else {
-                preview.style.display = 'none';
-            }
-        }
-
-
-        function calcTaskTotal() {
-            const reward = parseInt(document.getElementById('taskReward').value) || 0;
-            const maxUsers = parseInt(document.getElementById('taskMaxUsers').value) || 0;
-            if(document.getElementById('taskTotalCost')) document.getElementById('taskTotalCost').innerText = (reward * maxUsers).toLocaleString();
-        }
-
-        async function createSponsorTask() {
-            const title = document.getElementById('taskTitle').value;
-            const link = document.getElementById('taskLink').value;
-            const chatId = document.getElementById('taskChatId').value;
-            const reward = parseInt(document.getElementById('taskReward').value) || 0;
-            const maxUsers = parseInt(document.getElementById('taskMaxUsers').value) || 0;
-            const totalBudget = reward * maxUsers;
-
-            if (totalBudget <= 0) return showToast("Budget must be greater than 0", "error");
-            if (!title || !link || !chatId) return showToast("Please fill all fields", "error");
-            if ((currentUser.points || 0) < totalBudget) return showToast("Not enough Gems!", "error");
-
+            const antiVPN = document.getElementById('taskAntiVPN')?.checked || false;
+            const holdEscrow = document.getElementById('taskHoldEscrow')?.checked || false;
             const payload = {
                 userId,
                 campaign: {
@@ -1059,7 +886,8 @@
                     channelId: chatId,
                     reward: reward,
                     maxUsers: maxUsers,
-                    budget: { total: totalBudget, daily: totalBudget }
+                    budget: { total: totalBudget, daily: totalBudget },
+                    security: { antiVPN, holdEscrow }
                 }
             };
 

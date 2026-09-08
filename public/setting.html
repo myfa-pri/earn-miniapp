@@ -295,9 +295,7 @@
             <i class="fa-solid fa-plus"></i> CREATE
         </button>
     </div>
-    <div style="padding:15px 20px; text-align:center;">
-        <h4 style="margin:0; font-weight:800; color:white; font-size:1.1rem;">Advertise smarter. Reach real Mini App users.</h4>
-    </div>
+    
 
     <!-- MAIN CONTAINER -->
     <div id="main-content" style="padding-bottom: 80px;">
@@ -408,8 +406,8 @@
                     <select id="taskIcon"><option value="fa-globe">globe</option></select>
                     <input type="text" id="taskName">
                     <input type="text" id="taskLink">
-                    <input type="number" id="taskLimit" value="100">
-                    <input type="number" id="taskReward" value="50">
+                    <input type="number" id="taskLimitOld" value="100">
+                    <input type="number" id="taskRewardOld" value="50">
                     <input type="text" id="taskImage">
                     <input type="text" id="taskHeadline">
                     <textarea id="taskDesc"></textarea>
@@ -465,16 +463,14 @@
                         </div>
                     </div>
 
-                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
-                        <div class="form-group" style="background:rgba(0,0,0,0.3); padding:15px; border-radius:12px; border:1px solid rgba(255,255,255,0.05); margin-bottom:0;">
+                    <div class="form-group" style="background:rgba(0,0,0,0.3); padding:15px; border-radius:12px; border:1px solid rgba(255,255,255,0.05); margin-bottom:15px;">
                             <label><i class="fa-solid fa-gem" style="color:var(--eth-gold);"></i> Reward / User</label>
-                            <input type="number" id="taskReward" placeholder="e.g. 50" oninput="calcTaskTotal()" style="font-size:1.2rem; font-weight:bold; color:var(--eth-gold);">
+                            <input type="number" id="taskReward" placeholder="e.g. 50" oninput="calcEscrow()" style="font-size:1.2rem; font-weight:bold; color:var(--eth-gold);">
                         </div>
-                        <div class="form-group" style="background:rgba(0,0,0,0.3); padding:15px; border-radius:12px; border:1px solid rgba(255,255,255,0.05); margin-bottom:0;">
+                        <div class="form-group" style="background:rgba(0,0,0,0.3); padding:15px; border-radius:12px; border:1px solid rgba(255,255,255,0.05); margin-bottom:15px;">
                             <label><i class="fa-solid fa-users" style="color:var(--color-cyan);"></i> Max Users</label>
-                            <input type="number" id="taskMaxUsers" placeholder="e.g. 1000" oninput="calcTaskTotal()" style="font-size:1.2rem; font-weight:bold;">
+                            <input type="number" id="taskMaxUsers" placeholder="e.g. 1000" oninput="calcEscrow()" style="font-size:1.2rem; font-weight:bold;">
                         </div>
-                    </div>
 
                     <!-- Visual Total Estimator -->
 
@@ -498,7 +494,7 @@
                         <div style="font-size:0.8rem; color:#94A3B8;">Gems will be securely locked in smart-escrow.</div>
                     </div>
 
-                    <button class="btn-gradient" id="btnCreateTask" onclick="createSponsorTask()" style="background:linear-gradient(45deg, #078930, #0a4f1e); box-shadow:0 5px 20px rgba(7, 137, 48, 0.4); font-size:1.1rem; padding:15px;"><i class="fa-solid fa-rocket"></i> Launch Task Campaign</button>
+                    <button class="btn-gradient" id="btnCreateTask" onclick="createCampaign()" style="background:linear-gradient(45deg, #078930, #0a4f1e); box-shadow:0 5px 20px rgba(7, 137, 48, 0.4); font-size:1.1rem; padding:15px;"><i class="fa-solid fa-rocket"></i> Launch Task Campaign</button>
                 </div>
             </div>
         </div>
@@ -597,12 +593,7 @@
         </div>
 
 
-                <div style="margin:20px 0; padding:15px; background:rgba(0,0,0,0.3); border-radius:10px; text-align:center;">
-                    <span style="color:#94A3B8;">Total Escrow Required:</span><br>
-                    <strong style="font-size:1.5rem; color:var(--eth-gold);"><i class="fa-solid fa-gem"></i> <span id="taskTotalCost">0</span></strong>
-                </div>
-
-                <button class="btn-gradient" id="btnCreateTask" onclick="createSponsorTask()" style="background:var(--eth-green, #078930);"><i class="fa-solid fa-rocket"></i> Launch Task</button>
+                
             </div>
         </div>
 
@@ -840,6 +831,39 @@
             }
         }
 
+        
+        async function fetchCampaigns() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/campaigns/${userId}`);
+                if (!res.ok) throw new Error('Failed to fetch campaigns');
+                const campaigns = await res.json();
+                const list = document.getElementById('campaignList');
+                if (Object.keys(campaigns).length === 0) {
+                    list.innerHTML = '<div style="text-align:center; color:#94A3B8; padding:20px;">No active campaigns found.</div>';
+                    return;
+                }
+                
+                let html = '';
+                for (const [id, c] of Object.entries(campaigns)) {
+                    html += `
+                        <div style="background:rgba(0,0,0,0.3); border-radius:10px; padding:15px; margin-bottom:10px; border:1px solid rgba(255,255,255,0.05);">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                                <strong style="color:white;">${c.name || c.title || 'Unnamed Campaign'}</strong>
+                                <span style="font-size:0.8rem; background:var(--eth-green); padding:2px 8px; border-radius:10px; color:white;">${c.paused ? 'Paused' : 'Active'}</span>
+                            </div>
+                            <div style="font-size:0.8rem; color:#94A3B8; display:flex; justify-content:space-between;">
+                                <span><i class="fa-solid fa-users"></i> ${c.claims || 0} / ${c.maxUsers || 0}</span>
+                                <span><i class="fa-solid fa-gem" style="color:var(--eth-gold);"></i> ${c.reward || 0} / user</span>
+                            </div>
+                        </div>
+                    `;
+                }
+                list.innerHTML = html;
+            } catch (e) {
+                document.getElementById('campaignList').innerHTML = '<div style="text-align:center; color:#ff4444; padding:20px;">Error loading campaigns.</div>';
+            }
+        }
+
         function toggleCategoryOptions() {
             const cat = document.getElementById('taskCategory').value;
             const linkInput = document.getElementById('taskLink');
@@ -851,13 +875,13 @@
         }
 
         function calcEscrow() {
-            const limit = parseInt(document.getElementById('taskLimit').value) || 0;
+            const limit = parseInt(document.getElementById('taskMaxUsers').value) || 0;
             const reward = parseInt(document.getElementById('taskReward').value) || 0;
-            document.getElementById('calcTotal').innerText = (limit * reward).toLocaleString();
+            document.getElementById('taskTotalCost').innerText = (limit * reward).toLocaleString();
         }
 
         async function createCampaign() {
-            const limit = parseInt(document.getElementById('taskLimit').value) || 0;
+            const limit = parseInt(document.getElementById('taskMaxUsers').value) || 0;
             const reward = parseInt(document.getElementById('taskReward').value) || 0;
             const total = limit * reward;
             

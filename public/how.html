@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#0b0f19">
+<title>How it works — MYFA BIRR</title>
+<link rel="stylesheet" href="index.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{--how-bg:#080b14;--how-card:rgba(255,255,255,.055);--how-border:rgba(255,255,255,.1);--how-text:#f7f8fb;--how-muted:#9aa6b7;--how-cyan:#00f2fe;--how-pink:#ff007a;--how-gold:#f5d76e}
+html,body{margin:0;background:var(--how-bg);color:var(--how-text);font-family:"Plus Jakarta Sans",system-ui,sans-serif;min-height:100%;-webkit-tap-highlight-color:transparent}
+body{padding-bottom:calc(30px + env(safe-area-inset-bottom))}.how-shell{width:min(760px,100%);margin:auto;padding:18px 16px 36px}.how-top{display:flex;align-items:center;gap:12px;margin-bottom:18px}.how-back,.lang-btn{border:1px solid var(--how-border);background:var(--how-card);color:var(--how-text);border-radius:14px;padding:11px 14px;font-weight:800;cursor:pointer}.how-title{flex:1;text-align:center;font-size:1.2rem;font-weight:900}.lang{display:flex;gap:7px}.lang-btn.active{border-color:var(--how-cyan);box-shadow:0 0 16px rgba(0,242,254,.14)}
+.hero{padding:24px 18px;border:1px solid var(--how-border);background:radial-gradient(circle at 15% 0,rgba(0,242,254,.12),transparent 45%),radial-gradient(circle at 90% 10%,rgba(255,0,122,.12),transparent 42%),var(--how-card);border-radius:24px;margin-bottom:14px}.hero h1{margin:0 0 8px;font-size:1.65rem}.hero p{margin:0;color:var(--how-muted);line-height:1.6}.section{margin:12px 0;border:1px solid var(--how-border);background:var(--how-card);border-radius:20px;overflow:hidden;animation:rise .35s ease both}.section button{width:100%;display:flex;align-items:center;gap:13px;border:0;background:transparent;color:inherit;padding:17px;text-align:left;font:inherit;cursor:pointer}.ico{width:40px;height:40px;display:grid;place-items:center;border-radius:13px;background:rgba(0,242,254,.1);color:var(--how-cyan);flex:none}.section:nth-of-type(3n) .ico{background:rgba(255,0,122,.1);color:var(--how-pink)}.section:nth-of-type(4n) .ico{background:rgba(245,215,110,.1);color:var(--how-gold)}.section h2{font-size:1rem;margin:0;flex:1}.chev{transition:transform .2s}.section.open .chev{transform:rotate(180deg)}.body{display:none;padding:0 17px 18px 70px;color:var(--how-muted);line-height:1.7}.section.open .body{display:block;animation:fade .2s ease}.body ol,.body ul{margin:8px 0;padding-left:20px}.body li{margin:7px 0}.tip{margin-top:12px;padding:11px 12px;border-radius:12px;background:rgba(0,242,254,.06);border:1px solid rgba(0,242,254,.12);font-size:.88rem}.hidden{display:none!important}@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}@keyframes fade{from{opacity:0}to{opacity:1}}
+@media(prefers-color-scheme:light){body:not(.force-dark){--how-bg:#f6f8fb;--how-card:rgba(255,255,255,.92);--how-border:rgba(15,23,42,.1);--how-text:#101828;--how-muted:#667085}}
+</style>
+</head>
+<body>
+<main class="how-shell">
+<div class="how-top"><button class="how-back" id="backBtn" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><div class="how-title">MYFA BIRR</div><div class="lang"><button class="lang-btn active" data-lang="en">EN</button><button class="lang-btn" data-lang="am">አማ</button></div></div>
+<section class="hero"><h1 data-en="How it works" data-am="እንዴት እንደሚሰራ">How it works</h1><p data-en="A quick guide to the real earning, gaming, advertising, referral and account features available in MYFA BIRR." data-am="በMYFA BIRR ውስጥ ያሉ የገቢ፣ የጨዋታ፣ የማስታወቂያ፣ የግብዣ እና የመለያ ባህሪያትን በአጭር ይረዱ።">A quick guide to the real earning, gaming, advertising, referral and account features available in MYFA BIRR.</p></section>
+<div id="sections"></div>
+</main>
+<script>
+const sections=[
+['gem','Earn','ገቢ ማግኘት','Use the earning methods that are actually available in the app: watch eligible ads, complete available tasks, use eligible referrals, and play the available games. Rewards are credited by the MYFA backend after the required action is verified.','በመተግበሪያው ውስጥ የሚገኙ የገቢ መንገዶችን ይጠቀሙ፦ ተገቢ ማስታወቂያዎችን ይመልከቱ፣ ተገቢ ተግባራትን ይጨርሱ፣ ሪፈራል ይጠቀሙ እና የሚገኙ ጨዋታዎችን ይጫወቱ። ሽልማት የሚጨመረው ከአገልጋዩ ማረጋገጫ በኋላ ነው።'],
+['play-circle','Watch Ads','ማስታወቂያ መመልከት','Open Ads Watch, choose an available ad, start it, complete the required viewing time and wait for verification. Daily limits and rewards are controlled by the current app configuration.','Ads Watch ይክፈቱ፣ የሚገኝ ማስታወቂያ ይምረጡ፣ ይጀምሩ፣ የሚያስፈልገውን የመመልከቻ ጊዜ ይጨርሱ እና ማረጋገጫውን ይጠብቁ። የቀን ገደቦችና ሽልማቶች በአሁኑ የመተግበሪያ ቅንብር ይወሰናሉ።'],
+['list-check','Tasks','ተግባራት','Open Tasks, read the requirement, complete the requested action, then submit or verify it using the available control. Some tasks may require review before the reward is credited.','Tasks ይክፈቱ፣ መስፈርቱን ያንብቡ፣ የተጠየቀውን ያጠናቅቁ እና በሚገኘው መንገድ ያስገቡ/ያረጋግጡ። አንዳንድ ተግባራት ሽልማት ከመሰጠቱ በፊት ግምገማ ሊፈልጉ ይችላሉ።'],
+['rectangle-ad','Create Ads','ማስታወቂያ መፍጠር','Open Ad Studio from Settings, choose Advertisement or the available ad/task format, enter the real campaign fields, add supported media and destination information, review the preview, then submit. Campaign delivery follows the backend status and budget rules.','ከSettings ውስጥ Ad Studio ይክፈቱ። Advertisement ወይም የሚገኘውን የad/task ቅርጽ ይምረጡ፣ የካምፔይን መረጃዎችን ያስገቡ፣ የሚደገፍ ሚዲያና የመድረሻ መረጃ ያክሉ፣ preview ይመልከቱ እና ያስገቡ። ማስታወቂያው የሚሰራው በbackend ሁኔታና በበጀት ህጎች መሰረት ነው።'],
+['money-bill-transfer','Withdraw','ማውጣት','Open Withdraw, check the currently available minimum and payment method, enter the required details and submit. Follow the request status shown by the app for pending, approved or rejected requests.','Withdraw ይክፈቱ፣ የሚገኘውን ዝቅተኛ መጠንና የክፍያ መንገድ ያረጋግጡ፣ የሚፈለገውን መረጃ ያስገቡ እና ያስገቡ። የጥያቄውን pending፣ approved ወይም rejected ሁኔታ በመተግበሪያው ይከታተሉ።'],
+['user-group','Referrals','ሪፈራል','Open the referral area and use the referral link provided by MYFA. Share it with a friend. The referral is counted only when the friend enters through the supported Telegram start flow and satisfies the app’s eligibility rules.','የReferral ክፍልን ይክፈቱ እና MYFA የሚሰጠውን የሪፈራል ሊንክ ይጠቀሙ። ለጓደኛ ያጋሩ። ጓደኛው በተፈቀደው Telegram start መንገድ ገብቶ የመተግበሪያውን የብቁነት መስፈርት ሲያሟላ ብቻ ሪፈራሉ ይቆጠራል።'],
+['gamepad','Games','ጨዋታዎች','Use the Games/Hub area to open the games currently available in your build. Multi Ox and Daily Combo use their own rules and limits. MYFA Drop lets you catch flowers, avoid bombs and use snowflakes to slow the action; a daily chance is consumed when the server authorizes a play.','በGames/Hub ውስጥ በአሁኑ ስሪት የሚገኙትን ጨዋታዎች ይክፈቱ። Multi Ox እና Daily Combo የራሳቸው ህግና ገደብ አላቸው። MYFA Drop አበቦችን ይያዙ፣ ቦምቦችን ያስወግዱ እና snowflake በመያዝ ጨዋታውን ያዘግዩ፤ ዕለታዊ እድል የሚቀነሰው server ጨዋታውን ካፀደቀ በኋላ ነው።'],
+['chart-line','Account & Statistics','መለያ እና ስታቲስቲክስ','Your home/profile areas show the account information and statistics returned by the backend. A real zero is different from a loading or unavailable state. Check the account after rewards, referrals, games or withdrawals to confirm the latest server state.','የHome/Profile ክፍሎች ከbackend የሚመጣውን የመለያ መረጃና ስታቲስቲክስ ያሳያሉ። እውነተኛ ዜሮ ከloading ወይም unavailable ሁኔታ የተለየ ነው። ከሽልማት፣ ሪፈራል፣ ጨዋታ ወይም ማውጣት በኋላ የመለያውን የserver ሁኔታ ይመልከቱ።']
+];
+const root=document.getElementById('sections');
+function render(lang){root.innerHTML=sections.map((s,i)=>{const title=lang==='am'?s[2]:s[1],body=lang==='am'?s[4]:s[3];return `<section class="section" style="animation-delay:${i*35}ms"><button aria-expanded="false"><span class="ico"><i class="fa-solid fa-${s[0]}"></i></span><h2>${title}</h2><i class="fa-solid fa-chevron-down chev"></i></button><div class="body">${body}<div class="tip">${lang==='am'?'ማስታወሻ፦ በመተግበሪያው የሚታየው የአሁኑ ሁኔታ እና የserver ማረጋገጫ ዋና መመሪያ ናቸው።':'Tip: The current app state and server verification are the source of truth.'}</div></div></section>`}).join('');root.querySelectorAll('.section button').forEach(b=>b.onclick=()=>{const s=b.parentElement;s.classList.toggle('open');b.setAttribute('aria-expanded',s.classList.contains('open'))})}
+let lang=localStorage.getItem('myfa_lang')||'en';
+function applyLang(){document.querySelectorAll('[data-en]').forEach(e=>e.textContent=e.dataset[lang]);document.querySelectorAll('.lang-btn').forEach(b=>b.classList.toggle('active',b.dataset.lang===lang));render(lang);document.documentElement.lang=lang==='am'?'am':'en'}
+document.querySelectorAll('.lang-btn').forEach(b=>b.onclick=()=>{lang=b.dataset.lang;localStorage.setItem('myfa_lang',lang);applyLang()});
+document.getElementById('backBtn').onclick=()=>{const uid=new URLSearchParams(location.search).get('userId')||window.Telegram?.WebApp?.initDataUnsafe?.user?.id;location.href='/index.html'+(uid?'?userId='+encodeURIComponent(uid):'')};
+try{window.Telegram?.WebApp?.ready();window.Telegram?.WebApp?.expand()}catch(e){} applyLang();
+</script>
+</body>
+</html>

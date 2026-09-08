@@ -628,10 +628,19 @@ app.post('/api/sponsor/verify-manual', async (req, res) => {
 app.post('/api/verify-membership', async (req, res) => {
     const { userId, taskId, channelId, reward } = req.body;
     const u = await dbGet(`users/${userId}`);
-    const t = await dbGet(`bonusTasks/${taskId}`);
+    let isSponsor = false;
+    let t = await dbGet(`bonusTasks/${taskId}`);
+
+    if (!t) {
+        t = await dbGet(`campaigns/${taskId}`);
+        isSponsor = true;
+    }
+
     const c = await dbGet('config') || {};
     if(!u || !t) return res.status(404).json({error:"Not found"});
-    if((u.claimedBonuses||[]).includes(taskId)) return res.json({success:true, alreadyClaimed:true});
+
+    if(!isSponsor && (u.claimedBonuses||[]).includes(taskId)) return res.json({success:true, alreadyClaimed:true});
+    if(isSponsor && (u.claimedSponsorTasks||[]).includes(taskId)) return res.json({success:true, alreadyClaimed:true});
     
     try {
         const member = await fetchMultiAPI(channelId, userId, BOT_TOKEN);
@@ -640,52 +649,64 @@ app.post('/api/verify-membership', async (req, res) => {
         }
         if (member.success) {
             
-            // CHECK TASK LIMITS (TASK 3)
-            if (t.maxUsers && t.maxUsers > 0) {
-                if ((t.claims || 0) >= t.maxUsers) {
-                    return res.json({ success: false, error: "Task is full!" });
-                }
+            // CHECK TASK LIMITS
+            let rewardVal = (t.reward || reward || 0) * (c.globalMultiplier || 1);
+            let rType = t.rewardType || 'gems';
+
+            if (!isSponsor && t.maxUsers && t.maxUsers > 0) {
+                if ((t.claims || 0) >= t.maxUsers) return res.json({ success: false, error: "Task is full!" });
                 await dbUpdate(`bonusTasks/${taskId}`, { claims: (t.claims || 0) + 1 });
             }
             
-            const newBonuses = [...(u.claimedBonuses||[]), taskId];
-            const rewardVal = (t.reward || reward || 0) * (c.globalMultiplier || 1);
-            const rType = t.rewardType || 'gems';
+            if (isSponsor) {
+                const max = t.maxUsers || (t.task ? t.task.maxUsers : 0) || 0;
+                const claims = t.claims || (t.analytics ? t.analytics.conversions : 0) || 0;
+                const taskReward = t.reward || (t.task ? t.task.reward : reward);
+                rewardVal = taskReward * (c.globalMultiplier || 1);
+
+                if (max > 0 && claims >= max) return res.json({ success: false, error: "Task is full!" });
+
+                // Update sponsor claims/analytics
+                await dbUpdate(`campaigns/${taskId}`, {
+                    claims: claims + 1,
+                    analytics: {
+                        ...(t.analytics || {}),
+                        conversions: claims + 1
+                    }
+                });
+            }
+
+            const updates = {};
+            if(isSponsor) {
+                updates.claimedSponsorTasks = [...(u.claimedSponsorTasks||[]), taskId];
+            } else {
+                updates.claimedBonuses = [...(u.claimedBonuses||[]), taskId];
+            }
             
-            const updates = { claimedBonuses: newBonuses };
-            let logMsg = `Completed task ${t.name}`;
+            let logMsg = `Completed task ${t.name || t.title || 'Sponsor Task'}`;
             
             if (rType === 'money') {
-                updates.realBalance = (u.realBalance || 0) + (t.reward || reward || 0); // No multiplier for money
-                logMsg += ` (+$${t.reward})`;
-            } else if (rType === 'spin') {
-                updates.freeSpins = (u.freeSpins || 0) + rewardVal;
-                logMsg += ` (+${rewardVal} Spins)`;
-            } else if (rType === 'scratch') {
-                updates.freeScratches = (u.freeScratches || 0) + rewardVal;
-                logMsg += ` (+${rewardVal} Scratches)`;
-            } else if (rType === 'drop') {
-                updates.freeDrops = (u.freeDrops || 0) + rewardVal;
-                logMsg += ` (+${rewardVal} Drops)`;
+                updates.realBalance = (u.realBalance || 0) + rewardVal;
+                logMsg += ` (+${rewardVal} Birr)`;
             } else {
                 updates.points = (u.points || 0) + rewardVal;
-                logMsg += ` (+${rewardVal} Gems)`;
+                updates.dropGameChances = (u.dropGameChances || 0) + 1;
+                logMsg += ` (+${rewardVal} Gems & 1 Drop Chance)`;
             }
-            updates.logs = logAction(u, logMsg);
 
+            updates.logs = logAction(u, logMsg);
             await dbUpdate(`users/${userId}`, updates);
-            return res.json({ success: true, rewardType: rType, rewardAmount: (rType==='money' ? t.reward : rewardVal) });
+
+            return res.json({ success: true });
         } else {
             return res.json({ success: false, error: "Not Joined" });
         }
-    } catch (e) {
-        console.error("Verification Error:", e.message);
-        return res.json({ success: false, error: "Not Joined" });
+    } catch(e) {
+        return res.json({ success: false, error: e.message });
     }
 });
 
 
-// ==================== DROP GAME API ====================
 app.post('/api/dropgame/start', async (req, res) => {
     try {
         const { userId } = req.body;
@@ -880,7 +901,6 @@ app.post('/api/ensure-user', async (req, res) => {
 });
 
 app.get('/api/config', async (req, res) => res.json((await dbGet('config')) || {}));
-app.get('/api/tasks', async (req, res) => res.json((await dbGet('bonusTasks')) || {}));
 
 // TASK 5: Real Avatar Fetcher
 app.get('/api/avatar/:userId', async (req, res) => {

@@ -218,25 +218,9 @@
     window.triggerMonetagAd = rewarded;
   };
 
-  const configureMonetagInApp = () => {
-    if (monetagInAppConfigured || typeof window.show_11759807 !== 'function') return;
-    monetagInAppConfigured = true;
-    try {
-      window.show_11759807({
-        type: 'inApp',
-        inAppSettings: {
-          frequency: 2,
-          capping: 0.1,
-          interval: 30,
-          timeout: 5,
-          everyPage: false
-        }
-      });
-    } catch (e) {
-      monetagInAppConfigured = false;
-      console.warn('Monetag in-app interstitial setup failed', e);
-    }
-  };
+  // Deliberately NO Monetag initialization here.
+  // Ads are loaded only after an explicit user action (watch/open offer).
+  const configureMonetagInApp = () => {};
 
   const officialTasksActive = () => {
     const tab = document.getElementById('tabOfficial');
@@ -284,24 +268,12 @@
       card.id = 'myfa-monetag-offer-task';
       card.className = 'ad-card';
       card.style.cssText = [
-        'display:flex',
-        'align-items:center',
-        'justify-content:space-between',
-        'width:100%',
-        'max-width:100%',
-        'box-sizing:border-box',
-        'min-width:0',
-        'height:58px',
-        'min-height:58px',
-        'margin:10px 0 14px',
-        'padding:9px 10px',
-        'border-radius:15px',
+        'display:flex','align-items:center','justify-content:space-between','width:100%',
+        'max-width:100%','box-sizing:border-box','min-width:0','height:58px','min-height:58px',
+        'margin:10px 0 14px','padding:9px 10px','border-radius:15px',
         'border:1px solid rgba(0,242,254,.26)',
         'background:linear-gradient(135deg,rgba(0,242,254,.08),rgba(176,38,255,.10))',
-        'box-shadow:0 5px 16px rgba(0,0,0,.14)',
-        'cursor:pointer',
-        'user-select:none',
-        'overflow:hidden'
+        'box-shadow:0 5px 16px rgba(0,0,0,.14)','cursor:pointer','user-select:none','overflow:hidden'
       ].join(';');
       card.innerHTML = `
         <div style="display:flex;align-items:center;gap:9px;min-width:0;flex:1 1 auto;overflow:hidden;">
@@ -346,12 +318,11 @@
     else boot();
   };
 
+  // Remove any legacy auto-ad script tag, but never load a new ad SDK during startup.
   removeOldMonetagTag();
-  ensureMonetagSdk().then(configureMonetagInApp).catch(() => {});
 
   const install = () => {
     installMonetagRewardFunctions();
-    configureMonetagInApp();
     hidePremiumAds();
     startPermanentOfferWatcher();
   };

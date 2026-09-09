@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "dev": "node server.js",
-    "build": "echo 'No build step required'",
+    "build": "node cloudflare-build.cjs",
+    "deploy": "npx wrangler deploy",
     "test": "node --check api/index.js && node --check api/games.js && node --check api/ad-studio-pro.js && node --check public/ad-studio-pro.js"
   },
   "repository": {

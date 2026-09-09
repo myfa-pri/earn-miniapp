@@ -4,29 +4,37 @@
   const $$ = (s, r=document) => [...r.querySelectorAll(s)];
   const tgUser = () => window.Telegram?.WebApp?.initDataUnsafe?.user || null;
   const uid = () => String(tgUser()?.id || new URLSearchParams(location.search).get('userId') || '');
-  const escapeHtml = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+
+  const decodeEncoded = value => String(value ?? '')
+    .replace(/\\u([0-9a-fA-F]{4})/g, (_, h) => String.fromCharCode(parseInt(h, 16)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCharCode(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)));
+
   const cleanDateTime = value => {
-    let s = String(value ?? '');
-    s = s.replace(/&lt;/g,'<').replace(/&gt;/g,'>');
+    let s = decodeEncoded(String(value ?? ''));
+    s = s.replace(/&lt;/gi,'<').replace(/&gt;/gi,'>')
+         .replace(/&quot;/gi,'"').replace(/&#039;/gi,"'");
     const m = s.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})/);
     return m ? m[1] : '';
   };
 
-  // Sanitize malformed datetime values before the browser parses inserted HTML.
+  // Sanitize all datetime-local value attributes before the browser can keep a malformed value.
+  const sanitizeHtml = html => {
+    if (typeof html !== 'string' || !/datetime-local/i.test(html)) return html;
+    return html.replace(/<input\b[^>]*>/gi, tag => {
+      if (!/type\s*=\s*["']datetime-local["']/i.test(tag)) return tag;
+      return tag.replace(/\svalue\s*=\s*(["'])([\s\S]*?)\1/i, (m,q,v) => ` value=${q}${cleanDateTime(v)}${q}`);
+    });
+  };
+
   const desc = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
-  if (desc && desc.set) {
+  if (desc && desc.set && !Element.prototype.__myfaDateSanitizer) {
     Object.defineProperty(Element.prototype, 'innerHTML', {
       configurable: true,
       get: desc.get,
-      set(value) {
-        if (typeof value === 'string' && /datetime-local/i.test(value)) {
-          value = value.replace(/<input\b[^>]*type=["']datetime-local["'][^>]*>/gi, tag => {
-            return tag.replace(/\svalue=(['"])([\s\S]*?)\1/i, (m,q,v) => ` value=${q}${cleanDateTime(v)}${q}`);
-          });
-        }
-        return desc.set.call(this, value);
-      }
+      set(value) { return desc.set.call(this, sanitizeHtml(value)); }
     });
+    Object.defineProperty(Element.prototype, '__myfaDateSanitizer', { value:true });
   }
 
   const closeModal = () => {
@@ -92,13 +100,15 @@
       bindUtility(view);
     }
   };
+
   const bindUtility = view => $$('#aspContent [data-view]').forEach(b => b.onclick = () => {
     const v = b.dataset.view;
     if (v === 'analytics' || v === 'wallet') utility(v);
     else { setActive(v); location.reload(); }
   });
 
-  // Extra actions and robust close handling are delegated so rerenders cannot break them.
+  const escapeHtml = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+
   document.addEventListener('click', e => {
     const close = e.target.closest('[data-close],.asp-modal-close');
     if (close) { e.preventDefault(); e.stopPropagation(); closeModal(); return; }
@@ -114,8 +124,8 @@
   const sanitizeDates = root => {
     (root || document).querySelectorAll('input[type="datetime-local"]').forEach(i => {
       const v = cleanDateTime(i.getAttribute('value') || i.value);
-      if (i.value !== v) i.value = v;
-      if (i.getAttribute('value') !== v) i.setAttribute('value', v);
+      try { i.value = v; } catch {}
+      i.setAttribute('value', v);
     });
   };
   const observer = new MutationObserver(records => {

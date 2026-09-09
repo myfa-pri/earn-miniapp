@@ -12,7 +12,7 @@
   ],
   "rewrites": {
     "beforeFiles": [
-      { "source": "/myfa-admin-live", "destination": "/public/admin-live.html" },
+      { "source": "/myfa-admin-live", "destination": "/public/admin-live-v2.html" },
       { "source": "/api/admin-auth", "destination": "/api/admin-auth.js" },
       { "source": "/api/admin-gateway", "destination": "/api/admin-gateway.js" },
       { "source": "/api/ads", "destination": "/api/ads.js" },

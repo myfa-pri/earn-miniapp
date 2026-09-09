@@ -1,9 +1,15 @@
 {
   "version": 2,
+  "headers": [
+    { "source": "/myfa.html", "headers": [{ "key": "Cache-Control", "value": "no-store, no-cache, max-age=0, must-revalidate" }] },
+    { "source": "/myfa", "headers": [{ "key": "Cache-Control", "value": "no-store, no-cache, max-age=0, must-revalidate" }] }
+  ],
   "redirects": [
     { "source": "/drop.html", "destination": "/api/drop.js", "permanent": false }
   ],
   "rewrites": [
+    { "source": "/api/admin-auth", "destination": "/api/admin-auth.js" },
+    { "source": "/api/admin-gateway", "destination": "/api/admin-gateway.js" },
     { "source": "/api/ads", "destination": "/api/ads.js" },
     { "source": "/api/admin/promos", "destination": "/api/admin-promos.js" },
     { "source": "/api/claim-promo", "destination": "/api/claim-promo.js" },

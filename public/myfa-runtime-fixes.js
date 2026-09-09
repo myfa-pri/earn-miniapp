@@ -22,8 +22,9 @@ const paintStreak = async () => {
     let host=streakContainer(); if(!host)return; let btn=document.getElementById('realDailyStreakClaim'); if(!btn){btn=document.createElement('button');btn.id='realDailyStreakClaim';btn.className='btn quantum-btn';btn.style='width:100%;margin-top:12px;';host.appendChild(btn);btn.addEventListener('click',async()=>{btn.disabled=true;const {r,d}=await api('/api/daily-streak/claim',{method:'POST',body:JSON.stringify({userId:id})});if(d.success){btn.textContent=`Day ${d.streak} claimed • +${d.reward} Gems`; if(typeof currentUser!=='undefined'&&currentUser){currentUser.points=d.newPoints;currentUser.streakCount=d.streak;currentUser.streak=d.streak;} const bal=document.getElementById('pageHeaderBalance');if(bal)bal.textContent=Number(d.newPoints).toLocaleString();applyAvatars();}else{btn.textContent=d.alreadyClaimed?'Already claimed today':(d.error||'Claim failed');}setTimeout(()=>paintStreak(),350);});}
     btn.disabled=d.claimedToday; btn.textContent=d.claimedToday?`Day ${d.streak} claimed today`:`Claim Day ${d.nextDay} • +${d.reward} Gems`;
 };
-const startObserver = () => { const mo=new MutationObserver(()=>{applyAvatars();paintStreak();}); mo.observe(document.body,{childList:true,subtree:true}); };
+const startObserver = () => { const mo=new MutationObserver(()=>applyAvatars()); mo.observe(document.body,{childList:true,subtree:true}); };
 document.addEventListener('DOMContentLoaded',()=>{ setTimeout(sync,100); setTimeout(paintStreak,350); startObserver(); });
 window.addEventListener('load',()=>{setTimeout(applyAvatars,50);setTimeout(paintStreak,300);});
-setInterval(()=>{applyAvatars();paintStreak();},60000);
+setInterval(()=>{applyAvatars();},60000);
+setInterval(()=>{paintStreak();},60000);
 })();

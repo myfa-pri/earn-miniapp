@@ -1,0 +1,316 @@
+name: Upgrade Official Channel
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  upgrade:
+    if: github.event_name == 'workflow_dispatch' || github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Apply official channel and gate upgrade
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          repo = Path('.')
+
+          # Restore the richer legacy admin panel as the canonical /myfa.html page.
+          legacy = (repo / 'public' / 'admin-live.html').read_text(encoding='utf-8')
+
+          channel_section = r'''<section id="channel" class="section">
+          <div class="card">
+            <h2>Official Channel Posts</h2>
+            <p class="muted">Create posts shown in the MYFA BIRR official channel feed.</p>
+            <div class="field"><label>Post</label><textarea id="channelText" placeholder="Write your official channel post..."></textarea></div>
+            <div class="row" style="margin-top:12px"><button class="btn ok" onclick="postChannel()">Publish Post</button><button class="btn gray" onclick="reloadAll()">Refresh Posts</button></div>
+            <div id="postList" style="margin-top:12px"></div>
+          </div>
+
+          <div class="card">
+            <h2>Official Channels</h2>
+            <p class="muted">Add, edit, remove and verify the Telegram channels required by the membership gate.</p>
+            <div class="check" style="margin-bottom:12px"><span><b>Mandatory Membership</b><br><small class="muted">Users must belong to every enabled official channel before the Mini App can be used.</small></span><input id="officialGateEnabled" type="checkbox"></div>
+            <div class="grid2">
+              <div class="field"><label>Channel Name</label><input id="offName" placeholder="MYFA BIRR Official"></div>
+              <div class="field"><label>Channel Link</label><input id="offLink" placeholder="https://t.me/yourchannel"></div>
+              <div class="field"><label>Verification Channel ID</label><input id="offId" placeholder="-1001234567890"></div>
+              <div class="field"><label>Icon</label><input id="offIcon" value="fa-telegram"></div>
+            </div>
+            <div class="row" style="margin-top:12px">
+              <button class="btn ok" id="channelSaveEditBtn" onclick="saveOrUpdateChannel()">Add Channel</button>
+              <button class="btn gray" onclick="cancelChannelEdit()">Cancel Edit</button>
+              <button class="btn" onclick="saveConfig()">Save Channels & Membership</button>
+            </div>
+            <div id="channelList" style="margin-top:12px"></div>
+          </div>
+        </section>'''
+
+          legacy = re.sub(r'<section id="channel" class="section">.*?</section>', channel_section, legacy, count=1, flags=re.S)
+
+          upgrade_js = r'''
+
+          // ===== Official Channel / Post upgrade =====
+          let __editingOfficialChannel = -1;
+
+          function __safeChannelText(v) {
+            return String(v ?? '').replace(/[&<>\"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[ch]));
+          }
+
+          function renderChannels() {
+            const gate = document.getElementById('officialGateEnabled');
+            if (gate) gate.checked = !!DATA.config?.gateEnabled;
+            const list = document.getElementById('channelList');
+            if (!list) return;
+            if (!channels.length) {
+              list.innerHTML = '<div class="muted">No official channels configured.</div>';
+              return;
+            }
+            list.innerHTML = channels.map((c, i) => {
+              const name = __safeChannelText(c.name || 'Official Channel');
+              const link = __safeChannelText(c.link || '');
+              const id = __safeChannelText(c.id || '');
+              const icon = __safeChannelText(c.icon || 'fa-telegram');
+              return `<div class="item"><div class="row" style="align-items:center;justify-content:space-between"><div><b><i class="fa-brands ${icon}"></i> ${name}</b><div class="muted">${link}</div><div class="pill">Verification ID: ${id || 'Missing'}</div></div><div class="actions"><button class="btn gray" onclick="editOfficialChannel(${i})">Edit</button><button class="btn" onclick="testOfficialChannel(${i})">Verify Bot</button><button class="btn danger" onclick="removeOfficialChannel(${i})">Remove</button></div></div></div>`;
+            }).join('');
+          }
+
+          function editOfficialChannel(i) {
+            const c = channels[i];
+            if (!c) return;
+            __editingOfficialChannel = i;
+            document.getElementById('offName').value = c.name || '';
+            document.getElementById('offLink').value = c.link || '';
+            document.getElementById('offId').value = c.id || '';
+            document.getElementById('offIcon').value = c.icon || 'fa-telegram';
+            const b = document.getElementById('channelSaveEditBtn');
+            if (b) b.textContent = 'Update Channel';
+          }
+
+          function cancelChannelEdit() {
+            __editingOfficialChannel = -1;
+            ['offName','offLink','offId'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+            const icon = document.getElementById('offIcon'); if (icon) icon.value = 'fa-telegram';
+            const b = document.getElementById('channelSaveEditBtn'); if (b) b.textContent = 'Add Channel';
+          }
+
+          function saveOrUpdateChannel() {
+            const name = String(document.getElementById('offName')?.value || '').trim();
+            const link = String(document.getElementById('offLink')?.value || '').trim();
+            const id = String(document.getElementById('offId')?.value || '').trim();
+            const icon = String(document.getElementById('offIcon')?.value || 'fa-telegram').trim();
+            if (!name || !link || !id) return alert('Fill channel name, link and verification channel ID.');
+            const record = { name, link, id, icon: icon || 'fa-telegram' };
+            if (__editingOfficialChannel >= 0 && channels[__editingOfficialChannel]) channels[__editingOfficialChannel] = record;
+            else channels.push(record);
+            cancelChannelEdit();
+            renderChannels();
+          }
+
+          function removeOfficialChannel(i) {
+            if (!channels[i]) return;
+            if (!confirm(`Remove ${channels[i].name || 'this channel'}?`)) return;
+            channels.splice(i, 1);
+            __editingOfficialChannel = -1;
+            renderChannels();
+          }
+
+          async function testOfficialChannel(i) {
+            const c = channels[i];
+            if (!c?.id) return alert('Verification channel ID is missing.');
+            try {
+              const result = await api('test-channel', { channelId: c.id });
+              alert(`Telegram verification: ${result.status || 'OK'}`);
+            } catch (e) { alert(e.message); }
+          }
+
+          function renderPosts() {
+            const list = document.getElementById('postList');
+            if (!list) return;
+            const posts = Array.isArray(DATA.channelPosts) ? DATA.channelPosts : Object.values(DATA.channelPosts || {});
+            list.innerHTML = posts.slice().reverse().map(p => {
+              const text = __safeChannelText(p.text || '');
+              const date = new Date(Number(p.date || Date.now())).toLocaleString();
+              return `<div class="item"><div style="white-space:pre-wrap">${text}</div><div class="row" style="margin-top:8px;align-items:center;justify-content:space-between"><small class="muted">${date}</small><button class="btn danger" onclick="deleteOfficialPost('${__safeChannelText(p.id || '')}')">Delete</button></div></div>`;
+            }).join('') || '<div class="muted">No posts yet.</div>';
+          }
+
+          async function deleteOfficialPost(id) {
+            if (!id || !confirm('Delete this official channel post?')) return;
+            try { await api('channel/post', { action: 'delete', id }); await reloadAll(); }
+            catch (e) { alert(e.message); }
+          }
+
+          // Keep the UI checkbox and legacy master switch synchronized.
+          document.addEventListener('DOMContentLoaded', () => {
+            const gate = document.getElementById('officialGateEnabled');
+            if (gate) gate.addEventListener('change', () => {
+              const master = document.getElementById('gateEnabled');
+              if (master) master.checked = gate.checked;
+            });
+          });
+          '''
+
+          # Add the upgrade after the final script block of the restored legacy panel.
+          head, tail = legacy.rsplit('</script>', 1)
+          legacy = head + upgrade_js + '\n</script>' + tail
+
+          (repo / 'public' / 'admin-live.html').write_text(legacy, encoding='utf-8')
+          (repo / 'public' / 'myfa.html').write_text(legacy, encoding='utf-8')
+
+          # Make the admin gateway actually return channel posts to the admin UI.
+          gateway = (repo / 'api' / 'admin-gateway.js').read_text(encoding='utf-8')
+          old = "adminLogs: data.adminLogs || [], stats: data.stats || {}"
+          new = "adminLogs: data.adminLogs || [], stats: data.stats || {}, channelPosts: data.channelPosts || []"
+          if old in gateway:
+            gateway = gateway.replace(old, new, 1)
+          (repo / 'api' / 'admin-gateway.js').write_text(gateway, encoding='utf-8')
+
+          # Normalize officialChannels whenever admin config is saved.
+          gateway = (repo / 'api' / 'admin-gateway.js').read_text(encoding='utf-8')
+          marker = "  if (cfg.monetagZoneId !== undefined) cfg.monetagZoneId = String(cfg.monetagZoneId || '').trim();"
+          inject = marker + "\n  if (cfg.officialChannels !== undefined) {\n    const list = Array.isArray(cfg.officialChannels) ? cfg.officialChannels : [];\n    cfg.officialChannels = list.map(ch => ({ name: String(ch?.name || '').trim(), link: String(ch?.link || '').trim(), id: String(ch?.id || '').trim(), icon: String(ch?.icon || 'fa-telegram').trim() || 'fa-telegram' })).filter(ch => ch.name && ch.link && ch.id);\n  }"
+          if marker in gateway and "if (cfg.officialChannels !== undefined)" not in gateway:
+            gateway = gateway.replace(marker, inject, 1)
+          (repo / 'api' / 'admin-gateway.js').write_text(gateway, encoding='utf-8')
+
+          # Add a real, cache-free Telegram membership status endpoint before /api/user/:id.
+          gate_code = r'''
+
+// REAL OFFICIAL CHANNEL MEMBERSHIP GATE
+async function getOfficialGateStatus(userId) {
+    const config = await dbGet('config') || {};
+    const channels = Array.isArray(config.officialChannels) ? config.officialChannels.filter(ch => ch && ch.id && ch.link) : [];
+    if (!config.gateEnabled || channels.length === 0) {
+        return { required: false, passed: true, channels: [] };
+    }
+    const checks = await Promise.all(channels.map(async ch => {
+        const result = await fetchMultiAPI(ch.id, String(userId), BOT_TOKEN);
+        const status = result?.status || (result?.member?.status) || 'unknown';
+        const isMember = !!result?.success && ['creator','administrator','member','restricted'].includes(status);
+        return { name: ch.name, link: ch.link, id: ch.id, icon: ch.icon || 'fa-telegram', status, isMember, error: result?.error || null };
+    }));
+    return { required: true, passed: checks.every(c => c.isMember), channels: checks };
+}
+
+app.get('/api/gate-status', async (req, res) => {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    try {
+        const userId = String(req.query.userId || '').trim();
+        if (!userId) return res.status(400).json({ required: false, passed: false, error: 'Telegram user ID is required' });
+        const result = await getOfficialGateStatus(userId);
+        return res.json(result);
+    } catch (e) {
+        return res.status(500).json({ required: true, passed: false, error: e.message || 'Membership verification failed' });
+    }
+});
+'''
+          for api_path in ['api/index.js', 'api/index-cloudflare.js']:
+            p = repo / api_path
+            code = p.read_text(encoding='utf-8')
+            if "app.get('/api/gate-status'" not in code:
+              needle = "app.get('/api/user/:id'"
+              if needle in code:
+                code = code.replace(needle, gate_code + "\n" + needle, 1)
+                p.write_text(code, encoding='utf-8')
+
+          # Add continuous/return-to-app background enforcement in the user Mini App.
+          front = (repo / 'public' / 'index.html').read_text(encoding='utf-8')
+          gate_runtime = r'''
+
+<script>
+(() => {
+  'use strict';
+  const userId = () => String(window.Telegram?.WebApp?.initDataUnsafe?.user?.id || new URLSearchParams(location.search).get('userId') || '');
+  let checkBusy = false;
+  let lastPassed = null;
+
+  const gateLink = ch => {
+    const link = String(ch?.link || '').trim();
+    if (link.startsWith('@')) return 'https://t.me/' + link.slice(1);
+    if (/^https?:\/\//i.test(link)) return link;
+    if (link.startsWith('t.me/')) return 'https://' + link;
+    return 'https://t.me/' + link.replace(/^\/+/, '');
+  };
+
+  const showGate = data => {
+    const gate = document.getElementById('gate-overlay');
+    if (!gate) return;
+    const list = document.getElementById('gateChannelList');
+    if (list) list.innerHTML = (data.channels || []).map(ch => {
+      const joined = ch.isMember;
+      return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;margin-bottom:8px;border:1px solid rgba(255,255,255,.1);border-radius:14px;background:rgba(255,255,255,.04)">
+        <div style="display:flex;align-items:center;gap:10px;min-width:0"><i class="fa-brands ${ch.icon || 'fa-telegram'}" style="font-size:1.55rem;color:var(--color-cyan)"></i><div style="text-align:left;min-width:0"><b style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${String(ch.name || 'Official Channel').replace(/[&<>\"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[m]))}</b><small style="color:${joined ? '#6ee7b7' : '#ff9a9a'}">${joined ? 'Member' : 'Join required'}</small></div></div>
+        <button class="btn quantum-btn" onclick="window.open('${gateLink(ch)}','_blank')">${joined ? 'Open' : 'Join Channel'}</button>
+      </div>`;
+    }).join('');
+    gate.style.display = 'flex';
+    gate.style.zIndex = '100000';
+    gate.style.pointerEvents = 'auto';
+    lastPassed = false;
+  };
+
+  const hideGate = () => {
+    const gate = document.getElementById('gate-overlay');
+    if (gate) gate.style.display = 'none';
+    lastPassed = true;
+  };
+
+  window.checkOfficialMembership = async (silent = false) => {
+    const id = userId();
+    if (!id || checkBusy) return;
+    checkBusy = true;
+    try {
+      const r = await fetch(`/api/gate-status?userId=${encodeURIComponent(id)}&t=${Date.now()}`, { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } });
+      const data = await r.json();
+      if (!data.required) { hideGate(); return; }
+      if (!data.passed) showGate(data); else hideGate();
+    } catch (e) {
+      if (!silent) console.warn('Official membership check failed', e);
+    } finally {
+      checkBusy = false;
+    }
+  };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    window.checkOfficialMembership(false);
+    setInterval(() => {
+      if (document.visibilityState === 'visible') window.checkOfficialMembership(true);
+    }, 30000);
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) window.checkOfficialMembership(true);
+  });
+  window.addEventListener('focus', () => window.checkOfficialMembership(true));
+})();
+</script>
+'''
+          if 'window.checkOfficialMembership' not in front:
+            front = front.replace('</body>', gate_runtime + '\n</body>', 1)
+            (repo / 'public' / 'index.html').write_text(front, encoding='utf-8')
+
+          # Self-contained post-upgrade marker.
+          (repo / 'OFFICIAL_CHANNEL_UPGRADE.md').write_text(
+              '# Official Channel Upgrade\n\nRestored the legacy admin panel at /myfa.html, added real Official Channel Posts management, editable Official Channels with verification IDs, and live Telegram membership-gate checks.\n',
+              encoding='utf-8'
+          )
+
+      - name: Commit changes and remove one-time workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/myfa.html public/admin-live.html public/index.html api/index.js api/index-cloudflare.js api/admin-gateway.js OFFICIAL_CHANNEL_UPGRADE.md .github/workflows/upgrade-official-channel.yml
+          git rm -f .github/workflows/upgrade-official-channel.yml
+          git commit -m "Restore admin panel and add real official channel gate"
+          git push

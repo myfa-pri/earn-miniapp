@@ -1,0 +1,68 @@
+/* MYFA BIRR Campaign Manager — colorful responsive polish */
+:root{
+  --cm-bg:#050817;--cm-panel:#0b1124;--cm-panel2:#101831;--cm-line:rgba(255,255,255,.11);
+  --cm-text:#f7fbff;--cm-muted:#8fa3bd;--cm-cyan:#26e7ff;--cm-blue:#638cff;
+  --cm-purple:#a879ff;--cm-pink:#ff55bb;--cm-green:#54e2ad;--cm-gold:#ffd76a;--cm-red:#ff708f;
+}
+html,body{background:radial-gradient(800px 500px at 75% -10%,rgba(38,231,255,.13),transparent 65%),radial-gradient(700px 520px at 5% 105%,rgba(168,121,255,.13),transparent 65%),var(--cm-bg)!important}
+body{overflow-x:hidden}
+.asp-app{background:linear-gradient(180deg,rgba(255,255,255,.015),transparent)}
+.asp-topbar{background:linear-gradient(90deg,rgba(8,14,31,.94),rgba(13,18,44,.92),rgba(8,14,31,.94))!important;border-bottom-color:rgba(99,140,255,.20)!important;box-shadow:0 12px 40px rgba(0,0,0,.22)}
+.asp-brand-mark{background:linear-gradient(135deg,rgba(38,231,255,.22),rgba(168,121,255,.23),rgba(255,85,187,.18))!important;border-color:rgba(255,255,255,.16)!important;box-shadow:0 0 30px rgba(168,121,255,.15)!important}
+.asp-brand-mark svg{stroke:var(--cm-cyan)!important}
+.asp-wallet{background:linear-gradient(135deg,rgba(38,231,255,.08),rgba(168,121,255,.08))!important;border-color:rgba(255,255,255,.13)!important}
+.asp-wallet svg{stroke:var(--cm-gold)!important}
+.asp-sidebar{background:linear-gradient(180deg,rgba(7,12,28,.90),rgba(10,14,35,.66))!important;border-right-color:rgba(99,140,255,.16)!important}
+.asp-nav button{min-height:50px!important;border-color:transparent!important}
+.asp-nav button svg{stroke:var(--cm-muted)!important}
+.asp-nav button.active{background:linear-gradient(90deg,rgba(38,231,255,.13),rgba(99,140,255,.09),rgba(168,121,255,.06))!important;border-color:rgba(38,231,255,.18)!important;box-shadow:inset 3px 0 0 var(--cm-cyan),0 8px 25px rgba(38,231,255,.06)!important}
+.asp-nav button.active svg{stroke:var(--cm-cyan)!important}
+.asp-security-card{background:linear-gradient(145deg,rgba(38,231,255,.07),rgba(168,121,255,.07))!important;border-color:rgba(168,121,255,.18)!important}
+.asp-security-icon{background:linear-gradient(135deg,rgba(84,226,173,.16),rgba(38,231,255,.09))!important}.asp-security-icon svg{stroke:var(--cm-green)!important}
+.asp-hero,.asp-card,.asp-stat,.asp-section{background:linear-gradient(145deg,rgba(19,28,55,.95),rgba(7,13,28,.95))!important;border-color:rgba(255,255,255,.10)!important;box-shadow:0 20px 70px rgba(0,0,0,.24)!important}
+.asp-hero{isolation:isolate;min-height:320px!important;background:radial-gradient(420px 250px at 85% 15%,rgba(38,231,255,.11),transparent 70%),radial-gradient(390px 260px at 10% 90%,rgba(255,85,187,.08),transparent 70%),linear-gradient(145deg,rgba(18,28,59,.97),rgba(7,13,28,.97))!important}
+.asp-hero::after{content:"";position:absolute;inset:auto -90px -120px auto;width:340px;height:340px;border-radius:50%;border:1px solid rgba(168,121,255,.20);box-shadow:0 0 120px rgba(168,121,255,.12);pointer-events:none}
+.asp-eyebrow,.asp-title>span{color:var(--cm-cyan)!important}
+.asp-hero h1 em,.asp-title h1 em{background:linear-gradient(90deg,var(--cm-cyan),var(--cm-blue),var(--cm-purple),var(--cm-pink));-webkit-background-clip:text;background-clip:text;color:transparent!important}
+.asp-primary{background:linear-gradient(135deg,var(--cm-cyan),var(--cm-blue),var(--cm-purple))!important;color:#03101a!important;box-shadow:0 12px 36px rgba(99,140,255,.26)!important;border:0!important}
+.asp-secondary{background:linear-gradient(135deg,rgba(99,140,255,.11),rgba(168,121,255,.10))!important;border-color:rgba(168,121,255,.20)!important}
+.asp-danger{background:linear-gradient(135deg,rgba(255,112,143,.12),rgba(255,85,187,.08))!important;border-color:rgba(255,112,143,.22)!important}
+.asp-stats{gap:12px!important}.asp-stat{position:relative;overflow:hidden;min-height:130px!important}.asp-stat:nth-child(1){background:linear-gradient(145deg,rgba(38,231,255,.11),rgba(7,13,28,.96))!important}.asp-stat:nth-child(2){background:linear-gradient(145deg,rgba(99,140,255,.11),rgba(7,13,28,.96))!important}.asp-stat:nth-child(3){background:linear-gradient(145deg,rgba(168,121,255,.11),rgba(7,13,28,.96))!important}.asp-stat:nth-child(4){background:linear-gradient(145deg,rgba(255,85,187,.10),rgba(7,13,28,.96))!important}.asp-stat strong{font-size:31px!important}
+.asp-launch{gap:12px!important}.asp-launch button{position:relative;min-height:158px!important;padding:22px!important;overflow:hidden;background:linear-gradient(145deg,rgba(255,255,255,.045),rgba(255,255,255,.015))!important;border-color:rgba(255,255,255,.10)!important}.asp-launch button:nth-child(1){background:linear-gradient(145deg,rgba(38,231,255,.10),rgba(13,20,44,.80))!important}.asp-launch button:nth-child(2){background:linear-gradient(145deg,rgba(168,121,255,.11),rgba(13,20,44,.80))!important}.asp-launch button:nth-child(3){background:linear-gradient(145deg,rgba(255,85,187,.10),rgba(13,20,44,.80))!important}.asp-launch button>i{display:grid!important;place-items:center;width:48px;height:48px;border-radius:15px;margin-bottom:20px;font-size:21px;color:white}.asp-launch button:nth-child(1)>i{background:linear-gradient(135deg,var(--cm-cyan),var(--cm-blue));box-shadow:0 10px 25px rgba(38,231,255,.18)}.asp-launch button:nth-child(2)>i{background:linear-gradient(135deg,var(--cm-purple),var(--cm-pink));box-shadow:0 10px 25px rgba(168,121,255,.18)}.asp-launch button:nth-child(3)>i{background:linear-gradient(135deg,var(--cm-pink),#ff8c6b);box-shadow:0 10px 25px rgba(255,85,187,.18)}.asp-launch b{font-size:14px!important}.asp-launch small{font-size:10px!important}
+.asp-section{padding:24px!important}
+.asp-campaign{grid-template-columns:210px minmax(0,1fr)!important;border:1px solid rgba(255,255,255,.10)!important}.asp-media{background:linear-gradient(135deg,#091426,#17163a)!important}.asp-body{padding:21px!important}.asp-tag{color:var(--cm-cyan)!important;background:rgba(38,231,255,.07)!important;border-color:rgba(38,231,255,.22)!important}
+.asp-metrics i{color:var(--cm-cyan)!important}.asp-progress span{background:linear-gradient(90deg,var(--cm-cyan),var(--cm-blue),var(--cm-purple),var(--cm-pink))!important}
+/* Create page */
+#aspContent .asp-choice{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:20px}
+#aspContent .asp-choice button{min-height:104px!important;padding:16px!important;border-radius:16px!important;border:1px solid rgba(255,255,255,.10)!important;background:linear-gradient(145deg,rgba(255,255,255,.04),rgba(255,255,255,.015))!important;text-align:left!important;cursor:pointer}
+#aspContent .asp-choice button i{display:block!important;width:40px;height:40px;display:grid!important;place-items:center;border-radius:13px;margin-bottom:11px;font-size:18px;color:#fff;background:linear-gradient(135deg,var(--cm-blue),var(--cm-purple))}
+#aspContent .asp-choice button:nth-child(1) i{background:linear-gradient(135deg,var(--cm-cyan),var(--cm-blue))}
+#aspContent .asp-choice button:nth-child(2) i{background:linear-gradient(135deg,var(--cm-purple),var(--cm-pink))}
+#aspContent .asp-choice button:nth-child(3) i{background:linear-gradient(135deg,var(--cm-pink),#ff8c6b)}
+#aspContent .asp-choice button.active{border-color:rgba(38,231,255,.42)!important;box-shadow:0 0 0 1px rgba(38,231,255,.12),0 16px 35px rgba(38,231,255,.09)!important;background:linear-gradient(145deg,rgba(38,231,255,.12),rgba(99,140,255,.06))!important}
+#aspContent #createForm,#aspContent .asp-card{overflow:visible}
+#createForm{padding:4px 4px 104px!important}
+#createForm .asp-form-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px!important;margin-bottom:4px}
+#createForm .asp-field{display:grid!important;gap:8px!important;color:#b9c9dc!important;font-size:10px!important;font-weight:800!important;letter-spacing:.02em}
+#createForm .asp-field input,#createForm .asp-field select,#createForm .asp-field textarea{width:100%!important;min-width:0!important;color:var(--cm-text)!important;background:linear-gradient(145deg,rgba(2,7,18,.76),rgba(16,24,49,.72))!important;border:1px solid rgba(255,255,255,.10)!important;border-radius:13px!important;padding:13px 14px!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.03),0 8px 24px rgba(0,0,0,.12)!important}
+#createForm .asp-field textarea{min-height:110px!important;resize:vertical!important}
+#createForm .asp-field input:focus,#createForm .asp-field select:focus,#createForm .asp-field textarea:focus{border-color:rgba(38,231,255,.42)!important;box-shadow:0 0 0 3px rgba(38,231,255,.08),0 12px 28px rgba(0,0,0,.16)!important}
+#createForm>div:last-of-type{padding-bottom:8px}
+#createForm> .asp-primary{position:sticky!important;bottom:14px!important;width:100%!important;min-height:58px!important;font-size:12px!important;z-index:9!important;border-radius:16px!important;box-shadow:0 16px 44px rgba(0,0,0,.32),0 0 0 1px rgba(255,255,255,.09)!important}
+/* Manage modal */
+#aspModal{align-items:flex-end!important;background:rgba(2,5,16,.82)!important;backdrop-filter:blur(14px)!important;padding:18px!important}
+#aspModal.open{display:flex!important}
+#aspModal>div{width:min(980px,100%)!important;max-height:min(88vh,900px)!important;overflow:auto!important;background:linear-gradient(180deg,#111a38 0%,#080e20 100%)!important;border:1px solid rgba(255,255,255,.12)!important;border-radius:28px!important;box-shadow:0 35px 100px rgba(0,0,0,.55)!important;padding:26px!important;position:relative}
+.asp-modal-close{position:sticky!important;top:0!important;float:right!important;width:42px!important;height:42px!important;border-radius:13px!important;border:1px solid rgba(255,255,255,.12)!important;background:linear-gradient(135deg,rgba(255,112,143,.13),rgba(168,121,255,.12))!important;color:#fff!important;display:grid!important;place-items:center!important;z-index:30!important;cursor:pointer!important;box-shadow:0 8px 20px rgba(0,0,0,.24)!important}
+#aspModal h2{font-size:32px!important;letter-spacing:-.04em!important;margin:8px 0 4px!important;padding-right:60px!important}
+#aspModal .asp-card{border-radius:17px!important;background:linear-gradient(145deg,rgba(255,255,255,.045),rgba(255,255,255,.015))!important;border-color:rgba(255,255,255,.09)!important}
+#aspModal .asp-card input,#aspModal .asp-card select,#aspModal .asp-card textarea{max-width:100%!important;min-width:0!important;color:#fff!important;background:#070d1d!important;border:1px solid rgba(255,255,255,.10)!important;border-radius:11px!important;padding:11px 12px!important}
+#aspModal .asp-card>div>button,#aspModal button[data-save],#aspModal button[data-action],#aspModal button[data-budget],#aspModal button[data-copy],#aspModal button[data-test],#aspModal button[data-validate],#aspModal button[data-audit],#aspModal button[data-export]{min-height:38px!important;border-radius:10px!important;border:1px solid rgba(255,255,255,.11)!important;background:linear-gradient(135deg,rgba(99,140,255,.16),rgba(168,121,255,.12))!important;color:#fff!important;padding:0 13px!important;font-size:9px!important;font-weight:800!important;cursor:pointer!important}
+#aspModal button.asp-danger{color:#ffb6c6!important}
+#aspModal pre{font-size:9px!important;color:#9eb1c8!important;background:rgba(0,0,0,.25)!important;border-radius:10px!important;padding:10px!important}
+/* utility views */
+.cm-utility-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.cm-utility-card{padding:19px;border-radius:18px;border:1px solid rgba(255,255,255,.09);background:linear-gradient(145deg,rgba(38,231,255,.08),rgba(168,121,255,.05))}.cm-utility-card strong{font-size:26px;display:block}.cm-utility-card span{font-size:9px;color:var(--cm-muted)}
+.cm-bar{height:8px;background:rgba(255,255,255,.06);border-radius:99px;overflow:hidden}.cm-bar i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--cm-cyan),var(--cm-blue),var(--cm-purple),var(--cm-pink))}
+.cm-note{padding:14px 16px;border-radius:15px;border:1px solid rgba(38,231,255,.15);background:rgba(38,231,255,.05);color:#a6b8cc;font-size:10px;line-height:1.55}
+@media(max-width:900px){.asp-layout{grid-template-columns:1fr!important}.asp-sidebar{display:none}.asp-content{padding:18px 14px 82px!important}.asp-topbar{height:68px;padding:0 12px!important}.asp-brand span{display:none}.asp-hero{min-height:0!important;padding:28px!important;display:block!important}.asp-hero>.asp-primary{margin-top:20px;width:100%}.asp-stats{grid-template-columns:repeat(2,1fr)!important}.asp-launch{grid-template-columns:1fr!important}.asp-campaign{grid-template-columns:1fr!important}.asp-media{min-height:190px}.asp-row{flex-wrap:wrap}.asp-metrics{flex-wrap:wrap;gap:9px 14px!important}.asp-title h1{font-size:34px!important}#aspContent .asp-choice{grid-template-columns:1fr!important}.cm-utility-grid{grid-template-columns:1fr 1fr!important}}
+@media(max-width:600px){#createForm .asp-form-grid{grid-template-columns:1fr!important}.asp-top-actions{gap:7px!important}.asp-live{display:none}.asp-wallet{min-width:100px!important}.asp-wallet strong{font-size:12px}.asp-section{padding:16px!important}#aspModal{padding:0!important}#aspModal>div{max-height:92vh!important;border-radius:25px 25px 0 0!important;padding:18px!important}.asp-modal-close{position:absolute!important;top:14px!important;right:14px!important}.cm-utility-grid{grid-template-columns:1fr!important}}

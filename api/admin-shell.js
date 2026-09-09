@@ -1,11 +1,125 @@
 import fs from 'fs';
 import path from 'path';
 
-const ADMIN_SECRET = process.env.ADMIN_SECRET || 'Yichu123';
-
 function buildRuntime() {
-  const safeSecret = JSON.stringify(ADMIN_SECRET);
-  return `\n<script>\n(() => {\n  'use strict';\n  const MYFA_ADMIN_SECRET = ${safeSecret};\n  const SESSION_KEY = 'MYFA_ADMIN_SECRET_SESSION';\n  const originalFetch = window.fetch.bind(window);\n\n  const getSecret = () => {\n    try { return sessionStorage.getItem(SESSION_KEY) || ''; } catch (_) { return ''; }\n  };\n\n  const isAdminApi = pathname => /\\/api\\/admin(?:\\/|$)/.test(pathname);\n\n  const normalizeConfigForBackend = cfg => {\n    const out = { ...(cfg || {}) };\n    if (out.paymentApiUrl !== undefined) out.paymentApiEndpoint = String(out.paymentApiUrl || '');\n    if (out.autoWithdrawDelay !== undefined) out.autoWithdrawDelayMinutes = Number(out.autoWithdrawDelay) || 0;\n    if (out.withdrawChannelId !== undefined) out.withdrawalChannelId = String(out.withdrawChannelId || '');\n    if (out.withdrawChannelUsername !== undefined) out.withdrawalChannelUsername = String(out.withdrawChannelUsername || '');\n    if (out.telegramNotifEnabled !== undefined) out.enableWithdrawalNotification = !!out.telegramNotifEnabled;\n    if (out.notificationChannelId !== undefined) out.withdrawalChannelId = String(out.notificationChannelId || '');\n    if (out.notificationChannelUsername !== undefined) out.withdrawalChannelUsername = String(out.notificationChannelUsername || '');\n    if (out.spinRewardText !== undefined) out.spinRiggedReward = String(out.spinRewardText ?? '');\n    return out;\n  };\n\n  window.fetch = async (input, init = {}) => {\n    let url = typeof input === 'string' ? input : input?.url || '';\n    let parsed;\n    try { parsed = new URL(url, location.origin); } catch (_) { return originalFetch(input, init); }\n    const pathname = parsed.pathname;\n\n    if (isAdminApi(pathname)) {\n      const nextInit = { ...init };\n      const headers = new Headers(nextInit.headers || {});\n      const isPromoRoute = pathname === '/api/admin/promos';\n\n      if (!isPromoRoute) {\n        const secret = getSecret();\n        if (secret) {\n          headers.set('X-MYFA-ADMIN-SECRET', secret);\n          if (typeof nextInit.body === 'string') {\n            try {\n              const body = JSON.parse(nextInit.body);\n              body.secret = secret;\n              if (pathname === '/api/admin/config-update' && body.fullConfig) {\n                body.fullConfig = normalizeConfigForBackend(body.fullConfig);\n              }\n              nextInit.body = JSON.stringify(body);\n            } catch (_) {}\n          }\n        }\n      }\n\n      const response = await originalFetch(input, { ...nextInit, headers });\n\n      if (pathname === '/api/admin/data' && response.ok) {\n        try {\n          const payload = await response.clone().json();\n          if (payload && payload.config) {\n            const c = payload.config;\n            payload.config = {\n              ...c,\n              paymentApiUrl: c.paymentApiUrl ?? c.paymentApiEndpoint ?? '',\n              autoWithdrawDelay: c.autoWithdrawDelay ?? c.autoWithdrawDelayMinutes ?? 5,\n              withdrawChannelId: c.withdrawChannelId ?? c.withdrawalChannelId ?? '',\n              withdrawChannelUsername: c.withdrawChannelUsername ?? c.withdrawalChannelUsername ?? '',\n              telegramNotifEnabled: c.telegramNotifEnabled ?? c.enableWithdrawalNotification ?? false,\n              spinRewardText: c.spinRewardText ?? c.spinRiggedReward ?? '50'\n            };\n            return new Response(JSON.stringify(payload), {\n              status: response.status,\n              statusText: response.statusText,\n              headers: new Headers(response.headers)\n            });\n          }\n        } catch (_) {}\n      }\n      return response;\n    }\n\n    return originalFetch(input, init);\n  };\n\n  const installAdminSession = () => {\n    try { sessionStorage.setItem(SESSION_KEY, MYFA_ADMIN_SECRET); } catch (_) {}\n    try { SECRET = MYFA_ADMIN_SECRET; } catch (_) {}\n  };\n\n  const loadAfterLogin = async () => {\n    installAdminSession();\n    const gate = document.getElementById('loginGate');\n    if (gate) gate.style.display = 'none';\n    try { if (typeof window.fetchAdminData === 'function') await window.fetchAdminData(); } catch (e) { console.error(e); }\n    try { if (typeof window.fetchAdminLogs === 'function') await window.fetchAdminLogs(); } catch (_) {}\n    try { if (typeof window.loadChannelPosts === 'function') await window.loadChannelPosts(); } catch (_) {}\n  };\n\n  window.checkLogin = async function () {\n    const u = String(document.getElementById('lUser')?.value || '').trim();\n    const p = String(document.getElementById('lPass')?.value || '');\n    if (u !== 'admin' || p !== 'admin') {\n      alert('Invalid Credentials');\n      return;\n    }\n    await loadAfterLogin();\n  };\n\n  document.addEventListener('DOMContentLoaded', async () => {\n    const hasSession = (() => { try { return sessionStorage.getItem(SESSION_KEY) === MYFA_ADMIN_SECRET; } catch (_) { return false; } })();\n    if (hasSession) await loadAfterLogin();\n  }, { once: true });\n\n  window.__MYFA_ADMIN_READY__ = true;\n})();\n</script>\n`;
+  return `
+<script>
+(() => {
+  'use strict';
+  const SESSION_KEY = 'MYFA_ADMIN_SESSION';
+  const originalFetch = window.fetch.bind(window);
+
+  const getSession = () => {
+    try { return sessionStorage.getItem(SESSION_KEY) || ''; } catch (_) { return ''; }
+  };
+
+  const isAdminApi = pathname => /^\\/api\\/admin(?:\\/|$)/.test(pathname);
+
+  const normalizeConfig = cfg => {
+    const out = { ...(cfg || {}) };
+    if (out.paymentApiUrl !== undefined) out.paymentApiEndpoint = String(out.paymentApiUrl || '');
+    if (out.autoWithdrawDelay !== undefined) out.autoWithdrawDelayMinutes = Number(out.autoWithdrawDelay) || 0;
+    if (out.withdrawChannelId !== undefined) out.withdrawalChannelId = String(out.withdrawChannelId || '');
+    if (out.withdrawChannelUsername !== undefined) out.withdrawalChannelUsername = String(out.withdrawChannelUsername || '');
+    if (out.telegramNotifEnabled !== undefined) out.enableWithdrawalNotification = !!out.telegramNotifEnabled;
+    if (out.notificationChannelId !== undefined) out.withdrawalChannelId = String(out.notificationChannelId || '');
+    if (out.notificationChannelUsername !== undefined) out.withdrawalChannelUsername = String(out.notificationChannelUsername || '');
+    if (out.spinRewardText !== undefined) out.spinRiggedReward = String(out.spinRewardText ?? '');
+    return out;
+  };
+
+  const routeTarget = pathname => {
+    const map = {
+      '/api/admin/data':'data',
+      '/api/admin/config-update':'config-update',
+      '/api/admin/tasks':'tasks',
+      '/api/admin/promos':'promos',
+      '/api/admin/user-action':'user-action',
+      '/api/admin/withdrawals':'withdrawals',
+      '/api/admin/channel/post':'channel/post',
+      '/api/admin/logs':'logs',
+      '/api/admin/broadcast':'broadcast'
+    };
+    return map[pathname] || null;
+  };
+
+  window.fetch = async (input, init = {}) => {
+    let url = typeof input === 'string' ? input : input?.url || '';
+    let parsed;
+    try { parsed = new URL(url, location.origin); } catch (_) { return originalFetch(input, init); }
+    const pathname = parsed.pathname;
+    if (!isAdminApi(pathname)) return originalFetch(input, init);
+
+    const session = getSession();
+    const target = routeTarget(pathname);
+    if (target && session) {
+      const nextInit = { ...init, headers: new Headers(init.headers || {}) };
+      nextInit.headers.set('X-MYFA-ADMIN-SESSION', session);
+      if (target === 'config-update' && typeof nextInit.body === 'string') {
+        try {
+          const body = JSON.parse(nextInit.body);
+          body.fullConfig = normalizeConfig(body.fullConfig);
+          nextInit.body = JSON.stringify(body);
+        } catch (_) {}
+      }
+      return originalFetch('/api/admin-gateway?target=' + encodeURIComponent(target), nextInit);
+    }
+
+    return originalFetch(input, init);
+  };
+
+  const loginAndLoad = async () => {
+    const username = String(document.getElementById('lUser')?.value || '').trim();
+    const password = String(document.getElementById('lPass')?.value || '');
+    try {
+      const response = await originalFetch('/api/admin-auth', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({ action:'login', username, password })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success || !data.token) {
+        alert(data.error || 'Invalid credentials');
+        return;
+      }
+      try { sessionStorage.setItem(SESSION_KEY, data.token); } catch (_) {}
+      const gate = document.getElementById('loginGate');
+      if (gate) gate.style.display = 'none';
+      if (typeof window.fetchAdminData === 'function') await window.fetchAdminData();
+      if (typeof window.fetchAdminLogs === 'function') await window.fetchAdminLogs();
+      if (typeof window.loadChannelPosts === 'function') await window.loadChannelPosts();
+    } catch (e) {
+      alert('Admin login failed. Please try again.');
+    }
+  };
+
+  window.checkLogin = loginAndLoad;
+
+  const autoLogin = async () => {
+    const session = getSession();
+    if (!session) return;
+    const response = await originalFetch('/api/admin-auth', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ action:'verify', token:session })
+    }).catch(() => null);
+    const data = await response?.json?.().catch?.(() => ({}));
+    if (!response?.ok || !data?.success) {
+      try { sessionStorage.removeItem(SESSION_KEY); } catch (_) {}
+      return;
+    }
+    const gate = document.getElementById('loginGate');
+    if (gate) gate.style.display = 'none';
+    try { if (typeof window.fetchAdminData === 'function') await window.fetchAdminData(); } catch (_) {}
+    try { if (typeof window.fetchAdminLogs === 'function') await window.fetchAdminLogs(); } catch (_) {}
+    try { if (typeof window.loadChannelPosts === 'function') await window.loadChannelPosts(); } catch (_) {}
+  };
+
+  document.addEventListener('DOMContentLoaded', autoLogin, { once:true });
+  window.__MYFA_ADMIN_READY__ = true;
+})();
+</script>
+`;
 }
 
 export default function handler(req, res) {

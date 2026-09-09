@@ -1,5 +1,9 @@
 {
   "version": 2,
+  "headers": [
+    { "source": "/myfa.html", "headers": [{ "key": "Cache-Control", "value": "no-store, no-cache, max-age=0, must-revalidate" }] },
+    { "source": "/myfa", "headers": [{ "key": "Cache-Control", "value": "no-store, no-cache, max-age=0, must-revalidate" }] }
+  ],
   "redirects": [
     { "source": "/drop.html", "destination": "/api/drop.js", "permanent": false }
   ],

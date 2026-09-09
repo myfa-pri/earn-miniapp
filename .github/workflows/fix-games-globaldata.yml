@@ -1,0 +1,47 @@
+name: Fix Scratch and Pro Spin runtime
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-games-globaldata.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Patch index loader
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('public/index.html')
+          s = p.read_text()
+          marker = '<script src="/games-runtime-fix.js?v=20260909-1"></script>'
+          if marker not in s:
+              body_marker = '</body>'
+              if body_marker not in s:
+                  raise SystemExit('Could not find closing body tag')
+              s = s.replace(body_marker, marker + '\n' + body_marker, 1)
+              p.write_text(s)
+          PY
+
+      - name: Validate files
+        run: |
+          node --check public/games-runtime-fix.js
+          node -e "const fs=require('fs'); const s=fs.readFileSync('public/index.html','utf8'); if(!s.includes('/games-runtime-fix.js?v=20260909-1')) process.exit(1); console.log('games runtime loaded by index');"
+
+      - name: Commit and remove one-shot workflow
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/index.html
+          git rm .github/workflows/fix-games-globaldata.yml
+          git commit -m 'fix: restore scratch and pro spin config runtime'
+          git push

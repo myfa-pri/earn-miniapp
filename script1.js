@@ -410,7 +410,8 @@ function applyTranslation() {
             if(document.getElementById('pageHeaderRealBalance')) document.getElementById('pageHeaderRealBalance').innerText = displayReal;
             document.getElementById('pageHeaderStatus').innerHTML = currentUser.isVip ? '<i class="fa-solid fa-crown"></i> VIP' : 'Member';
             
-            const avatarUrl = window.Telegram.WebApp.initDataUnsafe?.user?.photo_url || currentUser.avatarUrl || `https://ui-avatars.com/api/?name=${currentUser.username}&background=00F2FE&color=fff`;
+            const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+            const avatarUrl = tgUser?.photo_url || currentUser.avatarUrl || `${window.location.origin}/api/avatar/${encodeURIComponent(userId)}`;
             document.getElementById('pageHeaderAvatar').style.backgroundImage = `url('${avatarUrl}')`;
             
             if (localStorage.getItem('set_data') === 'true') {
@@ -448,7 +449,6 @@ function applyTranslation() {
             const activePage = document.getElementById(`page-${page}`);
             if (activePage) {
                 activePage.style.display = 'block';
-                void activePage.offsetWidth; // Force reflow
                 activePage.style.opacity = '1';
                 activePage.style.transform = 'translate3d(0,0,0)';
             }
@@ -497,10 +497,11 @@ function applyTranslation() {
         };
 
         function renderHome(c) {
-    const avatarUrl = window.Telegram.WebApp.initDataUnsafe?.user?.photo_url || currentUser.avatarUrl || `https://ui-avatars.com/api/?name=${currentUser.username}&background=00F2FE&color=fff`;
+    const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+            const avatarUrl = tgUser?.photo_url || currentUser.avatarUrl || `${window.location.origin}/api/avatar/${encodeURIComponent(userId)}`;
     
     // Calculate accurate streak based on lastLoginTimestamp
-    let streakCount = currentUser.streakCount || 1;
+    let streakCount = Math.max(Number(currentUser.streakCount || 0), Number(currentUser.streak || 0), 1);
     const lastLogin = currentUser.lastLoginTimestamp;
     const now = Date.now();
     if (lastLogin) {

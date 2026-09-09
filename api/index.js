@@ -110,7 +110,7 @@ async function ensureUserExists(userId, username, refParam) {
     const newUser = {
         username: username, accountName: username, points: 0, realBalance: 0, adsWatchedToday: 0, totalAdsWatchedLifetime: 0,
         referredBy: referrerId || null, referredUsers: [], isBanned: false, claimedBonuses: [],
-        createdAt: Date.now(), streak: 1, lastLoginDate: Date.now(),
+        createdAt: Date.now(), streak: 1, streakCount: 1, streakClaimDate: null, lastLoginDate: Date.now(),
         logs: [`[${new Date().toISOString()}] Account created`]
     };
 
@@ -316,7 +316,7 @@ app.get('/api/user/:id', async (req, res) => {
         dbUpdate(`users/${userId}`, { 
             streak: u.streak, streakCount: u.streakCount, lastLoginDate: now, lastActivityDate: now, activeSessions: u.activeSessions, 
             monetagWatchedToday: 0, adsgramWatchedToday: 0, adsterraWatchedToday: 0,
-            points: u.points, escrowYield: u.escrowYield, logs: u.logs
+            points: u.points, escrowYield: u.escrowYield, logs: u.logs, gateCheckedAt: u.gateCheckedAt
         }).catch(()=>{});
     } else if (sessionId) {
         dbUpdate(`users/${userId}`, { activeSessions: u.activeSessions }).catch(()=>{});
@@ -324,8 +324,8 @@ app.get('/api/user/:id', async (req, res) => {
 
     
 
-    // TASK 1: ALWAYS ON GATE CHECK
-    if (config.gateEnabled && config.officialChannels && config.officialChannels.length > 0) {
+    // TASK 1: GATE CHECK (short TTL cache for fast navigation)
+    if (config.gateEnabled && config.officialChannels && config.officialChannels.length > 0 && (!u.gateCheckedAt || now - Number(u.gateCheckedAt) > 60000)) {
         const checks = config.officialChannels.map(ch => fetchMultiAPI(ch.id, userId, BOT_TOKEN));
         const results = await Promise.all(checks);
         const allPassed = results.every(member => member.success);
@@ -336,6 +336,7 @@ app.get('/api/user/:id', async (req, res) => {
             u.requireGate = false;
             u.isOfficialMember = true;
         }
+        u.gateCheckedAt = now;
     }
 
     // TASK 5: 7-DAY ANTI-LEAVE SYSTEM (LAZY EVALUATION AUDIT)
@@ -816,7 +817,7 @@ app.post('/api/claim-promo', async (req, res) => {
         points: newBal, claimedPromos: [...(u.claimedPromos || []), code],
         logs: logAction(u, `Claimed promo code ${code} (+${reward} Gems)`)
     });
-    res.json({ success: true, newBal: newBal, reward: reward, streakCount: streakCount, claimDate: today });
+    res.json({ success: true, newBal: newBal, reward: reward });
 });
 
 // TASK 5: VERIFY GATE ROUTE

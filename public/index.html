@@ -635,7 +635,7 @@
                 setTimeout(() => {
     const l = document.getElementById('loading-overlay');
     if (l) { l.style.opacity = '0'; l.style.pointerEvents = 'none'; setTimeout(()=> { l.style.display = 'none'; }, 500); }
-}, 2500);
+}, 50);
 
                 // GATE CHECK
                 if (currentUser.requireGate === true) {
@@ -894,7 +894,8 @@ function applyTranslation() {
             if(document.getElementById('pageHeaderRealBalance')) document.getElementById('pageHeaderRealBalance').innerText = displayReal;
             document.getElementById('pageHeaderStatus').innerHTML = currentUser.isVip ? '<i class="fa-solid fa-crown"></i> VIP' : 'Member';
             
-            const avatarUrl = window.Telegram.WebApp.initDataUnsafe?.user?.photo_url || (currentUser ? currentUser.avatarUrl : '') || `https://ui-avatars.com/api/?name=${currentUser ? currentUser.username : 'User'}&background=00F2FE&color=fff`;
+            const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+            const avatarUrl = tgUser?.photo_url || (currentUser && currentUser.avatarUrl) || `${window.location.origin}/api/avatar/${encodeURIComponent(typeof userId !== 'undefined' ? userId : '')}`;
             document.getElementById('pageHeaderAvatar').style.backgroundImage = `url('${avatarUrl}')`;
             
             if (localStorage.getItem('set_data') === 'true') {
@@ -947,7 +948,6 @@ function applyTranslation() {
             const activePage = document.getElementById(`page-${page}`);
             if (activePage) {
                 activePage.style.display = 'block';
-                void activePage.offsetWidth; // Force reflow
                 activePage.style.opacity = '1';
             }
 
@@ -995,7 +995,8 @@ function applyTranslation() {
         };
 
         function renderHome(c) {
-            const avatarUrl = window.Telegram.WebApp.initDataUnsafe?.user?.photo_url || currentUser.avatarUrl || `https://ui-avatars.com/api/?name=${currentUser.username}&background=00F2FE&color=fff`;
+            const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+            const avatarUrl = tgUser?.photo_url || currentUser.avatarUrl || `${window.location.origin}/api/avatar/${encodeURIComponent(userId)}`;
             
             c.innerHTML = `
                 <!-- 1. Hero Profile -->
@@ -1028,7 +1029,7 @@ function applyTranslation() {
                         ${[1,2,3,4,5,6,7].map(day => {
                             let state = 'locked';
                             let icon = '<i class="fa-solid fa-lock" style="color:#64748B;"></i>';
-                            let currentStreak = currentUser.streakCount || 0;
+                            let currentStreak = Math.max(Number(currentUser.streakCount || 0), Number(currentUser.streak || 0), 0);
                             if (day <= currentStreak) {
                                 state = 'claimed';
                                 icon = '<i class="fa-solid fa-circle-check" style="color:#078930;"></i>';
@@ -2551,12 +2552,7 @@ function applyTranslation() {
                     
                     .empty-state { text-align: center; padding: 40px 20px; color: #94A3B8; }
                 </style>
-                <div style="text-align:center; padding: 20px 0;">
-                    <h2><i class="fa-solid fa-trophy" style="color:#F5A623; font-size: 2rem; margin-bottom: 10px; display:inline-block; filter: drop-shadow(0 0 10px rgba(245, 166, 35, 0.5));"></i><br>Top 100 Players</h2>
-                    <div class="lb-tabs">
-                        <div class="lb-tab active">All Time</div>
-                    </div>
-                </div>
+                
                 
                 <div id="leaderboardLoading" style="padding: 0 15px;">
                     <div class="skeleton skeleton-row"></div>

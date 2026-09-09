@@ -291,10 +291,11 @@ app.get('/api/user/:id', async (req, res) => {
     if(lastLogin.getDate() !== today.getDate() || lastLogin.getMonth() !== today.getMonth()) {
         const diffDays = Math.floor((now - lastLogin.getTime()) / (1000 * 60 * 60 * 24));
         if(diffDays <= 2) {
-            u.streak = (u.streak || 0) + 1;
-            if(u.streak > 7) u.streak = 1; 
+            u.streak = Math.min(7, Math.max(Number(u.streak || 0), Number(u.streakCount || 0)) + 1);
+            u.streakCount = u.streak; 
         } else {
-            u.streak = 1; 
+            u.streak = 1;
+            u.streakCount = 1;
         }
         
         let dailyYield = 0;
@@ -308,11 +309,12 @@ app.get('/api/user/:id', async (req, res) => {
         }
 
         u.lastLoginDate = now;
+        u.lastActivityDate = now;
         u.monetagWatchedToday = 0;
         u.adsgramWatchedToday = 0;
         u.adsterraWatchedToday = 0;
         dbUpdate(`users/${userId}`, { 
-            streak: u.streak, lastLoginDate: now, activeSessions: u.activeSessions, 
+            streak: u.streak, streakCount: u.streakCount, lastLoginDate: now, lastActivityDate: now, activeSessions: u.activeSessions, 
             monetagWatchedToday: 0, adsgramWatchedToday: 0, adsterraWatchedToday: 0,
             points: u.points, escrowYield: u.escrowYield, logs: u.logs
         }).catch(()=>{});
@@ -398,13 +400,11 @@ app.get('/api/user/:id', async (req, res) => {
         }).catch(()=>{});
     }
 
-    // Rank Calculation
-    try {
-        const allUsers = Object.values(await dbGet('users') || {}).filter(x => !x.isBanned);
-        const sorted = allUsers.sort((a,b) => (b.points||0) - (a.points||0));
-        const rank = sorted.findIndex(x => x.username === u.username) + 1;
-        u.rank = rank > 0 ? rank : '-';
-    } catch(e) { u.rank = '-'; }
+    // Rank is intentionally not calculated here. The leaderboard endpoint owns rank calculation
+    // so the hot profile endpoint does not scan every user on every page load.
+    u.streakCount = Math.max(1, Number(u.streakCount || 0), Number(u.streak || 0));
+    u.streak = u.streakCount;
+    if (!u.lastActivityDate) u.lastActivityDate = u.lastLoginDate || Date.now();
 
     res.json(u);
 });
@@ -707,6 +707,24 @@ app.post('/api/verify-membership', async (req, res) => {
 });
 
 
+app.get('/api/dropgame/status/:userId', async (req, res) => {
+    try {
+        const userId = req.params.userId;
+        const u = await dbGet(`users/${userId}`);
+        if (!u) return res.status(404).json({ success: false, error: 'User not found' });
+        const now = new Date();
+        const lastPlay = new Date(u.lastDropGamePlay || 0);
+        let chances = u.dropGameChances !== undefined ? Number(u.dropGameChances) : 1;
+        if (now.getDate() !== lastPlay.getDate() || now.getMonth() !== lastPlay.getMonth() || now.getFullYear() !== lastPlay.getFullYear()) {
+            chances = Math.max(chances, 1);
+        }
+        res.set('Cache-Control', 'no-store');
+        return res.json({ success: true, chancesRemaining: Math.max(0, chances) });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: 'Failed to load Drop Game status' });
+    }
+});
+
 app.post('/api/dropgame/start', async (req, res) => {
     try {
         const { userId } = req.body;
@@ -726,13 +744,16 @@ app.post('/api/dropgame/start', async (req, res) => {
             return res.json({success: false, error: "No chances left today"});
         }
 
+        const sessionId = `drop_${userId}_${Date.now()}_${crypto.randomBytes(6).toString('hex')}`;
         await dbUpdate(`users/${userId}`, {
             dropGameChances: chances - 1,
             lastDropGamePlay: now.toISOString(),
-            currentDropGameScore: 0 // security measure to ensure valid play
+            currentDropGameScore: 0,
+            activeDropSession: sessionId,
+            activeDropStartedAt: Date.now()
         });
 
-        res.json({success: true, chancesRemaining: chances - 1});
+        res.json({success: true, sessionId, chancesRemaining: chances - 1});
     } catch(e) {
         console.error(e);
         res.status(500).json({success: false, error: e.message});
@@ -750,15 +771,19 @@ app.post('/api/dropgame/claim', async (req, res) => {
         }
 
         // Basic security check to prevent abuse, e.g. unrealistic score
+        const safeScore = Math.max(0, Math.min(150, Number(score) || 0));
+        if(!Number.isFinite(safeScore)) {
+            return res.json({success: false, error: 'Invalid score'});
+        }
         if(score > 150) { 
             return res.json({success: false, error: "Score too high"});
         }
 
-        const newPoints = (u.points || 0) + score;
-        await dbUpdate(`users/${userId}`, { points: newPoints, activeDropSession: null });
+        const newPoints = (u.points || 0) + safeScore;
+        await dbUpdate(`users/${userId}`, { points: newPoints, activeDropSession: null, activeDropStartedAt: null, currentDropGameScore: 0 });
 
         res.json({success: true, points: newPoints,
-        dropGameChances: u.dropGameChances, added: score});
+        dropGameChances: u.dropGameChances, added: safeScore});
     } catch(e) {
         console.error(e);
         res.status(500).json({success: false, error: e.message});
@@ -791,7 +816,7 @@ app.post('/api/claim-promo', async (req, res) => {
         points: newBal, claimedPromos: [...(u.claimedPromos || []), code],
         logs: logAction(u, `Claimed promo code ${code} (+${reward} Gems)`)
     });
-    res.json({ success: true, newBal: newBal, reward: reward });
+    res.json({ success: true, newBal: newBal, reward: reward, streakCount: streakCount, claimDate: today });
 });
 
 // TASK 5: VERIFY GATE ROUTE
@@ -1660,7 +1685,12 @@ app.post('/api/game/drop/finish', async (req, res) => {
 // ============================================================================
 // 7.5. PUBLIC GLOBALS (CSS & Broadcast)
 // ============================================================================
+let publicGlobalsCache = { data: null, expiresAt: 0 };
 app.get('/api/public/globals', async (req, res) => {
+    const nowMs = Date.now();
+    if (publicGlobalsCache.data && publicGlobalsCache.expiresAt > nowMs) {
+        return res.json(publicGlobalsCache.data);
+    }
     const config = await dbGet('config') || {};
     const css = await dbGet('css') || {};
     const toast = await dbGet('toastBroadcast') || {};
@@ -1669,7 +1699,9 @@ app.get('/api/public/globals', async (req, res) => {
     const usersObj = await dbGet('users') || {};
     const totalUsers = Object.keys(usersObj).length;
     
-    res.json({ config, css, toast, totalUsers });
+    const payload = { config, css, toast, totalUsers };
+    publicGlobalsCache = { data: payload, expiresAt: nowMs + 30000 };
+    res.json(payload);
 });
 
 // ============================================================================
@@ -2161,13 +2193,13 @@ app.post('/api/streak/claim', async (req, res) => {
     }
     
     const today = new Date().toISOString().split('T')[0];
-    const lastLoginStr = user.lastLoginDate ? new Date(user.lastLoginDate).toISOString().split('T')[0] : null;
+    const claimDate = user.streakClaimDate || null;
     
-    if (lastLoginStr === today) {
-        return res.json({ success: false, error: 'Streak already claimed today' });
+    if (claimDate === today) {
+        return res.json({ success: false, error: 'Streak already claimed today', alreadyClaimed: true, streakCount: Math.max(1, Number(user.streakCount || user.streak || 1)) });
     }
     
-    const streakCount = user.streakCount || 1;
+    const streakCount = Math.min(7, Math.max(1, Number(user.streakCount || user.streak || 1)));
     const reward = streakCount * 50;
     const newPoints = (user.points || 0) + reward;
     
@@ -2176,7 +2208,7 @@ app.post('/api/streak/claim', async (req, res) => {
     await dbUpdate(`users/${userId}`, { 
         points: newPoints,
         dropGameChances: newDropChances,
-        lastLoginDate: Date.now(),
+        lastLoginDate: Date.now(), streakCount: 1, streak: 1, streakClaimDate: null,
         logs: user.logs 
     });
     

@@ -65,15 +65,14 @@
 </head>
 <body>
     <div class="header">
-        <button class="back-btn" onclick="window.location.href='/index.html?userId=' + userId">Back to MYFA BIRR</button>
-        <button class="back-btn" onclick="window.history.back()"><i class="fa-solid fa-arrow-left"></i> Hub</button>
+        <button class="back-btn" onclick="window.location.href='/index.html?userId=' + encodeURIComponent(userId || '')">Back to MYFA BIRR Hub</button>
         <div id="scoreDisplay"><i class="fa-solid fa-gem"></i> <span id="score">0</span></div>
         <div id="timeDisplay"><i class="fa-solid fa-clock"></i> <span id="time">15</span>s</div>
     </div>
 
     <div id="gameArea">
         <div class="frozen-overlay" id="frozenOverlay"></div>
-        <div class="catcher" id="catcher">🧺</div>
+        <div class="catcher" id="catcher" aria-label="Gem catcher"><i class="fa-solid fa-basket-shopping"></i></div>
     </div>
 
     <div class="overlay" id="startOverlay">
@@ -120,28 +119,15 @@
                 return;
             }
             try {
-                const res = await fetch(`${API_BASE_URL}/api/user/${userId}`);
+                const res = await fetch(`${API_BASE_URL}/api/dropgame/status/${encodeURIComponent(userId)}`);
                 const data = await res.json();
-                if(data.success) {
-                    const u = data.user;
-                    // Reset chances if new day
-                    const now = new Date();
-                    const lastPlayStr = u.lastDropGamePlay || 0;
-                    const lastPlayDate = new Date(lastPlayStr);
-                    let chances = u.dropGameChances !== undefined ? u.dropGameChances : 1;
-
-                    if(now.getDate() !== lastPlayDate.getDate() || now.getMonth() !== lastPlayDate.getMonth() || now.getFullYear() !== lastPlayDate.getFullYear()) {
-                        chances = Math.max(chances, 1); // Give at least 1 free play per day
-                    }
-
-                    gameChances = chances;
+                if(res.ok && data.success) {
+                    gameChances = Number(data.chancesRemaining || 0);
                     document.getElementById('chancesDisplay').innerText = gameChances;
-
-                    if(gameChances > 0) {
-                        document.getElementById('startBtn').style.display = 'block';
-                    } else {
-                        document.getElementById('noChancesMsg').style.display = 'block';
-                    }
+                    document.getElementById('startBtn').style.display = gameChances > 0 ? 'block' : 'none';
+                    document.getElementById('noChancesMsg').style.display = gameChances > 0 ? 'none' : 'block';
+                } else {
+                    throw new Error(data.error || 'Unable to load game chances');
                 }
             } catch(e) {
                 console.error("Init error", e);
@@ -193,11 +179,11 @@
                 if(data.success) {
                     window.dropSessionId = data.sessionId;
                 } else {
-                    alert("Error starting game: " + (data.error || "Unknown"));
+                    showDropError(data.error || 'Unknown error starting game');
                     return;
                 }
             } catch(e) {
-                alert("Network error starting game");
+                showDropError('Network error starting game');
                 return;
             }
 
@@ -342,9 +328,16 @@
             document.getElementById('finalScore').innerText = score;
         }
 
+        function showDropError(message) {
+            console.error('[MYFA Drop]', message);
+            document.getElementById('chancesDisplay').innerText = '—';
+            const noMsg = document.getElementById('noChancesMsg');
+            if(noMsg) { noMsg.textContent = message; noMsg.style.display = 'block'; }
+        }
+
         async function claimReward() {
             if(score <= 0) {
-                window.location.href = '/index.html?userId=' + userId;
+                window.location.href = '/index.html?userId=' + encodeURIComponent(userId || '');
                 return;
             }
 
@@ -356,14 +349,14 @@
                 });
                 const data = await res.json();
                 if(data.success) {
-                    window.location.href = '/index.html?userId=' + userId;
+                    window.location.href = '/index.html?userId=' + encodeURIComponent(userId || '');
                 } else {
                     alert("Error claiming reward: " + (data.error || "Unknown"));
-                    window.location.href = '/index.html?userId=' + userId;
+                    window.location.href = '/index.html?userId=' + encodeURIComponent(userId || '');
                 }
             } catch(e) {
                 alert("Network error");
-                window.location.href = '/index.html?userId=' + userId;
+                window.location.href = '/index.html?userId=' + encodeURIComponent(userId || '');
             }
         }
     </script>

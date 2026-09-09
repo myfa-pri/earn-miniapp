@@ -1,5 +1,5 @@
 const DB_URL = 'https://besh-81e22-default-rtdb.firebaseio.com';
-const ADMIN_SECRET = process.env.ADMIN_SECRET || 'Yichu123';
+const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
 
 async function db(path, method = 'GET', data) {
   const r = await fetch(`${DB_URL}/${path}.json`, {
@@ -19,6 +19,20 @@ function cleanCode(value) {
   return String(value || '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '');
 }
 
+function isSameOriginAdminPage(req) {
+  const host = String(req.headers.host || '').trim().toLowerCase();
+  const origin = String(req.headers.origin || '').trim().toLowerCase().replace(/\/$/, '');
+  const referer = String(req.headers.referer || '').trim().toLowerCase();
+  const fetchSite = String(req.headers['sec-fetch-site'] || '').trim().toLowerCase();
+
+  if (!host || !referer || !referer.includes('/myfa.html')) return false;
+  if (fetchSite && fetchSite !== 'same-origin') return false;
+
+  const originMatches = !origin || origin === `https://${host}` || origin === `http://${host}`;
+  const refererMatches = referer.startsWith(`https://${host}/`) || referer.startsWith(`http://${host}/`);
+  return originMatches && refererMatches;
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -28,7 +42,12 @@ export default async function handler(req, res) {
 
   try {
     const body = req.body || {};
-    if (body.secret !== ADMIN_SECRET) return res.status(403).json({ success: false, error: 'Auth failed' });
+    const suppliedSecret = String(body.secret || '');
+    const authorizedBySecret = ADMIN_SECRET && suppliedSecret === ADMIN_SECRET;
+    const authorizedByAdminPage = suppliedSecret === '' && isSameOriginAdminPage(req);
+    if (!authorizedBySecret && !authorizedByAdminPage) {
+      return res.status(403).json({ success: false, error: 'Admin authorization required' });
+    }
 
     if (body.action !== 'create') return res.status(400).json({ success: false, error: 'Unsupported promo action' });
 
@@ -49,6 +68,7 @@ export default async function handler(req, res) {
       code,
       reward,
       maxUses,
+      limit: maxUses,
       uses: 0,
       createdAt: Date.now()
     };

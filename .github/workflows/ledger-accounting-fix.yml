@@ -5,185 +5,27 @@ on:
 jobs:
   patch:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
-      - name: Patch real campaign ledger
-        shell: bash
+      - name: Validate patch script
+        run: python3 -m py_compile scripts/ledger_final_patch.py
+      - name: Apply final ledger, ad, task and manager fixes
+        run: python3 scripts/ledger_final_patch.py
+      - name: Validate production JavaScript
+        run: node --check api/index.js && node --check api/ads.js && node --check public/campaign-manager-app.js
+      - name: Validate production wiring
         run: |
-          python3 <<'PY'
-          from pathlib import Path
-          import re
-
-          p = Path('api/index.js')
-          s = p.read_text()
-
-          old = "res.json({ success: true, user: { id:userId, points:u.points||0, stuckBalance:u.stuckBalance||0 }, campaigns, summary });"
-          new = "res.json({ success: true, user: { id:userId, points:u.points||0, stuckBalance:u.stuckBalance||0, campaignReserved:u.campaignReserved||summary.reserved||0 }, campaigns, summary });"
-          s = s.replace(old, new)
-
-          old = "await dbUpdate(`users/${userId}`, { points:cmNum(u.points) - total, logs:logAction(u, `Campaign created: ${name} (-${total} Gems)`) });"
-          new = "await dbUpdate(`users/${userId}`, { points:cmNum(u.points) - total, campaignReserved:cmNum(u.campaignReserved) + total, logs:logAction(u, `Campaign created: ${name} (-${total} Gems, +${total} campaign reserve)`) });"
-          s = s.replace(old, new)
-
-          s = s.replace(
-              "return c.task && c.task.enabled === true && c.delivery && c.delivery.status === 'Running';",
-              "return c.task && c.task.enabled === true && c.delivery && c.delivery.status === 'Running' && Number(c.taskBudgetRemaining || 0) > 0;"
-          )
-          s = s.replace(
-              "maxUsers: Math.floor(c.budget.total / c.task.reward),",
-              "maxUsers: Number(c.task.maxUsers || c.maxUsers || 0),"
-          )
-
-          s = s.replace(
-              "spend: cmNum(c.adSpend),",
-              "spend: cmNum(c.adSpend) + cmNum(c.taskSpend),"
-          )
-
-          marker = "    if(!c) return res.status(404).json({error:\"Campaign not found\"});\n    if(c.paused || c.claims >= c.maxUsers) return res.json({success:false,error:\"Campaign is closed or full\"});"
-          insert = """    if(!c) return res.status(404).json({error:\"Campaign not found\"});
-    if(c.schemaVersion === 2) {
-        const task = c.task || {};
-        const max = Number(task.maxUsers || c.maxUsers || 0);
-        const claims = Number(c.claims || c.analytics?.conversions || 0);
-        const rewardGems = Number(task.reward || c.reward || 0);
-        const remaining = Number(c.taskBudgetRemaining || 0);
-        const verifiedChannel = String(channelId || task.channelId || '');
-        if(c.archived || c.paused || (c.status && c.status !== 'active')) return res.json({success:false,error:'Campaign is closed or paused'});
-        if(!verifiedChannel || !rewardGems) return res.json({success:false,error:'Task verification data is incomplete'});
-        if(max > 0 && claims >= max) return res.json({success:false,error:'Task is full!'});
-        if(remaining < rewardGems) return res.json({success:false,error:'Task budget exhausted'});
-        try {
-            const member = await fetchMultiAPI(verifiedChannel, userId, BOT_TOKEN);
-            if(member.status === 'error' || !member.success) return res.json({success:false,error:member.error || 'Telegram membership verification failed'});
-            const newClaimed = [...(u.claimedSponsorTasks || []), taskId];
-            const sponsor = await dbGet(`users/${c.ownerId || c.userId}`);
-            const nextRemaining = remaining - rewardGems;
-            const nextClaims = claims + 1;
-            const campaignPatch = {
-                taskBudgetRemaining: nextRemaining,
-                budgetRemaining: Math.max(0, Number(c.budgetRemaining || 0) - rewardGems),
-                escrowReserved: Math.max(0, Number(c.budgetRemaining || 0) - rewardGems),
-                taskSpend: Number(c.taskSpend || 0) + rewardGems,
-                claims: nextClaims,
-                conversions: nextClaims,
-                analytics: {...(c.analytics || {}), conversions: nextClaims}
-            };
-            await dbUpdate(`campaigns/${taskId}`, campaignPatch);
-            if(sponsor) await dbUpdate(`users/${c.ownerId || c.userId}`, {campaignReserved:Math.max(0, Number(sponsor.campaignReserved || 0) - rewardGems), logs:logAction(sponsor, `Sponsored task completed: ${c.name} (-${rewardGems} Gems from campaign reserve)`).slice(-30)});
-            const newPoints = Number(u.points || 0) + rewardGems;
-            await dbUpdate(`users/${userId}`, {claimedSponsorTasks:newClaimed, points:newPoints, active7DayEscrows:[...(u.active7DayEscrows||[]),{taskId,channelId:verifiedChannel,reward:rewardGems,sponsorUserId:c.ownerId || c.userId,timestamp:Date.now()}], logs:logAction(u, `Completed Sponsor Task '${c.name}' (+${rewardGems} Gems)`)});
-            return res.json({success:true,points:newPoints,reward:rewardGems,remaining:nextRemaining});
-        } catch(e) { return res.json({success:false,error:e.message || 'Task verification failed'}); }
-    }
-    if(c.paused || c.claims >= c.maxUsers) return res.json({success:false,error:\"Campaign is closed or full\"});"""
-          if marker in s:
-              s = s.replace(marker, insert, 1)
-
-          marker = "        if (member.success) {\n            \n            // CHECK TASK LIMITS"
-          insert = """        if (member.success) {
-            if (isSponsor && t.schemaVersion === 2) {
-                const task = t.task || {};
-                const max = Number(task.maxUsers || t.maxUsers || 0);
-                const claims = Number(t.claims || t.analytics?.conversions || 0);
-                const rewardGems = Number(task.reward || t.reward || 0);
-                const remaining = Number(t.taskBudgetRemaining || 0);
-                if(t.archived || t.paused || (t.status && t.status !== 'active')) return res.json({success:false,error:'Task is closed or paused'});
-                if(max > 0 && claims >= max) return res.json({success:false,error:'Task is full!'});
-                if(remaining < rewardGems || rewardGems <= 0) return res.json({success:false,error:'Task budget exhausted'});
-                const nextRemaining = remaining - rewardGems;
-                const nextClaims = claims + 1;
-                await dbUpdate(`campaigns/${taskId}`, {taskBudgetRemaining:nextRemaining,budgetRemaining:Math.max(0,Number(t.budgetRemaining||0)-rewardGems),escrowReserved:Math.max(0,Number(t.budgetRemaining||0)-rewardGems),taskSpend:Number(t.taskSpend||0)+rewardGems,claims:nextClaims,conversions:nextClaims,analytics:{...(t.analytics||{}),conversions:nextClaims}});
-                const sponsorId = t.ownerId || t.userId;
-                const sponsor = sponsorId ? await dbGet(`users/${sponsorId}`) : null;
-                if(sponsor) await dbUpdate(`users/${sponsorId}`, {campaignReserved:Math.max(0,Number(sponsor.campaignReserved||0)-rewardGems),logs:logAction(sponsor,`Sponsored task completed: ${t.name||'Task'} (-${rewardGems} Gems from campaign reserve)`).slice(-30)});
-                const already = [...(u.claimedSponsorTasks||[]),taskId];
-                const newPoints = Number(u.points||0) + rewardGems;
-                await dbUpdate(`users/${userId}`, {claimedSponsorTasks:[...new Set(already)],points:newPoints,active7DayEscrows:[...(u.active7DayEscrows||[]),{taskId,channelId:channelId || task.channelId || '',reward:rewardGems,sponsorUserId:sponsorId,timestamp:Date.now()}],logs:logAction(u,`Completed Sponsor Task '${t.name||'Task'}' (+${rewardGems} Gems)`) });
-                return res.json({success:true,points:newPoints,reward:rewardGems});
-            }
-
-            // CHECK TASK LIMITS"""
-          if marker in s:
-              s = s.replace(marker, insert, 1)
-
-          s = s.replace(
-              "raw.adBudgetRemaining=Math.max(0,cmNum(raw.adBudgetRemaining)-1);raw.adSpend=cmNum(raw.adSpend)+1;raw.budgetRemaining=Math.max(0,cmNum(raw.adBudgetRemaining)+cmNum(raw.taskBudgetRemaining));raw.escrowReserved=raw.budgetRemaining;",
-              "raw.adBudgetRemaining=cmNum(raw.adBudgetRemaining);raw.adSpend=cmNum(raw.adSpend);raw.budgetRemaining=Math.max(0,cmNum(raw.adBudgetRemaining)+cmNum(raw.taskBudgetRemaining));raw.escrowReserved=raw.budgetRemaining;"
-          )
-
-          # Make /api/myfa-ads/get expose schema-v2 direct creatives.
-          s = s.replace(
-              "reward: 0,\n                imageUrl: c.creative ? c.creative.mediaUrl : '',\n                link: c.creative ? c.creative.destinationUrl : '',\n                title: c.creative ? c.creative.headline : '',\n                description: c.creative ? c.creative.description : '',\n                cpmBid: c.budget ? c.budget.daily : 0",
-              "reward: Number(c.reward || 0),\n                imageUrl: c.imageUrl || (c.creative ? c.creative.mediaUrl : ''),\n                link: c.link || (c.creative ? c.creative.destinationUrl : ''),\n                title: c.headline || c.name || (c.creative ? c.creative.headline : ''),\n                description: c.desc || c.description || (c.creative ? c.creative.description : ''),\n                cpmBid: c.budget ? c.budget.daily : 0"
-          )
-
-          # Replace legacy MYFA ad claim with schema-v2-aware escrow settlement.
-          pattern = r"app\.post\('/api/myfa-ads/claim',[\s\S]*?\n\}\);\n\napp\.post\('/api/escrow/transfer'"
-          replacement = r"""app.post('/api/myfa-ads/claim', async (req, res) => {
-    const body=req.body||{};
-    const userId=String(body.userId||req.headers['x-telegram-user-id']||req.query.userId||'');
-    const campaignId=String(body.campaignId||'');
-    const user=await dbGet(`users/${userId}`);
-    const campaign=await dbGet(`campaigns/${campaignId}`);
-    const config=await dbGet('config')||{};
-    if(!user || !campaign) return res.json({success:false,error:'User or campaign not found'});
-    if(campaign.schemaVersion === 2) {
-        if(campaign.archived || campaign.paused || (campaign.status && campaign.status!=='active')) return res.json({success:false,error:'Sponsored ad is unavailable'});
-        const reward=Number(config.myfaAdRewardGems||50);
-        const remaining=Number(campaign.adBudgetRemaining||0);
-        if(remaining < reward) return res.json({success:false,error:'Sponsored ad budget exhausted'});
-        const nextRemaining=remaining-reward;
-        await dbUpdate(`campaigns/${campaignId}`,{adBudgetRemaining:nextRemaining,budgetRemaining:Math.max(0,Number(campaign.budgetRemaining||0)-reward),escrowReserved:Math.max(0,Number(campaign.budgetRemaining||0)-reward),adSpend:Number(campaign.adSpend||0)+reward,claims:Number(campaign.claims||0)+1,conversions:Number(campaign.conversions||0)+1,analytics:{...(campaign.analytics||{}),conversions:Number(campaign.analytics?.conversions||0)+1}});
-        const ownerId=campaign.ownerId||campaign.userId;
-        const owner=ownerId?await dbGet(`users/${ownerId}`):null;
-        if(owner) await dbUpdate(`users/${ownerId}`,{campaignReserved:Math.max(0,Number(owner.campaignReserved||0)-reward),logs:logAction(owner,`Sponsored ad completed: ${campaign.name||campaignId} (-${reward} Gems from campaign reserve)`).slice(-30)});
-        const newPoints=Number(user.points||0)+reward;
-        await dbUpdate(`users/${userId}`,{points:newPoints,totalAdsWatchedLifetime:Number(user.totalAdsWatchedLifetime||0)+1,logs:logAction(user,`Completed sponsored ad '${campaign.name||campaignId}' (+${reward} Gems)`)});
-        return res.json({success:true,reward,newPoints,remaining:nextRemaining});
-    }
-    if(campaign.stuckBalance > 0){const reward=Number(campaign.cpmBid||0)/1000;await dbUpdate(`campaigns/${campaignId}`,{stuckBalance:Math.max(0,campaign.stuckBalance-reward),impressions:(campaign.impressions||0)+1});await dbUpdate(`users/${userId}`,{points:Number(user.points||0)+reward});return res.json({success:true,reward,newPoints:Number(user.points||0)+reward});}
-    return res.json({success:false,error:'Sponsored budget exhausted'});
-});
-
-app.post('/api/escrow/transfer'"""
-          ns, count = re.subn(pattern, replacement, s, count=1)
-          if count != 1:
-              raise SystemExit('Could not patch /api/myfa-ads/claim')
-
-          p.write_text(s)
-
-          # Patch the older /api/campaigns/:id/refund schema-v2 path to return campaign reserve to campaignReserved.
-          p = Path('api/index.js')
-          s = p.read_text()
-          old = "await dbUpdate(`users/${userId}`, {\n            points: (user.points || 0) + remaining,\n            stuckBalance: Math.max(0, (user.stuckBalance || 0) - remaining)\n        });"
-          new = "await dbUpdate(`users/${userId}`, {\n            points: (user.points || 0) + remaining,\n            campaignReserved: Math.max(0, Number(user.campaignReserved || 0) - remaining),\n            stuckBalance: Math.max(0, (user.stuckBalance || 0) - remaining)\n        });"
-          s = s.replace(old,new,1)
-          p.write_text(s)
-
-          # Patch api/ads.js schema-v2 to use the Campaign Manager budget fields and complete rewards in Gems.
-          p = Path('api/ads.js')
-          s = p.read_text()
-          s = s.replace(
-              "const remaining = safeNumber(c.budget?.reserved) - safeNumber(c.budget?.spent);",
-              "const remaining = c.schemaVersion === 2 ? safeNumber(c.adBudgetRemaining) : (safeNumber(c.budget?.reserved) - safeNumber(c.budget?.spent));"
-          )
-          old = "          const spent = safeNumber(campaign.budget?.spent);\n          const reserved = safeNumber(campaign.budget?.reserved);\n          if (reserved - spent < rewardGems) return json(res, 410, { success: false, error: 'Sponsored budget exhausted' });\n          await update(`campaigns/${data.campaignId}`, {\n            'budget/spent': spent + rewardGems,\n            'budget/spentToday': safeNumber(campaign.budget?.spentToday) + rewardGems,\n            'analytics/impressions': safeNumber(campaign.analytics?.impressions) + 1\n          });\n          if (campaign.ownerId) {\n            const owner = await get(`users/${campaign.ownerId}`);\n            if (owner) {\n              await update(`users/${campaign.ownerId}`, {\n                stuckBalance: Math.max(0, safeNumber(owner.stuckBalance) - rewardGems)\n              });\n            }\n          }"
-          new = "          const remaining = safeNumber(campaign.adBudgetRemaining);\n          if (remaining < rewardGems) return json(res, 410, { success: false, error: 'Sponsored budget exhausted' });\n          const nextRemaining = remaining - rewardGems;\n          await update(`campaigns/${data.campaignId}`, {\n            adBudgetRemaining: nextRemaining,\n            budgetRemaining: Math.max(0, safeNumber(campaign.budgetRemaining) - rewardGems),\n            escrowReserved: Math.max(0, safeNumber(campaign.budgetRemaining) - rewardGems),\n            adSpend: safeNumber(campaign.adSpend) + rewardGems,\n            claims: safeNumber(campaign.claims) + 1,\n            conversions: safeNumber(campaign.conversions) + 1,\n            'analytics/impressions': safeNumber(campaign.analytics?.impressions) + 1,\n            'analytics/conversions': safeNumber(campaign.analytics?.conversions) + 1\n          });\n          if (campaign.ownerId) {\n            const owner = await get(`users/${campaign.ownerId}`);\n            if (owner) {\n              await update(`users/${campaign.ownerId}`, {\n                campaignReserved: Math.max(0, safeNumber(owner.campaignReserved) - rewardGems)\n              });\n            }\n          }"
-          if old not in s:
-              raise SystemExit('Could not patch api/ads.js schema-v2 completion')
-          s = s.replace(old,new,1)
-          p.write_text(s)
-          PY
-
-          node --check api/index.js
-          node --check api/ads.js
-      - name: Commit and remove workflow
-        shell: bash
+          grep -q 'campaign-manager-app.js?v=20260909-10' public/ad-studio-pro.html
+          grep -q 'data-action="${c.status=='"'"'paused'"'"'?"'"'resume'"'"':"'"'pause'"'"'}"' public/campaign-manager-app.js
+          ! grep -q "feature(25,'Conversion tracking'" public/campaign-manager-app.js
+      - name: Commit production changes and remove one-time workflow
         run: |
           git config user.name "MYFA BIRR Bot"
           git config user.email "actions@users.noreply.github.com"
-          git add api/index.js api/ads.js
-          git commit -m "fix: make campaign escrow fund and rewards settle correctly" || true
-          git rm .github/workflows/ledger-accounting-fix.yml || true
-          git commit -m "chore: remove one-time ledger patch workflow" || true
+          git add api/index.js api/ads.js public/campaign-manager-app.js public/ad-studio-pro.html
+          git commit -m "fix: settle campaign escrow and repair manager controls"
+          git rm .github/workflows/ledger-accounting-fix.yml
+          git commit -m "chore: remove one-time ledger workflow"
           git push

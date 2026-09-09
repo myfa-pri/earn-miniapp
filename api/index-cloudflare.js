@@ -17,12 +17,13 @@ const firebaseConfig = {
   appId: "1:324768534552:web:dcfc91e34509c3e104336d"
 };
 
-const BOT_TOKEN = '8509274087:AAGpwWGbBSI2GCDNQYxqwTYqdN8M4g1Oa-s';
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN || '';
+const BOT_TOKEN_CONFIGURED = Boolean(BOT_TOKEN);
 const ADMIN_SECRET = "Yichu123";
 const WELCOME_IMG = "https://i.ibb.co/GQxC1zDf/Resized-Image-2026-01-11-09-14-06-1.png";
 const IMAGE_API_URL = "https://welcomeapi.vercel.app/api";
 
-const bot = new TelegramBot(BOT_TOKEN, { polling: false }); 
+const bot = new TelegramBot(BOT_TOKEN || '000000000:INVALID', { polling: false }); 
 const app = express();
 app.use(express.json({ limit: '2mb' }));
 import adminAuth from './admin-auth.js';
@@ -178,20 +179,48 @@ async function ensureUserExists(userId, username, refParam) {
 
 app.get('/api/setup', async (req, res) => {
     try {
+        if (!BOT_TOKEN_CONFIGURED) {
+            return res.status(500).json({ success: false, error: 'TELEGRAM_BOT_TOKEN is not configured on this Worker.' });
+        }
         const host = req.headers.host;
-        const webhookUrl = `https://${host}/api/webhook`;
+        const configuredBase = (process.env.PUBLIC_APP_URL || `https://${host}`).replace(/\/+$/, '');
+        const webhookUrl = `${configuredBase}/api/webhook`;
         const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/setWebhook?url=${encodeURIComponent(webhookUrl)}`;
-        
         const response = await fetch(telegramUrl);
         const data = await response.json();
-        
         if (data.ok) {
-            res.status(200).json({ success: true, message: 'Webhook successfully configured!', url: webhookUrl });
-        } else {
-            res.status(500).json({ success: false, error: data.description });
+            return res.status(200).json({ success: true, message: 'Webhook successfully configured!', url: webhookUrl });
         }
+        return res.status(500).json({ success: false, error: data.description || 'Telegram rejected webhook configuration' });
     } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        return res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.get('/api/bot-status', async (req, res) => {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    if (!BOT_TOKEN_CONFIGURED) {
+        return res.status(500).json({ configured: false, error: 'TELEGRAM_BOT_TOKEN is not configured on this Worker.' });
+    }
+    try {
+        const [meResponse, webhookResponse] = await Promise.all([
+            fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getMe`),
+            fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo`)
+        ]);
+        const me = await meResponse.json();
+        const webhook = await webhookResponse.json();
+        return res.json({
+            configured: true,
+            bot: me.ok ? { id: me.result.id, username: me.result.username, first_name: me.result.first_name } : { error: me.description || 'getMe failed' },
+            webhook: webhook.ok ? {
+                url: webhook.result.url,
+                pending_update_count: webhook.result.pending_update_count,
+                last_error_date: webhook.result.last_error_date || null,
+                last_error_message: webhook.result.last_error_message || null
+            } : { error: webhook.description || 'getWebhookInfo failed' }
+        });
+    } catch (error) {
+        return res.status(500).json({ configured: true, error: error.message || 'Telegram diagnostics failed' });
     }
 });
 

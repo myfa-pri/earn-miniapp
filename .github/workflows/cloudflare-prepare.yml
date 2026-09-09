@@ -26,14 +26,14 @@ jobs:
       - name: Generate Cloudflare API adapter
         run: node cloudflare-build.cjs
 
-      - name: Commit generated adapter
+      - name: Commit generated API source and adapter
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add api/index-cloudflare.js
+          git add api/index.js api/index-cloudflare.js
           if git diff --cached --quiet; then
             echo "No generated changes."
             exit 0
           fi
-          git commit -m "Generate Cloudflare API adapter"
+          git commit -m "Sync Cloudflare API source and adapter"
           git push

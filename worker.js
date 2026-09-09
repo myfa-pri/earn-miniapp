@@ -13,7 +13,7 @@ async function serveStatic(request, env) {
       .replace(/<script\s+src=["'](?:https?:)?\/\/libtl\.com\/sdk\.js["'][^>]*data-zone=["']41731["'][^>]*><\/script>\s*/gi, "")
       .replace(/<script\s+src=["'](?:https?:)?\/\/libtl\.com\/sdk\.js["'][^>]*data-sdk=["']show_41731["'][^>]*><\/script>\s*/gi, "");
     const pathname = new URL(request.url).pathname;
-    if (pathname === "/myfa") {
+    if (pathname === "/myfa" || pathname === "/myfa.html") {
       cleaned = cleaned.replace(/<\/body>/i, '<script src="/official-channel-admin-upgrade.js"></script></body>');
     } else {
       cleaned = cleaned.replace(/<\/body>/i, '<script src="/gate-background.js"></script></body>');

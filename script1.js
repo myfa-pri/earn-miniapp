@@ -152,7 +152,7 @@
                 setTimeout(() => {
     const l = document.getElementById('loading-overlay');
     if (l) { l.style.opacity = '0'; l.style.pointerEvents = 'none'; setTimeout(()=> { l.style.display = 'none'; }, 500); }
-}, 2500);
+}, 1100);
 
                 // GATE CHECK
                 if (currentUser.requireGate === true) {

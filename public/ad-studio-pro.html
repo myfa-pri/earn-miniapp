@@ -6,11 +6,14 @@
 <meta name="theme-color" content="#070b18">
 <meta name="color-scheme" content="dark">
 <title>MYFA BIRR — Campaign Manager</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg?v=20260909-4">
+<link rel="shortcut icon" href="/favicon.svg?v=20260909-4">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/ad-studio-pro.css?v=20260909-3">
-<link rel="stylesheet" href="/campaign-manager-theme.css?v=20260909-3">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="/ad-studio-pro.css?v=20260909-4">
+<link rel="stylesheet" href="/campaign-manager-theme.css?v=20260909-4">
+<link rel="stylesheet" href="/campaign-manager-navigation.css?v=20260909-4">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
@@ -30,25 +33,30 @@
       <div class="asp-wallet"><svg viewBox="0 0 24 24"><path d="m12 3 8 4.5-8 4.5-8-4.5L12 3Z"/><path d="m4 12 8 4.5 8-4.5"/><path d="m4 16.5 8 4.5 8-4.5"/></svg><strong id="aspBalance">0</strong></div>
     </div>
   </header>
+
   <div class="asp-layout">
-    <aside class="asp-sidebar" aria-label="Campaign navigation">
-      <div class="asp-sidebar-label">WORKSPACE</div>
+    <aside class="asp-sidebar" aria-hidden="true">
       <nav class="asp-nav">
-        <button class="active" data-view="dashboard"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg><span>Overview</span></button>
-        <button data-view="create"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Create</span></button>
-        <button data-view="campaigns"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="5" rx="1"/><rect x="4" y="11.5" width="16" height="5" rx="1"/><rect x="4" y="19" width="10" height="1"/></svg><span>Campaigns</span></button>
-        <button data-view="analytics"><svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16"/><path d="m7 15 3-4 3 2 5-7"/></svg><span>Analytics</span></button>
-        <button data-view="wallet"><svg viewBox="0 0 24 24"><rect x="3.5" y="6" width="17" height="13" rx="2"/><path d="M16 10h4.5v5H16a2.5 2.5 0 0 1 0-5Z"/></svg><span>Wallet</span></button>
+        <button class="active" data-view="dashboard"></button>
+        <button data-view="create"></button>
+        <button data-view="campaigns"></button>
+        <button data-view="analytics"></button>
+        <button data-view="wallet"></button>
       </nav>
-      <div class="asp-sidebar-bottom"><div class="asp-security-card"><div class="asp-security-icon"><svg viewBox="0 0 24 24"><path d="M12 3 19 6v5c0 4.5-2.8 7.8-7 10-4.2-2.2-7-5.5-7-10V6l7-3Z"/><path d="m9 12 2 2 4-4"/></svg></div><strong>Protected workspace</strong><span>Ownership, reservation and delivery checks run on the server.</span></div></div>
     </aside>
-    <main id="aspContent" class="asp-content"><div class="asp-loading-shell"><div class="asp-loading-mark"><span></span><span></span><span></span></div><div><strong>Opening MYFA Campaign Manager</strong><span>Connecting your campaigns and Gem balance…</span></div></div></main>
+    <main id="aspContent" class="asp-content">
+      <div class="asp-loading-shell">
+        <div class="asp-loading-mark"><span></span><span></span><span></span></div>
+        <div><strong>Opening MYFA Campaign Manager</strong><span>Connecting your campaigns and Gem balance…</span></div>
+      </div>
+    </main>
   </div>
-  <div id="aspToast" class="asp-toast" role="status" aria-live="polite"></div>
   <div id="aspModal" class="asp-modal" aria-hidden="true"></div>
+  <div id="aspToast" class="asp-toast" role="status" aria-live="polite"></div>
 </div>
-<script src="/campaign-manager-ui-hotfix.js?v=20260909-3"></script>
-<script src="/campaign-manager.js?v=20260909-3" defer></script>
-<script src="/campaign-manager-polish.js?v=20260909-3" defer></script>
+<script src="/campaign-manager-ui-hotfix.js?v=20260909-4"></script>
+<script src="/campaign-manager.js?v=20260909-4" defer></script>
+<script src="/campaign-manager-polish.js?v=20260909-4" defer></script>
+<script src="/campaign-manager-navigation.js?v=20260909-4" defer></script>
 </body>
 </html>

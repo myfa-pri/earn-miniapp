@@ -280,7 +280,7 @@ async function deleteCampaign(body,res){
   return res.json({success:true,refunded:refund});
 }
 
-export default async function handler(req,res){
+export default async function handler(req,res){ 
   res.setHeader('Content-Type','application/json'); res.setHeader('Cache-Control','no-store');
   if(req.method==='OPTIONS') return res.status(204).end();
   if(req.method!=='POST') return res.status(405).json({success:false,error:'Method not allowed'});

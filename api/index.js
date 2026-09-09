@@ -24,7 +24,23 @@ const IMAGE_API_URL = "https://welcomeapi.vercel.app/api";
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false }); 
 const app = express();
-app.use(express.json());
+import adminAuth from './admin-auth.js';
+import adminGateway from './admin-gateway.js';
+import adminPromos from './admin-promos.js';
+import ads from './ads.js';
+import claimPromo from './claim-promo.js';
+import campaignManagerAction from './campaign-manager-action.js';
+import drop from './drop.js';
+
+
+// Mount the vercel routes!
+app.all('/api/admin-auth', (req, res) => adminAuth(req, res));
+app.all('/api/admin-gateway', (req, res) => adminGateway(req, res));
+app.all('/api/admin/promos', (req, res) => adminPromos(req, res));
+app.all('/api/ads', (req, res) => ads(req, res));
+app.all('/api/claim-promo', (req, res) => claimPromo(req, res));
+app.all('/api/campaign-manager/campaigns/:id/action', (req, res) => campaignManagerAction(req, res));
+app.all('/api/drop', (req, res) => drop(req, res));
 app.use(cors());
 
 // ============================================================================

@@ -1,16 +1,26 @@
 {
   "version": 2,
+  "functions": {
+    "api/admin-shell.js": {
+      "includeFiles": ["public/myfa.html"]
+    }
+  },
   "redirects": [
     { "source": "/drop.html", "destination": "/api/drop.js", "permanent": false }
   ],
-  "rewrites": [
-    { "source": "/api/ads", "destination": "/api/ads.js" },
-    { "source": "/api/admin/promos", "destination": "/api/admin-promos.js" },
-    { "source": "/api/claim-promo", "destination": "/api/claim-promo.js" },
-    { "source": "/api/campaign-manager/campaigns/:id/action", "destination": "/api/campaign-manager-action.js?id=:id" },
-    { "source": "/api/(.*)", "destination": "/api/index.js" },
-    { "source": "/myfa", "destination": "/public/myfa.html" },
-    { "source": "/", "destination": "/public/index.html" },
-    { "source": "/(.*)", "destination": "/public/$1" }
-  ]
+  "rewrites": {
+    "beforeFiles": [
+      { "source": "/myfa.html", "destination": "/api/admin-shell.js" },
+      { "source": "/myfa", "destination": "/api/admin-shell.js" },
+      { "source": "/api/ads", "destination": "/api/ads.js" },
+      { "source": "/api/admin/promos", "destination": "/api/admin-promos.js" },
+      { "source": "/api/claim-promo", "destination": "/api/claim-promo.js" },
+      { "source": "/api/campaign-manager/campaigns/:id/action", "destination": "/api/campaign-manager-action.js?id=:id" },
+      { "source": "/api/(.*)", "destination": "/api/index.js" }
+    ],
+    "afterFiles": [
+      { "source": "/", "destination": "/public/index.html" },
+      { "source": "/(.*)", "destination": "/public/$1" }
+    ]
+  }
 }

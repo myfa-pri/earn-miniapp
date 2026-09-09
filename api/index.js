@@ -499,7 +499,7 @@ app.get('/api/tasks', async (req, res) => {
     const sponsorTasks = Object.values(campaignsObj)
         .filter(c => {
             if (c.schemaVersion === 2) {
-                return c.task && c.task.enabled === true && c.delivery && c.delivery.status === 'Running';
+                return c.task && c.task.enabled === true && c.delivery && c.delivery.status === 'Running' && Number(c.taskBudgetRemaining || 0) > 0;
             }
             // Must not be paused
             if(c.paused) return false;
@@ -512,7 +512,7 @@ app.get('/api/tasks', async (req, res) => {
                 return {
                     ...c,
                     reward: c.task.reward,
-                    maxUsers: Math.floor(c.budget.total / c.task.reward),
+                    maxUsers: Number(c.task.maxUsers || c.maxUsers || 0),
                     claims: c.analytics.conversions,
                     type: c.task.type
                 };
@@ -649,6 +649,19 @@ app.post('/api/verify-membership', async (req, res) => {
             return res.json({ success: false, error: member.error || "Verification failed. Is the bot an admin in the channel?" });
         }
         if (member.success) {
+            if(isSponsor && t.schemaVersion===2) {
+                const task=t.task||{}, max=Number(task.maxUsers||t.maxUsers||0), claims=Number(t.claims||t.analytics?.conversions||0), rewardGems=Number(task.reward||t.reward||0), remaining=Number(t.taskBudgetRemaining||0), ownerId=String(t.ownerId||t.userId||'');
+                if(t.archived||t.paused||(t.status&&t.status!=='active')) return res.json({success:false,error:'Task is closed or paused'});
+                if(max>0&&claims>=max) return res.json({success:false,error:'Task is full!'});
+                if(rewardGems<=0||remaining<rewardGems) return res.json({success:false,error:'Task budget exhausted'});
+                const nextClaims=claims+1,nextRemaining=remaining-rewardGems,nextBudget=Math.max(0,Number(t.budgetRemaining||0)-rewardGems);
+                await dbUpdate(`campaigns/${taskId}`,{taskBudgetRemaining:nextRemaining,budgetRemaining:nextBudget,escrowReserved:nextBudget,taskSpend:Number(t.taskSpend||0)+rewardGems,claims:nextClaims,conversions:nextClaims,analytics:{...(t.analytics||{}),conversions:nextClaims}});
+                const sponsor=ownerId?await dbGet(`users/${ownerId}`):null;
+                if(sponsor) await dbUpdate(`users/${ownerId}`,{campaignReserved:Math.max(0,Number(sponsor.campaignReserved||0)-rewardGems),logs:logAction(sponsor,`Sponsored task completed: ${t.name||taskId} (-${rewardGems} Gems from campaign reserve)`)});
+                const newPoints=Number(u.points||0)+rewardGems;
+                await dbUpdate(`users/${userId}`,{claimedSponsorTasks:[...(u.claimedSponsorTasks||[]),taskId],active7DayEscrows:[...(u.active7DayEscrows||[]),{taskId,channelId:channelId||task.channelId||'',reward:rewardGems,sponsorUserId:ownerId,timestamp:Date.now()}],points:newPoints,logs:logAction(u,`Completed Sponsor Task '${t.name||taskId}' (+${rewardGems} Gems)`)});
+                return res.json({success:true,points:newPoints,reward:rewardGems});
+            }
             
             // CHECK TASK LIMITS
             let rewardVal = (t.reward || reward || 0) * (c.globalMultiplier || 1);
@@ -1008,24 +1021,38 @@ app.post('/api/watch-ad', async (req, res) => {
         if (network === 'myfa' && tokenData.campaignId) {
             const campaign = await dbGet(`campaigns/${tokenData.campaignId}`);
             if (!campaign || campaign.archived || campaign.paused || (campaign.status && campaign.status !== 'active')) return res.status(410).json({success:false,error:'Sponsored ad is no longer available'});
-            const remaining = campaign.schemaVersion === 2 ? Number(campaign.budget?.reserved || 0) - Number(campaign.budget?.spent || 0) : Number(campaign.stuckBalance || 0);
-            rewardGems = Number(campaign.reward || 0) || Number(c.myfaAdRewardGems || 50);
-            if (remaining < rewardGems) return res.status(410).json({success:false,error:'Sponsored budget exhausted'});
+            let rewardGems = Number(campaign.reward || 0) || Number(c.myfaAdRewardGems || 50);
+            if (rewardGems <= 0) return res.status(410).json({success:false,error:'Sponsored reward is not configured'});
             if (campaign.schemaVersion === 2) {
+                const remaining = Number(campaign.adBudgetRemaining || 0);
+                if (remaining < rewardGems) return res.status(410).json({success:false,error:'Sponsored ad budget exhausted'});
+                const nextRemaining = remaining - rewardGems;
                 await dbUpdate(`campaigns/${tokenData.campaignId}`, {
-                    'budget/spent': Number(campaign.budget?.spent || 0) + rewardGems,
-                    'budget/spentToday': Number(campaign.budget?.spentToday || 0) + rewardGems,
-                    'analytics/impressions': Number(campaign.analytics?.impressions || 0) + 1
+                    adBudgetRemaining: nextRemaining,
+                    budgetRemaining: Math.max(0, Number(campaign.budgetRemaining || 0) - rewardGems),
+                    escrowReserved: Math.max(0, Number(campaign.budgetRemaining || 0) - rewardGems),
+                    adSpend: Number(campaign.adSpend || 0) + rewardGems,
+                    claims: Number(campaign.claims || 0) + 1,
+                    conversions: Number(campaign.conversions || 0) + 1,
+                    analytics: {...(campaign.analytics || {}), conversions: Number(campaign.analytics?.conversions || 0) + 1, impressions: Number(campaign.analytics?.impressions || 0) + 1}
                 });
-                const owner = campaign.ownerId ? await dbGet(`users/${campaign.ownerId}`) : null;
-                if (owner) await dbUpdate(`users/${campaign.ownerId}`, { stuckBalance: Math.max(0, Number(owner.stuckBalance || 0) - rewardGems) });
+                const ownerId = String(campaign.ownerId || campaign.userId || '');
+                const owner = ownerId ? await dbGet(`users/${ownerId}`) : null;
+                if (owner) await dbUpdate(`users/${ownerId}`, {
+                    campaignReserved: Math.max(0, Number(owner.campaignReserved || 0) - rewardGems),
+                    logs: logAction(owner, `Sponsored ad completed: ${campaign.name || tokenData.campaignId} (-${rewardGems} Gems from campaign reserve)`)
+                });
             } else {
+                if (Number(campaign.stuckBalance || 0) < rewardGems) return res.status(410).json({success:false,error:'Sponsored budget exhausted'});
                 await dbUpdate(`campaigns/${tokenData.campaignId}`, {
                     stuckBalance: Math.max(0, Number(campaign.stuckBalance || 0) - rewardGems),
                     impressions: Number(campaign.impressions || 0) + 1,
                     views: Number(campaign.views || 0) + 1,
                     claims: Number(campaign.claims || 0) + 1
                 });
+                const ownerId = String(campaign.ownerId || campaign.userId || '');
+                const owner = ownerId ? await dbGet(`users/${ownerId}`) : null;
+                if (owner) await dbUpdate(`users/${ownerId}`, {stuckBalance: Math.max(0, Number(owner.stuckBalance || 0) - rewardGems)});
             }
         } else {
             rewardCash = Number(c.realMoneyPerAd || 0.05);
@@ -1440,6 +1467,21 @@ app.post('/api/campaigns/review', async (req, res) => {
     
     await dbUpdate(`campaigns/${campaignId}`, { queue });
 
+    if(action === 'approve' && c.schemaVersion === 2) {
+        const task=c.task||{}, max=Number(task.maxUsers||c.maxUsers||0), claims=Number(c.claims||c.analytics?.conversions||0), rewardGems=Number(task.reward||c.reward||0), remaining=Number(c.taskBudgetRemaining||0), ownerId=String(c.ownerId||c.userId||'');
+        if(c.archived||c.paused||(c.status&&c.status!=='active')) return res.json({success:false,error:'Task is closed or paused'});
+        if(max>0&&claims>=max) return res.json({success:false,error:'Task is full'});
+        if(rewardGems<=0||remaining<rewardGems) return res.json({success:false,error:'Task budget exhausted'});
+        const nextRemaining=remaining-rewardGems, nextBudget=Math.max(0,Number(c.budgetRemaining||0)-rewardGems), nextClaims=claims+1;
+        await dbUpdate(`campaigns/${campaignId}`,{taskBudgetRemaining:nextRemaining,budgetRemaining:nextBudget,escrowReserved:nextBudget,taskSpend:Number(c.taskSpend||0)+rewardGems,claims:nextClaims,conversions:nextClaims,analytics:{...(c.analytics||{}),conversions:nextClaims}});
+        const sponsor=ownerId?await dbGet(`users/${ownerId}`):null;
+        if(sponsor) await dbUpdate(`users/${ownerId}`,{campaignReserved:Math.max(0,Number(sponsor.campaignReserved||0)-rewardGems),logs:logAction(sponsor,`Sponsored task approved: ${c.name||campaignId} (-${rewardGems} Gems from campaign reserve)`)});
+        const submitter=await dbGet(`users/${item.userId}`);
+        if(submitter) await dbUpdate(`users/${item.userId}`,{points:Number(submitter.points||0)+rewardGems,logs:logAction(submitter,`Task Approved: ${c.name||campaignId} (+${rewardGems} Gems)`)});
+        await dbUpdate(`verifications/${id}`,{status:'approved',approvedAt:Date.now(),reward:rewardGems});
+        bot.sendMessage(item.userId,`✅ Your task verification was approved! +${rewardGems} Gems`).catch(()=>{});
+        return res.json({success:true,reward:rewardGems});
+    }
     if(action === 'approve') {
         await dbUpdate(`campaigns/${campaignId}`, { claims: (c.claims || 0) + 1 });
         const submitter = await dbGet(`users/${item.userId}`);
@@ -2368,6 +2410,7 @@ app.post('/api/campaigns/:id/refund', async (req, res) => {
         
         await dbUpdate(`users/${userId}`, {
             points: (user.points || 0) + remaining,
+            campaignReserved: Math.max(0, Number(user.campaignReserved || 0) - remaining),
             stuckBalance: Math.max(0, (user.stuckBalance || 0) - remaining)
         });
         
@@ -2545,7 +2588,7 @@ const cmNormalize = (c, id) => ({
     impressions: cmNum(c.impressions || c.views),
     clicks: cmNum(c.adClicks),
     conversions: cmNum(c.conversions || c.claims || c.analytics?.conversions),
-    spend: cmNum(c.adSpend),
+    spend: cmNum(c.adSpend) + cmNum(c.taskSpend),
     ctr: cmNum(c.impressions || c.views) > 0 ? Number(((cmNum(c.adClicks) / cmNum(c.impressions || c.views)) * 100).toFixed(2)) : 0,
     cpa: cmNum(c.conversions || c.claims || c.analytics?.conversions) > 0 ? Number((cmNum(c.adSpend) / cmNum(c.conversions || c.claims || c.analytics?.conversions)).toFixed(2)) : 0
 });
@@ -2596,7 +2639,7 @@ app.get('/api/campaign-manager/dashboard/:userId', async (req, res) => {
         const campaigns = Object.entries(all || {}).map(([id,c]) => cmNormalize(c, id)).filter(c => cmOwner(c) === userId && !c.archived).sort((a,b) => cmNum(b.updatedAt || b.createdAt) - cmNum(a.updatedAt || a.createdAt));
         const summary = campaigns.reduce((m,c) => { m.active += c.status === 'active' ? 1 : 0; m.impressions += c.impressions; m.clicks += c.clicks; m.conversions += c.conversions; m.spend += c.spend; m.reserved += c.budgetState.remaining; return m; }, { active:0, impressions:0, clicks:0, conversions:0, spend:0, reserved:0 });
         res.set('Cache-Control', 'no-store');
-        res.json({ success: true, user: { id:userId, points:u.points||0, stuckBalance:u.stuckBalance||0 }, campaigns, summary });
+        res.json({ success: true, user: { id:userId, points:u.points||0, stuckBalance:u.stuckBalance||0, campaignReserved:u.campaignReserved||summary.reserved||0 }, campaigns, summary });
     } catch (e) { res.status(500).json({ success:false, error:'Unable to load campaign workspace' }); }
 });
 
@@ -2640,7 +2683,7 @@ app.post('/api/campaign-manager/campaigns', async (req, res) => {
         };
         cmSetCompatibility(campaign);
         await dbSet(`campaigns/${id}`, campaign);
-        await dbUpdate(`users/${userId}`, { points:cmNum(u.points) - total, logs:logAction(u, `Campaign created: ${name} (-${total} Gems)`) });
+        await dbUpdate(`users/${userId}`, { points:cmNum(u.points) - total, campaignReserved:cmNum(u.campaignReserved) + total, logs:logAction(u, `Campaign created: ${name} (-${total} Gems, +${total} campaign reserve)`) });
         const all = await dbGet('campaigns') || {};
         res.json({ success:true, campaign:cmNormalize(campaign,id), user:{...u,points:cmNum(u.points)-total}, campaigns:Object.entries(all).map(([cid,c])=>cmNormalize(c,cid)).filter(c=>cmOwner(c)===userId && !c.archived) });
     } catch(e) { res.status(500).json({ success:false, error:e.message || 'Campaign create failed' }); }
@@ -2682,7 +2725,7 @@ app.post('/api/campaign-manager/campaigns/:id/settings', async (req, res) => {
             if (Object.prototype.hasOwnProperty.call(b,'taskType')) patch.type = String(b.taskType || current.type || 'channel');
             if (Object.prototype.hasOwnProperty.call(b,'channelId')) patch.channelId = String(b.channelId || '');
             if (patch.budgetTotal > cmNum(current.budgetTotal)) patch.auditLog = cmAudit(current,'budget_increased',userId,{delta,bucket:'task'});
-            await dbUpdate(`users/${userId}`, { points:cmNum(u.points)-delta, logs:logAction(u, `Campaign budget updated: ${current.name}`) });
+            await dbUpdate(`users/${userId}`, { points:cmNum(u.points)-delta, campaignReserved:Math.max(0,cmNum(u.campaignReserved)+delta), logs:logAction(u, `Campaign budget updated: ${current.name}`) });
             current={...current,...patch};
         } else if (taskLike) {
             if (Object.prototype.hasOwnProperty.call(b,'taskType') || Object.prototype.hasOwnProperty.call(b,'channelId') || Object.prototype.hasOwnProperty.call(b,'taskDesc')) {
@@ -2734,9 +2777,9 @@ app.post('/api/campaign-manager/campaigns/:id/action', async (req,res)=>{
             if(total<=0)return res.status(400).json({success:false,error:'Nothing to duplicate'});
             if(cmNum(u.points)<total)return res.status(400).json({success:false,error:`Need ${total} Gems to duplicate this campaign`});
             const nid=`cm_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
-            const dup={...c,id:nid,name:`${c.name} Copy`,createdAt:Date.now(),updatedAt:Date.now(),archived:false,paused:false,status:'active',impressions:0,adClicks:0,conversions:0,claims:0,adSpend:0,budgetRemaining:total,escrowReserved:total,adBudgetRemaining:state.ad,taskBudgetRemaining:state.task,eventIds:[],auditLog:[{timestamp:Date.now(),action:'duplicated',userId,meta:{source:id}}]}; cmSetCompatibility(dup); await dbSet(`campaigns/${nid}`,dup); await dbUpdate(`users/${userId}`,{points:cmNum(u.points)-total,logs:logAction(u,`Campaign duplicated: ${c.name}`)}); const all=await dbGet('campaigns')||{}; return res.json({success:true,campaign:cmNormalize(dup,nid),user:{...u,points:cmNum(u.points)-total},campaigns:Object.entries(all).map(([cid,x])=>cmNormalize(x,cid)).filter(x=>cmOwner(x)===String(userId)&&!x.archived)});
+            const dup={...c,id:nid,name:`${c.name} Copy`,createdAt:Date.now(),updatedAt:Date.now(),archived:false,paused:false,status:'active',impressions:0,adClicks:0,conversions:0,claims:0,adSpend:0,budgetRemaining:total,escrowReserved:total,adBudgetRemaining:state.ad,taskBudgetRemaining:state.task,eventIds:[],auditLog:[{timestamp:Date.now(),action:'duplicated',userId,meta:{source:id}}]}; cmSetCompatibility(dup); await dbSet(`campaigns/${nid}`,dup); await dbUpdate(`users/${userId}`,{points:cmNum(u.points)-total,campaignReserved:cmNum(u.campaignReserved)+total,logs:logAction(u,`Campaign duplicated: ${c.name}`)}); const all=await dbGet('campaigns')||{}; return res.json({success:true,campaign:cmNormalize(dup,nid),user:{...u,points:cmNum(u.points)-total},campaigns:Object.entries(all).map(([cid,x])=>cmNormalize(x,cid)).filter(x=>cmOwner(x)===String(userId)&&!x.archived)});
         } else return res.status(400).json({success:false,error:'Unknown campaign action'});
-        next.auditLog=cmAudit(c,action,userId,{refund}); next.updatedAt=Date.now(); cmSetCompatibility(next); await dbUpdate(`campaigns/${id}`,next); if(refund)await dbUpdate(`users/${userId}`,{points:cmNum(u.points)+refund,logs:logAction(u,`Campaign refunded: ${c.name} (+${refund} Gems)`)}); const latestUser=await dbGet(`users/${userId}`); res.json({success:true,campaign:cmNormalize(next,id),refunded:refund,user:{...u,points:cmNum(latestUser?.points)}});
+        next.auditLog=cmAudit(c,action,userId,{refund}); next.updatedAt=Date.now(); cmSetCompatibility(next); await dbUpdate(`campaigns/${id}`,next); if(refund)await dbUpdate(`users/${userId}`,{points:cmNum(u.points)+refund,campaignReserved:Math.max(0,cmNum(u.campaignReserved)-refund),logs:logAction(u,`Campaign refunded: ${c.name} (+${refund} Gems)`)}); const latestUser=await dbGet(`users/${userId}`); res.json({success:true,campaign:cmNormalize(next,id),refunded:refund,user:{...u,points:cmNum(latestUser?.points)}});
     }catch(e){res.status(500).json({success:false,error:e.message||'Campaign action failed'});}
 });
 
@@ -2774,7 +2817,7 @@ app.get('/api/campaign-manager/serve/:userId', async (req,res)=>{
         const selectedImage=(c.abEnabled!==false&&c.imageUrlB)?((parseInt(userId.slice(-1),10)||0)%2===0?c.imageUrl:c.imageUrlB):c.imageUrl;
         if(!test){
             const cap=Math.max(0,Math.floor(cmNum(c.frequencyCap))); if(cap>0){const today=cmDateKey();const f=((c.frequency||{})[userId]||{});if(f.date===today&&cmNum(f.count)>=cap)return res.json({success:true,ad:null});await dbUpdate(`campaigns/${c.id}/frequency/${userId}`,{date:today,count:(f.date===today?cmNum(f.count):0)+1});}
-            const raw=await dbGet(`campaigns/${c.id}`); if(raw){raw.impressions=cmNum(raw.impressions)+1;raw.adBudgetRemaining=Math.max(0,cmNum(raw.adBudgetRemaining)-1);raw.adSpend=cmNum(raw.adSpend)+1;raw.budgetRemaining=Math.max(0,cmNum(raw.adBudgetRemaining)+cmNum(raw.taskBudgetRemaining));raw.escrowReserved=raw.budgetRemaining;raw.auditLog=cmAudit(raw,'served',userId,{test:false});cmSetCompatibility(raw);await dbUpdate(`campaigns/${c.id}`,raw);}
+            const raw=await dbGet(`campaigns/${c.id}`); if(raw){raw.impressions=cmNum(raw.impressions)+1;raw.adBudgetRemaining=cmNum(raw.adBudgetRemaining);raw.adSpend=cmNum(raw.adSpend);raw.budgetRemaining=Math.max(0,cmNum(raw.adBudgetRemaining)+cmNum(raw.taskBudgetRemaining));raw.escrowReserved=raw.budgetRemaining;raw.auditLog=cmAudit(raw,'served',userId,{test:false});cmSetCompatibility(raw);await dbUpdate(`campaigns/${c.id}`,raw);}
         }
         res.json({success:true,test,ad:{id:c.id,name:c.name,headline:c.headline,description:c.desc,cta:c.cta,link:c.link,imageUrl:selectedImage,videoUrl:c.videoUrl||'',trackingToken:c.trackingToken}});
     }catch(e){res.status(500).json({success:false,error:'Ad serving failed'});}

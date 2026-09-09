@@ -64,7 +64,7 @@ async function loadCampaign(userId, ua = '') {
     if (!owner || owner === userId) return false;
     if (c.schemaVersion === 2) {
       if (c.delivery?.status !== 'Running') return false;
-      const remaining = safeNumber(c.budget?.reserved) - safeNumber(c.budget?.spent);
+      const remaining = c.schemaVersion === 2 ? safeNumber(c.adBudgetRemaining) : (safeNumber(c.budget?.reserved) - safeNumber(c.budget?.spent));
       if (remaining <= 0) return false;
       if (c.budget?.daily && safeNumber(c.budget?.spentToday) >= safeNumber(c.budget.daily)) return false;
       if (c.targeting?.device && c.targeting.device !== 'all') {
@@ -219,19 +219,24 @@ export default async function handler(req, res) {
         rewardGems = safeNumber(campaign.reward, safeNumber(config.myfaAdRewardGems, 50));
         if (campaign.schemaVersion === 2) rewardGems = safeNumber(config.myfaAdRewardGems, 50);
         if (campaign.schemaVersion === 2) {
-          const spent = safeNumber(campaign.budget?.spent);
-          const reserved = safeNumber(campaign.budget?.reserved);
-          if (reserved - spent < rewardGems) return json(res, 410, { success: false, error: 'Sponsored budget exhausted' });
+          const remaining = safeNumber(campaign.adBudgetRemaining);
+          if (remaining < rewardGems) return json(res, 410, { success: false, error: 'Sponsored budget exhausted' });
+          const nextRemaining = remaining - rewardGems;
           await update(`campaigns/${data.campaignId}`, {
-            'budget/spent': spent + rewardGems,
-            'budget/spentToday': safeNumber(campaign.budget?.spentToday) + rewardGems,
-            'analytics/impressions': safeNumber(campaign.analytics?.impressions) + 1
+            adBudgetRemaining: nextRemaining,
+            budgetRemaining: Math.max(0, safeNumber(campaign.budgetRemaining) - rewardGems),
+            escrowReserved: Math.max(0, safeNumber(campaign.budgetRemaining) - rewardGems),
+            adSpend: safeNumber(campaign.adSpend) + rewardGems,
+            claims: safeNumber(campaign.claims) + 1,
+            conversions: safeNumber(campaign.conversions) + 1,
+            'analytics/impressions': safeNumber(campaign.analytics?.impressions) + 1,
+            'analytics/conversions': safeNumber(campaign.analytics?.conversions) + 1
           });
           if (campaign.ownerId) {
             const owner = await get(`users/${campaign.ownerId}`);
             if (owner) {
               await update(`users/${campaign.ownerId}`, {
-                stuckBalance: Math.max(0, safeNumber(owner.stuckBalance) - rewardGems)
+                campaignReserved: Math.max(0, safeNumber(owner.campaignReserved) - rewardGems)
               });
             }
           }

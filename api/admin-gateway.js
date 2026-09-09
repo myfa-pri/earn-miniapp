@@ -1,8 +1,8 @@
 import crypto from 'crypto';
 
-const DB_URL = process.env.FIREBASE_DATABASE_URL || 'https://besh-81e22-default-rtdb.firebaseio.com';
-const SESSION_KEY = process.env.ADMIN_SESSION_KEY || 'myfa-admin-session-v1-2026';
-const BOT_TOKEN = process.env.BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN || '';
+const DB_URL = 'https://besh-81e22-default-rtdb.firebaseio.com';
+const SESSION_KEY = 'myfa-admin-session-v1-2026';
+const BOT_TOKEN = '8509274087:AAGpwWGbBSI2GCDNQYxqwTYqdN8M4g1Oa-s';
 
 async function db(path, method = 'GET', data) {
   const response = await fetch(`${DB_URL}/${path}.json`, {
@@ -28,7 +28,7 @@ function verifyAdminSession(token) {
     const a = Buffer.from(signature), b = Buffer.from(sign(payload));
     if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return false;
     const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
-    return data?.sub === (process.env.ADMIN_USERNAME || 'admin') && Number(data.exp) > Date.now();
+    return data?.sub === 'admin' && Number(data.exp) > Date.now();
   } catch { return false; }
 }
 function addLog(user, text) {

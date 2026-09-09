@@ -1853,7 +1853,26 @@ app.get('/api/public/globals', async (req, res) => {
 // ============================================================================
 // 8. ADMIN CONTROL PANEL API (60+ Features)
 // ============================================================================
-const checkAdmin = (req, res, next) => { 
+const checkAdmin = (req, res, next) => {
+    const token = req.headers['x-myfa-admin-session'];
+    if (token) {
+        try {
+            const [payload, signature] = String(token || '').split('.');
+            if (payload && signature) {
+                const sign = (val) => crypto.createHmac('sha256', 'myfa-admin-session-v1-2026').update(val).digest('base64url');
+                const a = Buffer.from(signature);
+                const b = Buffer.from(sign(payload));
+                if (a.length === b.length && crypto.timingSafeEqual(a, b)) {
+                    const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+                    if (data?.sub === 'admin' && Number(data.exp) > Date.now()) {
+                        return next();
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('[checkAdmin] token verification error:', e);
+        }
+    }
     if(req.body.secret !== ADMIN_SECRET) return res.status(403).json({error:"Auth failed"}); 
     next(); 
 };

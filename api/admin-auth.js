@@ -1,8 +1,8 @@
 import crypto from 'crypto';
 
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin';
-const SESSION_KEY = process.env.ADMIN_SESSION_KEY || 'myfa-admin-session-v1-2026';
+const ADMIN_USERNAME = 'admin';
+const ADMIN_PASSWORD = 'admin';
+const SESSION_KEY = 'myfa-admin-session-v1-2026';
 const TTL_MS = 12 * 60 * 60 * 1000;
 
 function sign(value) {

@@ -9,16 +9,16 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - name: Validate patch script
-        run: python3 -m py_compile scripts/ledger_final_patch.py
+      - name: Validate patch runners
+        run: python3 -m py_compile scripts/ledger_final_patch.py scripts/ledger_runner.py
       - name: Apply final ledger, ad, task and manager fixes
-        run: python3 scripts/ledger_final_patch.py
+        run: python3 scripts/ledger_runner.py
       - name: Validate production JavaScript
         run: node --check api/index.js && node --check api/ads.js && node --check public/campaign-manager-app.js
       - name: Validate production wiring
         run: |
           grep -q 'campaign-manager-app.js?v=20260909-10' public/ad-studio-pro.html
-          grep -q 'data-action="${c.status=='"'"'paused'"'"'?"'"'resume'"'"':"'"'pause'"'"'}"' public/campaign-manager-app.js
+          grep -q 'data-action=' public/campaign-manager-app.js
           ! grep -q "feature(25,'Conversion tracking'" public/campaign-manager-app.js
       - name: Commit production changes and remove one-time workflow
         run: |

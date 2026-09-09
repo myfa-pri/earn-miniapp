@@ -8,6 +8,7 @@
     { "source": "/drop.html", "destination": "/api/drop.js", "permanent": false }
   ],
   "rewrites": [
+    { "source": "/favicon.ico", "destination": "/favicon.svg" },
     { "source": "/api/admin-auth", "destination": "/api/admin-auth.js" },
     { "source": "/api/admin-gateway", "destination": "/api/admin-gateway.js" },
     { "source": "/api/ads", "destination": "/api/ads.js" },

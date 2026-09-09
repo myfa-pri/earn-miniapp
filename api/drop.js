@@ -6,48 +6,54 @@ export default function handler(req, res) {
     const file = path.join(process.cwd(), 'public', 'drop.html');
     let html = fs.readFileSync(file, 'utf8');
 
-    const fixScript = `
-<style id="drop-navigation-fix">
-.header{position:relative !important;z-index:1000 !important;}
-.back-btn{position:relative;z-index:1001 !important;}
-#dropOverlayBackBtn{display:none;position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:100001;width:min(360px,calc(100vw - 40px));padding:14px 20px;border-radius:14px;background:linear-gradient(135deg,#00F2FE,#4FACFE);border:1px solid rgba(255,255,255,.35);box-shadow:0 12px 35px rgba(0,0,0,.45),0 0 25px rgba(0,242,254,.35);color:#07111f;font-weight:900;font-size:1rem;cursor:pointer;text-align:center;}
-#dropOverlayBackBtn.show{display:block;}
-</style>
-<script>
-(function(){
-  function syncDropBack(){
-    var btn=document.getElementById('dropOverlayBackBtn');
-    var overlay=document.getElementById('startOverlay');
-    var noMsg=document.getElementById('noChancesMsg');
-    if(!btn||!overlay||!noMsg)return;
-    var overlayVisible=getComputedStyle(overlay).display!=='none';
-    var noChancesVisible=getComputedStyle(noMsg).display!=='none';
-    btn.classList.toggle('show',overlayVisible&&noChancesVisible);
-  }
-  window.addEventListener('DOMContentLoaded',function(){
-    var btn=document.createElement('button');
-    btn.id='dropOverlayBackBtn';
-    btn.type='button';
-    btn.textContent='Back to MYFA BIRR Hub';
-    btn.onclick=function(){
-      var uid=(typeof userId!=='undefined'&&userId)?userId:'';
-      window.location.href='/index.html?userId='+encodeURIComponent(uid);
-    };
-    document.body.appendChild(btn);
-    var overlay=document.getElementById('startOverlay');
-    var noMsg=document.getElementById('noChancesMsg');
-    if(overlay&&noMsg){
-      var mo=new MutationObserver(syncDropBack);
-      mo.observe(overlay,{attributes:true,attributeFilter:['style','class']});
-      mo.observe(noMsg,{attributes:true,attributeFilter:['style','class','hidden']});
-    }
-    syncDropBack();
-    setInterval(syncDropBack,250);
-  });
-})();
-</script>`;
+    const marker = '<p id="noChancesMsg" style="color:var(--color-magenta); display:none;">No chances left today! Complete tasks to earn more.</p>';
+    const backButton = '<button id="dropOverlayBackBtn" type="button" class="drop-overlay-back-btn" onclick="window.location.href=\'/index.html?userId=\' + encodeURIComponent(userId || \'\')"><i class="fa-solid fa-arrow-left"></i> Back to MYFA BIRR Hub</button>';
 
-    html = html.replace('</head>', fixScript + '\n</head>');
+    // Put a real Back button directly inside the start overlay. It is not
+    // controlled by a separate observer, so it cannot disappear behind the
+    // no-chances message or lose to an inline display rule.
+    if (html.includes(marker) && !html.includes('id="dropOverlayBackBtn"')) {
+      html = html.replace(marker, marker + '\n        ' + backButton);
+    }
+
+    const fixCss = `
+<style id="drop-navigation-fix">
+.header{
+  position:relative !important;
+  z-index:1000 !important;
+}
+.back-btn{
+  position:relative;
+  z-index:1001 !important;
+}
+#dropOverlayBackBtn{
+  display:flex !important;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  width:min(360px,calc(100vw - 40px));
+  min-height:48px;
+  padding:13px 20px;
+  margin-top:24px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.28);
+  background:linear-gradient(135deg,#00F2FE,#4FACFE);
+  color:#07111f;
+  box-shadow:0 10px 30px rgba(0,0,0,.45),0 0 22px rgba(0,242,254,.28);
+  font-weight:900;
+  font-size:1rem;
+  cursor:pointer;
+  text-transform:none;
+  letter-spacing:0;
+  position:relative;
+  z-index:100002;
+}
+#dropOverlayBackBtn:active{
+  transform:scale(.98);
+}
+</style>`;
+
+    html = html.replace('</head>', fixCss + '\n</head>');
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Content-Type', 'text/html; charset=utf-8');

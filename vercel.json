@@ -1,17 +1,12 @@
 {
   "version": 2,
-  "functions": {
-    "api/admin-shell.js": {
-      "includeFiles": ["public/myfa.html"]
-    }
-  },
   "redirects": [
     { "source": "/drop.html", "destination": "/api/drop.js", "permanent": false }
   ],
   "rewrites": {
     "beforeFiles": [
-      { "source": "/myfa.html", "destination": "/api/admin-shell.js" },
-      { "source": "/myfa", "destination": "/api/admin-shell.js" },
+      { "source": "/myfa.html", "destination": "/public/admin-live.html" },
+      { "source": "/myfa", "destination": "/public/admin-live.html" },
       { "source": "/api/admin-auth", "destination": "/api/admin-auth.js" },
       { "source": "/api/admin-gateway", "destination": "/api/admin-gateway.js" },
       { "source": "/api/ads", "destination": "/api/ads.js" },

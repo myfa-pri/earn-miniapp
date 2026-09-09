@@ -1,24 +1,28 @@
-import app from "./api/index.js";
-import gamesRouter from "./api/games.js";
+import { httpServerHandler } from "cloudflare:node";
+import app from "./api/index-cloudflare.js";
 
-// Cloudflare Worker adapter for the existing MYFA BIRR Express application.
-// Keep all current route handlers intact while serving the existing public/
-// directory through Workers Static Assets.
+// Initialize the existing Express API inside Cloudflare's Node compatibility layer.
+app.listen(3000);
+const apiHandler = httpServerHandler({ port: 3000 });
 
-let expressApp;
+async function serveStatic(request, env) {
+  const response = await env.ASSETS.fetch(request);
+  const contentType = response.headers.get("content-type") || "";
 
-async function getApp() {
-  if (expressApp) return expressApp;
+  // Prevent the legacy Monetag 41731 SDK from auto-firing on app startup.
+  // The reward runtime loads Monetag only when the user explicitly watches an ad.
+  if (contentType.includes("text/html")) {
+    const html = await response.text();
+    const cleaned = html
+      .replace(/<script\s+src=["'](?:https?:)?\/\/libtl\.com\/sdk\.js["'][^>]*data-zone=["']41731["'][^>]*><\/script>\s*/gi, "")
+      .replace(/<script\s+src=["'](?:https?:)?\/\/libtl\.com\/sdk\.js["'][^>]*data-sdk=["']show_41731["'][^>]*><\/script>\s*/gi, "");
 
-  // The existing API entry currently creates and configures an Express app.
-  // It is imported here so Cloudflare can serve the same route surface.
-  expressApp = app;
-  try {
-    expressApp.use("/api", gamesRouter);
-  } catch (_) {
-    // Avoid duplicate mounting during module initialization.
+    const headers = new Headers(response.headers);
+    headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
+    return new Response(cleaned, { status: response.status, statusText: response.statusText, headers });
   }
-  return expressApp;
+
+  return response;
 }
 
 export default {
@@ -26,12 +30,9 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname.startsWith("/api/")) {
-      const currentApp = await getApp();
-      if (currentApp?.fetch) {
-        return currentApp.fetch(request, env, ctx);
-      }
+      return apiHandler.fetch(request, env, ctx);
     }
 
-    return env.ASSETS.fetch(request);
+    return serveStatic(request, env);
   },
 };

@@ -1,13 +1,371 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"><title>MYFA Drop — MYFA BIRR</title><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"><script src="https://telegram.org/js/telegram-web-app.js"></script><style>
-:root{--bg:#070b17;--panel:#111827;--cyan:#00f2fe;--pink:#ff007a;--gold:#f5d76e;--muted:#94a3b8}*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:#fff;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}button{font:inherit}.header{height:64px;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:rgba(8,12,24,.96);border-bottom:1px solid rgba(255,255,255,.08);position:relative;z-index:10}.back-btn,.play-btn{border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.07);color:#fff;border-radius:13px;padding:9px 12px;font-weight:800}.play-btn{background:linear-gradient(135deg,var(--cyan),#5d7cff);color:#061018;border:0;box-shadow:0 8px 24px rgba(0,242,254,.2)}button:disabled{opacity:.55}.score,.time{font-weight:900}.score{color:var(--gold)}.time{color:var(--pink)}#gameArea{position:relative;height:calc(100% - 64px);overflow:hidden;touch-action:none;background:radial-gradient(circle at 50% 5%,rgba(0,242,254,.08),transparent 35%),linear-gradient(180deg,#0b1022,#10162c)}.catcher{position:absolute;bottom:18px;left:50%;width:76px;height:58px;transform:translateX(-50%);border:2px solid var(--cyan);border-radius:16px 16px 30px 30px;background:rgba(0,242,254,.13);display:grid;place-items:center;font-size:28px;z-index:4;box-shadow:0 0 18px rgba(0,242,254,.22)}.item{position:absolute;width:44px;height:44px;display:grid;place-items:center;font-size:30px;z-index:3;user-select:none}.flower{color:#ffd43b;filter:drop-shadow(0 4px 10px rgba(255,211,50,.4))}.item[data-type="bomb"]{color:#ff4d6d}.item[data-type="freeze"]{color:#9be7ff}.overlay{position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(3,6,14,.82);backdrop-filter:blur(7px)}.card{width:min(430px,100%);padding:24px 18px;border:1px solid rgba(255,255,255,.11);border-radius:24px;background:rgba(17,24,39,.96);text-align:center;box-shadow:0 18px 55px rgba(0,0,0,.35)}.card h1{margin:0 0 8px;color:var(--cyan);font-size:1.55rem}.card p{color:var(--muted);line-height:1.55}.chances{color:var(--gold)!important;font-weight:900}.primary{margin-top:10px;border:0;border-radius:15px;padding:13px 22px;background:linear-gradient(135deg,var(--cyan),#7b61ff);font-weight:900;color:#071019;cursor:pointer}.error{color:#fbbf24!important;font-size:.88rem}.hint{font-size:.8rem;color:#64748b!important;margin-top:12px}.freeze{position:absolute;inset:0;z-index:5;background:rgba(0,242,254,.1);pointer-events:none;display:none}.shake{animation:shake .18s linear 1}@keyframes shake{25%{transform:translate(5px,2px)}50%{transform:translate(-5px,-2px)}75%{transform:translate(3px,-1px)}}@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation-duration:.01ms!important}}
-</style></head><body><header class="header"><button class="back-btn" id="backBtn"><i class="fa-solid fa-arrow-left"></i> Back to MYFA BIRR</button><div class="score"><i class="fa-solid fa-gem"></i> <span id="score">0</span></div><div class="time"><i class="fa-solid fa-clock"></i> <span id="time">15</span>s</div></header><main id="gameArea"><div id="freeze" class="freeze"></div><div id="catcher" class="catcher" aria-label="Catcher"><i class="fa-solid fa-basket-shopping"></i></div><section id="startOverlay" class="overlay"><div class="card"><h1>MYFA DROP</h1><p>Catch flowers to earn Gems. Avoid bombs. Catch snowflakes to slow the action.</p><p class="chances">Chances remaining: <span id="chances">Checking…</span></p><button id="startBtn" class="primary" disabled>Play Now</button><p id="error" class="error" hidden></p><p class="hint">Your play is authorized by the MYFA server before a chance is consumed.</p></div></section><section id="endOverlay" class="overlay" hidden><div class="card"><h1 style="color:var(--gold)">Time’s Up</h1><p>You caught <strong id="finalScore">0</strong> Gems.</p><button id="claimBtn" class="primary">Claim Reward</button><p id="claimError" class="error" hidden></p></div></section></main><script>
-const tg=window.Telegram?.WebApp;try{tg?.ready();tg?.expand()}catch(e){}const params=new URLSearchParams(location.search);const userId=String(tg?.initDataUnsafe?.user?.id||params.get('userId')||'');const initData=tg?.initData||'';const apiBase='';let chances=0,sessionId=null,score=0,timeLeft=15,playing=false,startBusy=false,claimBusy=false,timer=0,spawnTimer=0,freezeUntil=0;const $=id=>document.getElementById(id);const area=$('gameArea'),catcher=$('catcher');
-function showError(msg){$('error').hidden=false;$('error').textContent=msg}async function loadState(){if(!userId){showError('Telegram user session not found.');return}try{const q=initData?'?initData='+encodeURIComponent(initData):'';const r=await fetch(apiBase+'/api/dropgame/state/'+encodeURIComponent(userId)+q,{cache:'no-store'});const d=await r.json();if(!r.ok||!d.success)throw Error(d.error||'Unable to load chances');chances=Number(d.chances||0);$('chances').textContent=String(chances);if(chances>0){$('startBtn').disabled=false}else showError('No Drop chances remaining today.')}catch(e){console.error(e);$('chances').textContent='Unavailable';showError('Unable to load your chances. Check your connection and try again.')}}
-function move(x){const r=area.getBoundingClientRect(),half=catcher.offsetWidth/2;const px=Math.max(half,Math.min(r.width-half,x-r.left));catcher.style.left=px+'px'}area.addEventListener('pointermove',e=>{if(playing)move(e.clientX)},{passive:true});area.addEventListener('touchmove',e=>{if(!playing)return;e.preventDefault();if(e.touches[0])move(e.touches[0].clientX)},{passive:false});
-async function start(){if(startBusy||playing||chances<=0)return;startBusy=true;$('startBtn').disabled=true;try{const r=await fetch(apiBase+'/api/dropgame/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId,initData})});const d=await r.json();if(!r.ok||!d.success)throw Error(d.error||'Unable to start game');sessionId=d.sessionId;chances=Number(d.chancesRemaining||0);$('chances').textContent=String(chances);$('startOverlay').hidden=true;score=0;timeLeft=15;playing=true;freezeUntil=0;$('score').textContent='0';$('time').textContent='15';$('freeze').style.display='none';document.querySelectorAll('.item').forEach(x=>x.remove());timer=setInterval(()=>{if(Date.now()<freezeUntil)return;timeLeft--;$('time').textContent=timeLeft;if(timeLeft<=0)end()},1000);spawn()}catch(e){showError(e.message);$('startBtn').disabled=false}finally{startBusy=false}}
-function spawn(){if(!playing)return;const el=document.createElement('div');el.className='item';const roll=Math.random();const type=roll<.2?'bomb':roll<.3?'freeze':'flower';el.dataset.type=type;el.innerHTML=type==='bomb'?'<i class="fa-solid fa-bomb"></i>':type==='freeze'?'<i class="fa-solid fa-snowflake"></i>':'<i class="fa-solid fa-fan"></i>';if(type==='flower')el.classList.add('flower');el.style.left=Math.random()*Math.max(1,area.clientWidth-44)+'px';el.style.top='-46px';area.appendChild(el);let y=-46,speed=2+Math.random()*2.5,last=performance.now();function frame(now){if(!playing){el.remove();return}const dt=Math.min(32,now-last);last=now;const slow=Date.now()<freezeUntil?.3:1;y+=speed*slow*(dt/16.67);el.style.top=y+'px';const a=el.getBoundingClientRect(),b=catcher.getBoundingClientRect();if(a.bottom>=b.top&&a.top<=b.bottom&&a.right>=b.left&&a.left<=b.right){catchItem(el,type);return}if(y>area.clientHeight){el.remove();return}requestAnimationFrame(frame)}requestAnimationFrame(frame);spawnTimer=setTimeout(spawn,450)}
-function catchItem(el,type){el.remove();if(type==='flower'){score=Math.min(100,score+5)}else if(type==='bomb'){score=Math.max(0,score-10);area.classList.remove('shake');void area.offsetWidth;area.classList.add('shake')}else{freezeUntil=Date.now()+3000;$('freeze').style.display='block';setTimeout(()=>{if(Date.now()>=freezeUntil)$('freeze').style.display='none'},3100)}$('score').textContent=score}
-function end(){if(!playing)return;playing=false;clearInterval(timer);clearTimeout(spawnTimer);document.querySelectorAll('.item').forEach(x=>x.remove());$('finalScore').textContent=score;$('endOverlay').hidden=false}
-async function claim(){if(claimBusy||!sessionId)return;claimBusy=true;$('claimBtn').disabled=true;try{const r=await fetch(apiBase+'/api/dropgame/claim',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId,initData,sessionId,score})});const d=await r.json();if(!r.ok||!d.success)throw Error(d.error||'Unable to claim reward');location.replace('/index.html?userId='+encodeURIComponent(userId))}catch(e){console.error(e);$('claimError').hidden=false;$('claimError').textContent=e.message;$('claimBtn').disabled=false;claimBusy=false}}
-$('startBtn').onclick=start;$('claimBtn').onclick=claim;$('backBtn').onclick=()=>location.replace('/index.html'+(userId?'?userId='+encodeURIComponent(userId):''));loadState();
-</script></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Drop Game - MYFA BIRR</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root { --bg-main: #0B0B2A; --color-cyan: #00F2FE; --color-magenta: #FF007A; --color-gold: #FCDD09; }
+        body {
+            margin: 0; padding: 0; background: var(--bg-main); color: white;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            overflow: hidden; display: flex; flex-direction: column; height: 100vh;
+        }
+        .header {
+            display: flex; align-items: center; justify-content: space-between; padding: 15px;
+            background: rgba(11, 15, 25, 0.9); border-bottom: 1px solid rgba(255,255,255,0.1); z-index: 10;
+        }
+        .back-btn {
+            background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white;
+            padding: 8px 15px; border-radius: 8px; font-size: 0.95rem; cursor: pointer;
+        }
+        #gameArea {
+            flex: 1; position: relative; overflow: hidden; background: linear-gradient(180deg, #0B0B2A 0%, #1a1a3e 100%);
+        }
+        .catcher {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            width: 80px; height: 80px; background: rgba(0,242,254,0.2); border: 2px solid var(--color-cyan);
+            border-radius: 20px 20px 40px 40px; display: flex; justify-content: center; align-items: center;
+            font-size: 2rem; z-index: 5; box-shadow: 0 0 20px rgba(0,242,254,0.5);
+            transition: left 0.1s;
+        }
+        .drop-item {
+            position: absolute; width: 50px; height: 50px; background-size: contain; background-repeat: no-repeat;
+            background-position: center; border-radius: 50%; z-index: 4;
+            display: flex; justify-content: center; align-items: center; font-size: 30px;
+        }
+        .overlay {
+            position: absolute; inset: 0; background: rgba(0,0,0,0.8); z-index: 20;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            backdrop-filter: blur(5px);
+        }
+        .quantum-btn {
+            background: linear-gradient(45deg, #00F2FE, #4FACFE); border: none; color: black; font-weight: bold;
+            padding: 12px 25px; border-radius: 10px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px;
+            font-size: 1.1rem; margin-top: 20px; box-shadow: 0 0 15px rgba(0,242,254,0.5);
+        }
+        #scoreDisplay { font-size: 1.5rem; font-weight: bold; color: var(--color-gold); text-shadow: 0 0 10px rgba(252,221,9,0.5); }
+        #timeDisplay { font-size: 1.2rem; font-weight: bold; color: var(--color-magenta); }
+        .frozen-overlay {
+            position: absolute; inset: 0; background: rgba(0,242,254,0.3); z-index: 15; pointer-events: none;
+            display: none; animation: pulse 1s infinite alternate;
+        }
+        @keyframes pulse { from { opacity: 0.3; } to { opacity: 0.6; } }
+        .smoke-effect {
+            position: absolute; background: rgba(255,255,255,0.8); border-radius: 50%;
+            pointer-events: none; animation: smokeFade 0.5s forwards;
+        }
+        @keyframes smokeFade {
+            0% { transform: scale(0.5); opacity: 1; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <button class="back-btn" onclick="window.location.href='/index.html?userId=' + userId">Back to MYFA BIRR</button>
+        <button class="back-btn" onclick="window.history.back()"><i class="fa-solid fa-arrow-left"></i> Hub</button>
+        <div id="scoreDisplay"><i class="fa-solid fa-gem"></i> <span id="score">0</span></div>
+        <div id="timeDisplay"><i class="fa-solid fa-clock"></i> <span id="time">15</span>s</div>
+    </div>
+
+    <div id="gameArea">
+        <div class="frozen-overlay" id="frozenOverlay"></div>
+        <div class="catcher" id="catcher">🧺</div>
+    </div>
+
+    <div class="overlay" id="startOverlay">
+        <h1 style="color:var(--color-cyan); margin-bottom:10px; text-shadow:0 0 10px rgba(0,242,254,0.5);">DROP GAME</h1>
+        <p style="text-align:center; max-width:80%; margin-bottom:20px;">Catch flowers (gems). Avoid bombs! Grab snowflakes to slow time.</p>
+        <p style="color:var(--color-gold); margin-bottom: 20px;">Chances remaining: <span id="chancesDisplay">Loading...</span></p>
+        <button class="quantum-btn" id="startBtn" onclick="startGame()" style="display:none;">Play Now</button>
+        <p id="noChancesMsg" style="color:var(--color-magenta); display:none;">No chances left today! Complete tasks to earn more.</p>
+    </div>
+
+    <div class="overlay" id="endOverlay" style="display:none;">
+        <h1 style="color:var(--color-gold); margin-bottom:10px;">Time's Up!</h1>
+        <h2 style="margin-bottom:20px;">You caught: <span id="finalScore" style="color:var(--color-cyan);">0</span> Gems</h2>
+        <button class="quantum-btn" onclick="claimReward()">Claim Reward</button>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        let userId = urlParams.get('userId');
+
+        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
+            userId = window.Telegram.WebApp.initDataUnsafe.user.id.toString();
+        }
+
+        const API_BASE_URL = window.location.origin;
+        let score = 0;
+        let timeLeft = 15;
+        let gameInterval;
+        let dropInterval;
+        let isPlaying = false;
+        let isFrozen = false;
+        let dropSpeedMultiplier = 1;
+        let gameChances = 0;
+
+        const catcher = document.getElementById('catcher');
+        const gameArea = document.getElementById('gameArea');
+        let catcherX = gameArea.clientWidth / 2;
+
+        const flowerImgUrl = "https://i.ibb.co/d03YYXbj/images.jpg";
+
+        async function init() {
+            if(!userId) {
+                document.getElementById('chancesDisplay').innerText = "Error: No User ID";
+                return;
+            }
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/user/${userId}`);
+                const data = await res.json();
+                if(data.success) {
+                    const u = data.user;
+                    // Reset chances if new day
+                    const now = new Date();
+                    const lastPlayStr = u.lastDropGamePlay || 0;
+                    const lastPlayDate = new Date(lastPlayStr);
+                    let chances = u.dropGameChances !== undefined ? u.dropGameChances : 1;
+
+                    if(now.getDate() !== lastPlayDate.getDate() || now.getMonth() !== lastPlayDate.getMonth() || now.getFullYear() !== lastPlayDate.getFullYear()) {
+                        chances = Math.max(chances, 1); // Give at least 1 free play per day
+                    }
+
+                    gameChances = chances;
+                    document.getElementById('chancesDisplay').innerText = gameChances;
+
+                    if(gameChances > 0) {
+                        document.getElementById('startBtn').style.display = 'block';
+                    } else {
+                        document.getElementById('noChancesMsg').style.display = 'block';
+                    }
+                }
+            } catch(e) {
+                console.error("Init error", e);
+                document.getElementById('chancesDisplay').innerText = "Network Error";
+            }
+        }
+        init();
+
+        // Mobile touch handling for catcher
+        gameArea.addEventListener('touchmove', (e) => {
+            if(!isPlaying) return;
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = gameArea.getBoundingClientRect();
+            catcherX = touch.clientX - rect.left;
+
+            // Bounds
+            const halfWidth = catcher.clientWidth / 2;
+            if(catcherX < halfWidth) catcherX = halfWidth;
+            if(catcherX > rect.width - halfWidth) catcherX = rect.width - halfWidth;
+
+            catcher.style.left = catcherX + 'px';
+        }, {passive: false});
+
+        // Mouse handling for desktop
+        gameArea.addEventListener('mousemove', (e) => {
+            if(!isPlaying) return;
+            const rect = gameArea.getBoundingClientRect();
+            catcherX = e.clientX - rect.left;
+
+            const halfWidth = catcher.clientWidth / 2;
+            if(catcherX < halfWidth) catcherX = halfWidth;
+            if(catcherX > rect.width - halfWidth) catcherX = rect.width - halfWidth;
+
+            catcher.style.left = catcherX + 'px';
+        });
+
+        async function startGame() {
+            if(gameChances <= 0) return;
+
+            try {
+                // Deduct chance on backend
+                const res = await fetch(`${API_BASE_URL}/api/dropgame/start`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({userId})
+                });
+                const data = await res.json();
+                if(data.success) {
+                    window.dropSessionId = data.sessionId;
+                } else {
+                    alert("Error starting game: " + (data.error || "Unknown"));
+                    return;
+                }
+            } catch(e) {
+                alert("Network error starting game");
+                return;
+            }
+
+            document.getElementById('startOverlay').style.display = 'none';
+            score = 0;
+            timeLeft = 15;
+            isFrozen = false;
+            dropSpeedMultiplier = 1;
+            document.getElementById('score').innerText = score;
+            document.getElementById('time').innerText = timeLeft;
+            document.getElementById('frozenOverlay').style.display = 'none';
+
+            // Clear existing items
+            document.querySelectorAll('.drop-item').forEach(el => el.remove());
+
+            isPlaying = true;
+
+            gameInterval = setInterval(() => {
+                timeLeft--;
+                document.getElementById('time').innerText = timeLeft;
+                if(timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+
+            spawnLoop();
+        }
+
+        function spawnLoop() {
+            if(!isPlaying) return;
+            spawnItem();
+            const delay = isFrozen ? 1000 : 500;
+            dropInterval = setTimeout(spawnLoop, delay);
+        }
+
+        function spawnItem() {
+            const item = document.createElement('div');
+            item.className = 'drop-item';
+
+            const rand = Math.random();
+            let type = 'flower';
+            if(rand < 0.2) type = 'bomb';
+            else if(rand < 0.3) type = 'freeze';
+
+            if(type === 'flower') {
+                item.style.backgroundImage = `url('${flowerImgUrl}')`;
+                item.dataset.type = 'flower';
+            } else if(type === 'bomb') {
+                item.innerText = '💣';
+                item.dataset.type = 'bomb';
+            } else {
+                item.innerText = '❄️';
+                item.dataset.type = 'freeze';
+            }
+
+            const maxLeft = gameArea.clientWidth - 50;
+            const startX = Math.random() * maxLeft;
+            item.style.left = startX + 'px';
+            item.style.top = '-50px';
+
+            gameArea.appendChild(item);
+
+            animateItem(item, type);
+        }
+
+        function animateItem(item, type) {
+            let top = -50;
+            const speed = (Math.random() * 3 + 2) * dropSpeedMultiplier;
+
+            function step() {
+                if(!isPlaying) { item.remove(); return; }
+
+                // Freeze logic slows down current items
+                const currentSpeed = isFrozen ? speed * 0.3 : speed;
+                top += currentSpeed;
+                item.style.top = top + 'px';
+
+                // Check collision
+                const itemRect = item.getBoundingClientRect();
+                const catcherRect = catcher.getBoundingClientRect();
+
+                if (itemRect.bottom >= catcherRect.top &&
+                    itemRect.top <= catcherRect.bottom &&
+                    itemRect.right >= catcherRect.left &&
+                    itemRect.left <= catcherRect.right) {
+
+                    handleCatch(item, type);
+                    return;
+                }
+
+                if(top > gameArea.clientHeight) {
+                    item.remove();
+                } else {
+                    requestAnimationFrame(step);
+                }
+            }
+            requestAnimationFrame(step);
+        }
+
+        function handleCatch(item, type) {
+            const rect = item.getBoundingClientRect();
+            createSmoke(rect.left + rect.width/2, rect.top + rect.height/2);
+            item.remove();
+
+            if(type === 'flower') {
+                score += 5; // 5 gems per flower
+                document.getElementById('score').innerText = score;
+            } else if(type === 'bomb') {
+                score = Math.max(0, score - 10);
+                document.getElementById('score').innerText = score;
+                // Shake effect
+                gameArea.style.transform = 'translate(5px, 5px)';
+                setTimeout(() => gameArea.style.transform = 'translate(-5px, -5px)', 50);
+                setTimeout(() => gameArea.style.transform = 'translate(5px, -5px)', 100);
+                setTimeout(() => gameArea.style.transform = 'translate(0, 0)', 150);
+            } else if(type === 'freeze') {
+                isFrozen = true;
+                document.getElementById('frozenOverlay').style.display = 'block';
+                setTimeout(() => {
+                    isFrozen = false;
+                    document.getElementById('frozenOverlay').style.display = 'none';
+                }, 3000);
+            }
+        }
+
+        function createSmoke(x, y) {
+            const smoke = document.createElement('div');
+            smoke.className = 'smoke-effect';
+            smoke.style.width = '30px';
+            smoke.style.height = '30px';
+            smoke.style.left = (x - 15) + 'px';
+            smoke.style.top = (y - 15) + 'px';
+            document.body.appendChild(smoke);
+            setTimeout(() => smoke.remove(), 500);
+        }
+
+        function endGame() {
+            isPlaying = false;
+            clearInterval(gameInterval);
+            clearTimeout(dropInterval);
+            document.getElementById('endOverlay').style.display = 'flex';
+            document.getElementById('finalScore').innerText = score;
+        }
+
+        async function claimReward() {
+            if(score <= 0) {
+                window.location.href = '/index.html?userId=' + userId;
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/dropgame/claim`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({userId, score, sessionId: window.dropSessionId})
+                });
+                const data = await res.json();
+                if(data.success) {
+                    window.location.href = '/index.html?userId=' + userId;
+                } else {
+                    alert("Error claiming reward: " + (data.error || "Unknown"));
+                    window.location.href = '/index.html?userId=' + userId;
+                }
+            } catch(e) {
+                alert("Network error");
+                window.location.href = '/index.html?userId=' + userId;
+            }
+        }
+    </script>
+</body>
+</html>

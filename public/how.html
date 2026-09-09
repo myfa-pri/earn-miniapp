@@ -1,4 +1,270 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>How it works — MYFA BIRR</title><link rel="stylesheet" href="index.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"><script src="https://telegram.org/js/telegram-web-app.js"></script><style>
-body{min-height:100vh;padding-bottom:32px}.how{width:min(760px,100%);margin:auto;padding:14px}.top{display:flex;align-items:center;gap:10px;margin-bottom:14px}.top button{border:1px solid var(--glass-border);background:var(--glass-bg);color:inherit;border-radius:13px;padding:10px 13px}.title{flex:1;text-align:center;font-weight:900}.langs{display:flex;gap:5px}.langs button.active{border-color:var(--color-cyan)}.hero,.sec{border:1px solid var(--glass-border);background:var(--glass-bg);border-radius:20px}.hero{padding:20px;margin-bottom:12px}.hero h1{margin:0 0 6px}.muted{color:#94a3b8;line-height:1.55}.sec{margin:10px 0;overflow:hidden}.sec>button{width:100%;border:0;background:transparent;color:inherit;display:flex;gap:12px;align-items:center;padding:16px;text-align:left}.icon{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:rgba(0,242,254,.1);color:var(--color-cyan)}.sec h2{font-size:.98rem;flex:1;margin:0}.body{display:none;padding:0 16px 17px 68px;color:#94a3b8;line-height:1.65}.sec.open .body{display:block}.chev{transition:transform .18s}.sec.open .chev{transform:rotate(180deg)}ol,ul{padding-left:20px}.body li{margin:6px 0}@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
-</style></head><body><main class="how"><div class="top"><button id="back" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><div class="title">MYFA BIRR</div><div class="langs"><button data-l="en" class="active">EN</button><button data-l="am">አማ</button></div></div><section class="hero"><h1 data-en="How it works" data-am="እንዴት እንደሚሰራ">How it works</h1><p class="muted" data-en="A practical guide to earning, games, ads, referrals, withdrawals and your account." data-am="የገቢ፣ ጨዋታ፣ ማስታወቂያ፣ ሪፈራል፣ ማውጣት እና መለያዎን ለመጠቀም አጭር መመሪያ።">A practical guide to earning, games, ads, referrals, withdrawals and your account.</p></section><div id="list"></div></main><script>
-const data=[['gem','Earn','ገቢ ማግኘት','Use available ads, tasks, referrals and games. Rewards are credited only after the MYFA backend verifies the required action.','በሚገኙ ማስታወቂያዎች፣ ተግባራት፣ ሪፈራሎች እና ጨዋታዎች ገቢ ያግኙ። ሽልማት የሚጨመረው የMYFA backend እርምጃውን ካረጋገጠ በኋላ ብቻ ነው።'],['play-circle','Watch Ads','ማስታወቂያ ይመልከቱ','Open Ads, choose an available ad, start it, complete the required viewing time and wait for verification. Limits are controlled by the current configuration.','Ads ይክፈቱ፣ የሚገኝ ማስታወቂያ ይምረጡ፣ ይጀምሩ፣ የሚያስፈልገውን ጊዜ ይጨርሱ እና ማረጋገጫ ይጠብቁ። ገደቦች በአሁኑ የመተግበሪያ ቅንብር ይወሰናሉ።'],['list-check','Tasks','ተግባራት','Open Tasks, read the requirement, complete it, then submit or verify it. Some tasks require review before reward.','Tasks ይክፈቱ፣ መስፈርቱን ያንብቡ፣ ያጠናቅቁ እና ያስገቡ/ያረጋግጡ። አንዳንድ ተግባራት ሽልማት ከመሰጠቱ በፊት ግምገማ ይፈልጋሉ።'],['rectangle-ad','Create Ads','ማስታወቂያ ይፍጠሩ','Open Ad Studio from Settings. Choose the available campaign type, add your campaign details and supported media, review, then submit. Delivery follows backend status and budget rules.','ከSettings Ad Studio ይክፈቱ። የሚገኘውን የካምፔይን አይነት ይምረጡ፣ የካምፔይን መረጃና የሚደገፍ ሚዲያ ያክሉ፣ ይመልከቱ እና ያስገቡ። ማስታወቂያ ስርጭት በbackend ሁኔታና በበጀት ህጎች ይመራል።'],['money-bill-transfer','Withdraw','ገንዘብ ያውጡ','Open Withdraw, check the currently shown minimum and payment method, enter the required details and submit. Track the request status in the app.','Withdraw ይክፈቱ፣ በዚያ የሚታየውን ዝቅተኛ መጠንና የክፍያ መንገድ ያረጋግጡ፣ የሚፈለገውን መረጃ ያስገቡ እና ያስገቡ። የጥያቄውን ሁኔታ በመተግበሪያው ይከታተሉ።'],['user-group','Referrals','ሪፈራል','Open Invite/Referrals and share the MYFA referral link. A referral is counted only when the new user enters through the supported Telegram flow and meets the app eligibility rules.','Invite/Referrals ይክፈቱ እና የMYFA ሪፈራል ሊንክ ያጋሩ። አዲሱ ተጠቃሚ በተፈቀደው Telegram መንገድ ገብቶ የመተግበሪያውን የብቁነት ህግ ሲያሟላ ሪፈራሉ ይቆጠራል።'],['gamepad','Games','ጨዋታዎች','Multi Ox and Daily Combo use their own rules and limits. MYFA Drop: move the catcher, catch flowers, avoid bombs and catch snowflakes to slow the action. A Drop chance is consumed only after the server authorizes a game.','Multi Ox እና Daily Combo የራሳቸው ህግና ገደብ አላቸው። MYFA Drop፦ catcher ያንቀሳቅሱ፣ አበቦችን ይያዙ፣ ቦምቦችን ያስወግዱ እና snowflake በመያዝ ጨዋታውን ያዘግዩ። የDrop እድል የሚቀነሰው server ጨዋታውን ካፀደቀ በኋላ ነው።'],['chart-line','Account & Statistics','መለያ እና ስታቲስቲክስ','Home/Profile show backend-backed balance, ad, task, referral and account information available to your user. After an earning action, refresh to see the latest server state.','Home/Profile ለእርስዎ የሚገኘውን ከbackend የሚመጣ ቀሪ ሂሳብና የማስታወቂያ፣ ተግባር፣ ሪፈራል እና መለያ መረጃ ያሳያሉ። ገቢ ከማግኘት በኋላ አዲሱን የserver ሁኔታ ለማየት refresh ያድርጉ።']];let lang=localStorage.getItem('appLang')==='AM'?'am':'en';function render(){document.getElementById('list').innerHTML=data.map((x,i)=>`<section class="sec"><button aria-expanded="false"><span class="icon"><i class="fa-solid fa-${x[0]}"></i></span><h2>${lang==='am'?x[2]:x[1]}</h2><i class="fa-solid fa-chevron-down chev"></i></button><div class="body">${lang==='am'?x[4]:x[3]}</div></section>`).join('');document.querySelectorAll('.sec>button').forEach(b=>b.onclick=()=>{const s=b.parentElement;s.classList.toggle('open');b.setAttribute('aria-expanded',s.classList.contains('open'))});document.querySelectorAll('[data-l]').forEach(b=>b.classList.toggle('active',b.dataset.l===lang))}document.querySelectorAll('[data-l]').forEach(b=>b.onclick=()=>{lang=b.dataset.l;localStorage.setItem('appLang',lang==='am'?'AM':'EN');document.querySelectorAll('[data-en]').forEach(e=>e.textContent=e.dataset[lang]);render()});document.getElementById('back').onclick=()=>{const id=new URLSearchParams(location.search).get('userId')||tg?.initDataUnsafe?.user?.id;location.replace('/index.html'+(id?'?userId='+encodeURIComponent(id):''))};try{tg?.ready();tg?.expand()}catch(e){}render();</script></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>How to use MYFA BIRR</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,300;0,400;0,600;0,700;1,400&family=Orbitron:wght@400;600;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="index.css">
+    <style>
+        body { margin: 0; padding: 0; background: var(--bg-main, #0B0B2A); color: white; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow-x: hidden; }
+        .how-container { padding: 20px; padding-bottom: 50px; max-width: 600px; margin: 0 auto; }
+        .how-section { margin-bottom: 20px; transition: transform 0.2s ease, opacity 0.2s ease; }
+        .how-section h2 { color: var(--color-cyan, #00F2FE); font-size: 1.3rem; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+        .how-section p, .how-section li { color: #E2E8F0; line-height: 1.6; font-size: 0.95rem; margin-bottom: 8px; }
+        .how-section ul { padding-left: 20px; margin-top: 5px; }
+        .quantum-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: rgba(15,23,42,0.9); border-bottom: 1px solid rgba(255,255,255,0.1); position: sticky; top: 0; z-index: 100; backdrop-filter: blur(10px); }
+    </style>
+</head>
+<body class="lang-en-active">
+
+    <div class="quantum-header">
+        <button class="btn btn-secondary" style="padding: 5px 15px; font-size: 0.9rem;" onclick="goBack()"><i class="fa-solid fa-arrow-left"></i> <span class="lang-en">Back to MYFA</span><span class="lang-am" style="display:none;">ወደ MYFA ተመለስ</span></button>
+        <button class="btn quantum-btn" style="padding: 5px 15px; font-size: 0.9rem; font-weight: bold;" onclick="toggleLang()">
+            <span class="lang-en">አማርኛ</span>
+            <span class="lang-am" style="display:none;">English</span>
+        </button>
+    </div>
+
+    <div class="how-container">
+        
+        <!-- Header -->
+        <div style="text-align:center; margin-bottom:30px;">
+            <i class="fa-solid fa-book-open" style="font-size:3rem; color:var(--color-magenta); margin-bottom:10px; filter: drop-shadow(0 0 10px var(--color-magenta));"></i>
+            <h1 style="margin:0; font-family:'Orbitron', sans-serif; font-size:1.8rem;">
+                <span class="lang-en">How it Works</span>
+                <span class="lang-am" style="display:none;">እንዴት እንደሚሰራ</span>
+            </h1>
+        </div>
+
+        <!-- How to Earn -->
+        <div class="card cyber-card how-section">
+            <h2><i class="fa-solid fa-coins"></i> 
+                <span class="lang-en">How to Earn</span>
+                <span class="lang-am" style="display:none;">እንዴት ማግኘት ይቻላል</span>
+            </h2>
+            <div class="lang-en">
+                <p>MYFA BIRR allows you to earn Gems ($) through multiple legitimate methods:</p>
+                <ul>
+                    <li>Watching short video and image advertisements.</li>
+                    <li>Completing sponsored tasks (joining channels, using bots).</li>
+                    <li>Inviting friends via your referral link.</li>
+                    <li>Playing games like Drop Game, Multi Ox, and Daily Combo.</li>
+                </ul>
+            </div>
+            <div class="lang-am" style="display:none;">
+                <p>MYFA BIRR በተለያዩ ህጋዊ መንገዶች Gems ($) እንድታገኙ ይፈቅድልዎታል፡</p>
+                <ul>
+                    <li>አጫጭር የቪዲዮ እና የምስል ማስታወቂያዎችን በማየት።</li>
+                    <li>የስፖንሰር ተግባራትን በማጠናቀቅ (ቻናሎችን መቀላቀል፣ ቦቶችን መጠቀም)።</li>
+                    <li>በሪፈራል ሊንክዎ ጓደኞችን በመጋበዝ።</li>
+                    <li>እንደ Drop Game፣ Multi Ox እና Daily Combo ያሉ ጨዋታዎችን በመጫወት።</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- How to Watch Ads -->
+        <div class="card cyber-card how-section">
+            <h2><i class="fa-solid fa-video"></i> 
+                <span class="lang-en">How to Watch Ads</span>
+                <span class="lang-am" style="display:none;">ማስታወቂያዎችን እንዴት ማየት ይቻላል</span>
+            </h2>
+            <div class="lang-en">
+                <p>To earn from ads:</p>
+                <ol>
+                    <li>Open the Ads section from the Hub.</li>
+                    <li>Select an available ad to start viewing.</li>
+                    <li>Keep the ad open until the timer completes (usually 10-15 seconds).</li>
+                    <li>Wait for the "Verifying..." message to finish to ensure your view is validated.</li>
+                    <li>You will instantly receive your reward in your balance. Note: You have a daily limit for ads.</li>
+                </ol>
+            </div>
+            <div class="lang-am" style="display:none;">
+                <p>ከማስታወቂያዎች ለማግኘት፡</p>
+                <ol>
+                    <li>ከዋናው ገፅ ላይ የማስታወቂያ (Ads) ክፍልን ይክፈቱ።</li>
+                    <li>ለማየት ከሚገኙ ማስታወቂያዎች ውስጥ አንዱን ይምረጡ።</li>
+                    <li>ቆጣሪው እስኪያልቅ ድረስ ማስታወቂያውን ክፍት አድርገው ይጠብቁ (ብዙውን ጊዜ ከ10-15 ሰከንዶች)።</li>
+                    <li>እይታዎ መረጋገጡን ለማረጋገጥ "Verifying..." የሚለው መልእክት እስኪያልቅ ይጠብቁ።</li>
+                    <li>ሽልማትዎን ወዲያውኑ በባላንስዎ ላይ ያገኛሉ። ማሳሰቢያ፡ በቀን ለማስታወቂያዎች የተወሰነ ገደብ አሎት።</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- How to Complete Tasks -->
+        <div class="card cyber-card how-section">
+            <h2><i class="fa-solid fa-list-check"></i> 
+                <span class="lang-en">How to Complete Tasks</span>
+                <span class="lang-am" style="display:none;">ተግባራትን እንዴት ማጠናቀቅ ይቻላል</span>
+            </h2>
+            <div class="lang-en">
+                <p>Tasks offer larger rewards. To complete a task:</p>
+                <ol>
+                    <li>Open the "Tasks" page from the bottom navigation.</li>
+                    <li>Tap "Start" on an available task to read the requirements (e.g., Join a channel).</li>
+                    <li>Complete the required action exactly as instructed.</li>
+                    <li>Return to MYFA BIRR and tap "Verify" or submit a screenshot if manual proof is required.</li>
+                    <li>Auto-tasks reward instantly upon verification. Manual tasks will be reviewed by the advertiser before rewarding.</li>
+                </ol>
+            </div>
+            <div class="lang-am" style="display:none;">
+                <p>ተግባራት ትልልቅ ሽልማቶችን ይሰጣሉ። ተግባርን ለማጠናቀቅ፡</p>
+                <ol>
+                    <li>ከታች ካለው ማውጫ "Tasks" ገፅን ይክፈቱ።</li>
+                    <li>መስፈርቶቹን ለማንበብ በሚገኝ ተግባር ላይ "Start" ን ይጫኑ (ለምሳሌ፡ ቻናል መቀላቀል)።</li>
+                    <li>የተጠየቀውን እርምጃ ልክ እንደተነገረዎት ያጠናቅቁ።</li>
+                    <li>ወደ MYFA BIRR ይመለሱ እና "Verify" ን ይጫኑ ወይም ማረጋገጫ ከተጠየቀ ስክሪንሾት ያስገቡ።</li>
+                    <li>አውቶማቲክ ተግባራት ሲረጋገጡ ወዲያውኑ ይሸልማሉ። በእጅ የሚረጋገጡ ተግባራት ሽልማት ከመሰጠቱ በፊት በአስተዋዋቂው ይገመገማሉ።</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- How to Create Ads -->
+        <div class="card cyber-card how-section">
+            <h2><i class="fa-solid fa-bullhorn"></i> 
+                <span class="lang-en">How to Create Ads</span>
+                <span class="lang-am" style="display:none;">ማስታወቂያዎችን እንዴት መፍጠር ይቻላል</span>
+            </h2>
+            <div class="lang-en">
+                <p>Advertisers can promote their links or channels using Ad Studio:</p>
+                <ol>
+                    <li>Open Ad Studio/Settings and select your Campaign Type (Image, Video up to 10 seconds, or Link).</li>
+                    <li>Enter the media URL, headline, description, and Call to Action.</li>
+                    <li>Set your total budget and daily budget (in Gems).</li>
+                    <li>Launch the campaign. Your budget is placed into Escrow while active.</li>
+                    <li>Users will see your ad and you will only be charged when they successfully view or complete it.</li>
+                </ol>
+            </div>
+            <div class="lang-am" style="display:none;">
+                <p>አስተዋዋቂዎች Ad Studio በመጠቀም ሊንኮቻቸውን ወይም ቻናሎቻቸውን ማስተዋወቅ ይችላሉ፡</p>
+                <ol>
+                    <li>Ad Studio ይክፈቱ እና የዘመቻዎን አይነት ይምረጡ (ምስል፣ እስከ 10 ሰከንድ ቪዲዮ፣ ወይም ሊንክ)።</li>
+                    <li>የሚዲያውን ሊንክ፣ አርዕስት፣ መግለጫ እና የጥሪ ፅሁፍ (CTA) ያስገቡ።</li>
+                    <li>አጠቃላይ በጀትዎን እና የእለታዊ በጀትዎን (በ Gems) ያዘጋጁ።</li>
+                    <li>ዘመቻውን ያስጀምሩ። ዘመቻው ገቢራዊ እስካለ ድረስ በጀትዎ በ Escrow ይቀመጣል።</li>
+                    <li>ተጠቃሚዎች ማስታወቂያዎን ያያሉ እና ተጠቃሚዎች በትክክል ሲያዩት ወይም ሲያጠናቅቁት ብቻ ክፍያ ይቆረጥብዎታል።</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- How to Withdraw -->
+        <div class="card cyber-card how-section">
+            <h2><i class="fa-solid fa-money-bill-transfer"></i> 
+                <span class="lang-en">How to Withdraw</span>
+                <span class="lang-am" style="display:none;">ገንዘብ እንዴት ማውጣት ይቻላል</span>
+            </h2>
+            <div class="lang-en">
+                <p>Withdrawing your earnings is simple:</p>
+                <ol>
+                    <li>Navigate to the "Pay" or Withdraw section.</li>
+                    <li>Ensure you meet the minimum required balance for withdrawal.</li>
+                    <li>Select your preferred payment method (e.g. Telebirr, CBE).</li>
+                    <li>Enter your correct account details and requested amount.</li>
+                    <li>Submit the request. Your balance will be held while the request is Pending. Approved requests will be disbursed to your account.</li>
+                </ol>
+            </div>
+            <div class="lang-am" style="display:none;">
+                <p>ያገኙትን ገንዘብ ማውጣት ቀላል ነው፡</p>
+                <ol>
+                    <li>ወደ "Pay" ወይም ገንዘብ ማውጫ ክፍል ይሂዱ።</li>
+                    <li>ገንዘብ ለማውጣት የተቀመጠውን አነስተኛ መጠን ማሟላትዎን ያረጋግጡ።</li>
+                    <li>የሚፈልጉትን የክፍያ መንገድ ይምረጡ (ለምሳሌ፡ ቴሌብር፣ CBE)።</li>
+                    <li>ትክክለኛውን የሂሳብ መረጃዎን እና ማውጣት የሚፈልጉትን መጠን ያስገቡ።</li>
+                    <li>ጥያቄዎን ያስገቡ። ጥያቄዎ Pending (በመጠባበቅ ላይ) እያለ ባላንስዎ ይያዛል። የጸደቁ ጥያቄዎች ወደ ሂሳብዎ ይላካሉ።</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- How to Refer -->
+        <div class="card cyber-card how-section">
+            <h2><i class="fa-solid fa-user-group"></i> 
+                <span class="lang-en">How to Refer Friends</span>
+                <span class="lang-am" style="display:none;">ጓደኞችን እንዴት መጋበዝ ይቻላል</span>
+            </h2>
+            <div class="lang-en">
+                <p>Earn passive income by inviting others:</p>
+                <ol>
+                    <li>Go to the "Invite" section to find your unique referral link.</li>
+                    <li>Copy and share the link with your friends.</li>
+                    <li>When a friend opens MYFA BIRR for the first time using your link, they become your referral.</li>
+                    <li>You will receive a bonus reward immediately, and a percentage of their earnings automatically. Duplicate or fake accounts will not be counted.</li>
+                </ol>
+            </div>
+            <div class="lang-am" style="display:none;">
+                <p>ሌሎችን በመጋበዝ ተከታታይ ገቢ ያግኙ፡</p>
+                <ol>
+                    <li>የእርስዎን ልዩ የሪፈራል ሊንክ ለማግኘት ወደ "Invite" ክፍል ይሂዱ።</li>
+                    <li>ሊንኩን ኮፒ አድርገው ለጓደኞችዎ ያጋሩ።</li>
+                    <li>ጓደኛዎ በእርስዎ ሊንክ በመጠቀም MYFA BIRR ን ለመጀመሪያ ጊዜ ሲከፍት፣ የእርስዎ ሪፈራል ይሆናል።</li>
+                    <li>ወዲያውኑ የቦነስ ሽልማት ያገኛሉ፣ እንዲሁም ከሚያገኙት ገቢ ላይ በመቶኛ በራስ-ሰር ያገኛሉ። የተደገሙ ወይም ሀሰተኛ አካውንቶች አይቆጠሩም።</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- How to Play Games -->
+        <div class="card cyber-card how-section">
+            <h2><i class="fa-solid fa-gamepad"></i> 
+                <span class="lang-en">How to Play Games</span>
+                <span class="lang-am" style="display:none;">ጨዋታዎችን እንዴት መጫወት ይቻላል</span>
+            </h2>
+            <div class="lang-en">
+                <p><strong>MYFA Drop:</strong> Catch the falling flowers to earn Gems. Avoid the bombs which deduct points! Catching snowflakes will slow down time temporarily. You use a "Chance" every time you play.</p>
+                <p><strong>Multi Ox:</strong> Wager Gems in a game of Tic-Tac-Toe against the AI Bot. If you win, you take the prize. Be careful, the bot is very smart!</p>
+                <p><strong>Daily Combo:</strong> Drag the correct sequence of icons into the slots. You have 3 tries per day. Guess correctly to unlock a massive Gem reward!</p>
+            </div>
+            <div class="lang-am" style="display:none;">
+                <p><strong>MYFA Drop:</strong> Gems ለማግኘት የሚወድቁትን አበቦች ይያዙ። ነጥቦችን የሚቀንሱትን ቦምቦች ያስወግዱ! የበረዶ ቅንጣቶችን መያዝ ጊዜውን ለጊዜው ያዘገየዋል። በተጫወቱ ቁጥር አንድ "ዕድል" ይጠቀማሉ።</p>
+                <p><strong>Multi Ox:</strong> Gems በማስያዝ ከ AI Bot ጋር የ Tic-Tac-Toe ጨዋታ ይጫወቱ። ካሸነፉ ሽልማቱን ይወስዳሉ። ይጠንቀቁ፣ ቦቱ በጣም ብልህ ነው!</p>
+                <p><strong>Daily Combo:</strong> ትክክለኛውን የአይከኖች ቅደም ተከተል ወደ ቦታዎቻቸው ይጎትቱ። በቀን 3 ሙከራዎች አሎት። ትልቅ የ Gem ሽልማት ለመክፈት በትክክል ይገምቱ!</p>
+            </div>
+        </div>
+
+        <!-- Account / Profile -->
+        <div class="card cyber-card how-section">
+            <h2><i class="fa-solid fa-chart-bar"></i> 
+                <span class="lang-en">Account & Statistics</span>
+                <span class="lang-am" style="display:none;">አካውንት እና ስታቲስቲክስ</span>
+            </h2>
+            <div class="lang-en">
+                <p>Your Home screen displays real-time statistics directly from our secure backend. You can view your current Gems, total tasks completed, global rank, and withdrawal history. Click "Profile & Security" to view your achievements and active sessions.</p>
+            </div>
+            <div class="lang-am" style="display:none;">
+                <p>የዋናው ገፅዎ (Home screen) ደህንነቱ ከተጠበቀው ሰርቨራችን በቀጥታ ትክክለኛ ስታቲስቲክስን ያሳያል። የአሁኑን Gems፣ ያጠናቀቋቸውን አጠቃላይ ተግባራት፣ አለማዊ ደረጃዎን እና ያወጡትን ገንዘብ ታሪክ ማየት ይችላሉ። ስኬቶችዎን እና ንቁ የሆኑ መግቢያዎችን ለማየት "Profile & Security" የሚለውን ይጫኑ።</p>
+            </div>
+        </div>
+        
+    </div>
+
+    <script>
+        let isAmharic = localStorage.getItem('appLang') === 'AM';
+
+        function applyLang() {
+            const enEls = document.querySelectorAll('.lang-en');
+            const amEls = document.querySelectorAll('.lang-am');
+            
+            if (isAmharic) {
+                enEls.forEach(e => e.style.display = 'none');
+                amEls.forEach(e => e.style.display = '');
+            } else {
+                enEls.forEach(e => e.style.display = '');
+                amEls.forEach(e => e.style.display = 'none');
+            }
+        }
+
+        function toggleLang() {
+            isAmharic = !isAmharic;
+            localStorage.setItem('appLang', isAmharic ? 'AM' : 'EN');
+            applyLang();
+        }
+
+        function goBack() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const userId = urlParams.get('userId');
+            window.location.href = userId ? '/index.html?userId=' + userId : '/index.html';
+        }
+
+        applyLang();
+    </script>
+</body>
+</html>

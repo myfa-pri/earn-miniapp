@@ -22,7 +22,7 @@ const ADMIN_SECRET = "Yichu123";
 const WELCOME_IMG = "https://i.ibb.co/GQxC1zDf/Resized-Image-2026-01-11-09-14-06-1.png";
 const IMAGE_API_URL = "https://welcomeapi.vercel.app/api";
 
-const bot = BOT_TOKEN ? new TelegramBot(BOT_TOKEN, { polling: false }) : null; 
+const bot = new TelegramBot(BOT_TOKEN, { polling: false }); 
 const app = express();
 app.use(express.json());
 app.use(cors());
@@ -313,7 +313,7 @@ app.get('/api/user/:id', async (req, res) => {
         u.adsterraWatchedToday = 0;
         dbUpdate(`users/${userId}`, { 
             streak: u.streak, lastLoginDate: now, activeSessions: u.activeSessions, 
-            monetagWatchedToday: 0, adsgramWatchedToday: 0, adsterraWatchedToday: 0, myfaAdsWatchedToday: 0,
+            monetagWatchedToday: 0, adsgramWatchedToday: 0, adsterraWatchedToday: 0,
             points: u.points, escrowYield: u.escrowYield, logs: u.logs
         }).catch(()=>{});
     } else if (sessionId) {
@@ -628,10 +628,19 @@ app.post('/api/sponsor/verify-manual', async (req, res) => {
 app.post('/api/verify-membership', async (req, res) => {
     const { userId, taskId, channelId, reward } = req.body;
     const u = await dbGet(`users/${userId}`);
-    const t = await dbGet(`bonusTasks/${taskId}`);
+    let isSponsor = false;
+    let t = await dbGet(`bonusTasks/${taskId}`);
+
+    if (!t) {
+        t = await dbGet(`campaigns/${taskId}`);
+        isSponsor = true;
+    }
+
     const c = await dbGet('config') || {};
     if(!u || !t) return res.status(404).json({error:"Not found"});
-    if((u.claimedBonuses||[]).includes(taskId)) return res.json({success:true, alreadyClaimed:true});
+
+    if(!isSponsor && (u.claimedBonuses||[]).includes(taskId)) return res.json({success:true, alreadyClaimed:true});
+    if(isSponsor && (u.claimedSponsorTasks||[]).includes(taskId)) return res.json({success:true, alreadyClaimed:true});
     
     try {
         const member = await fetchMultiAPI(channelId, userId, BOT_TOKEN);
@@ -640,49 +649,122 @@ app.post('/api/verify-membership', async (req, res) => {
         }
         if (member.success) {
             
-            // CHECK TASK LIMITS (TASK 3)
-            if (t.maxUsers && t.maxUsers > 0) {
-                if ((t.claims || 0) >= t.maxUsers) {
-                    return res.json({ success: false, error: "Task is full!" });
-                }
+            // CHECK TASK LIMITS
+            let rewardVal = (t.reward || reward || 0) * (c.globalMultiplier || 1);
+            let rType = t.rewardType || 'gems';
+
+            if (!isSponsor && t.maxUsers && t.maxUsers > 0) {
+                if ((t.claims || 0) >= t.maxUsers) return res.json({ success: false, error: "Task is full!" });
                 await dbUpdate(`bonusTasks/${taskId}`, { claims: (t.claims || 0) + 1 });
             }
             
-            const newBonuses = [...(u.claimedBonuses||[]), taskId];
-            const rewardVal = (t.reward || reward || 0) * (c.globalMultiplier || 1);
-            const rType = t.rewardType || 'gems';
+            if (isSponsor) {
+                const max = t.maxUsers || (t.task ? t.task.maxUsers : 0) || 0;
+                const claims = t.claims || (t.analytics ? t.analytics.conversions : 0) || 0;
+                const taskReward = t.reward || (t.task ? t.task.reward : reward);
+                rewardVal = taskReward * (c.globalMultiplier || 1);
+
+                if (max > 0 && claims >= max) return res.json({ success: false, error: "Task is full!" });
+
+                // Update sponsor claims/analytics
+                await dbUpdate(`campaigns/${taskId}`, {
+                    claims: claims + 1,
+                    analytics: {
+                        ...(t.analytics || {}),
+                        conversions: claims + 1
+                    }
+                });
+            }
+
+            const updates = {};
+            if(isSponsor) {
+                updates.claimedSponsorTasks = [...(u.claimedSponsorTasks||[]), taskId];
+            } else {
+                updates.claimedBonuses = [...(u.claimedBonuses||[]), taskId];
+            }
             
-            const updates = { claimedBonuses: newBonuses };
-            let logMsg = `Completed task ${t.name}`;
+            let logMsg = `Completed task ${t.name || t.title || 'Sponsor Task'}`;
             
             if (rType === 'money') {
-                updates.realBalance = (u.realBalance || 0) + (t.reward || reward || 0); // No multiplier for money
-                logMsg += ` (+$${t.reward})`;
-            } else if (rType === 'spin') {
-                updates.freeSpins = (u.freeSpins || 0) + rewardVal;
-                logMsg += ` (+${rewardVal} Spins)`;
-            } else if (rType === 'scratch') {
-                updates.freeScratches = (u.freeScratches || 0) + rewardVal;
-                logMsg += ` (+${rewardVal} Scratches)`;
-            } else if (rType === 'drop') {
-                updates.freeDrops = (u.freeDrops || 0) + rewardVal;
-                logMsg += ` (+${rewardVal} Drops)`;
+                updates.realBalance = (u.realBalance || 0) + rewardVal;
+                logMsg += ` (+${rewardVal} Birr)`;
             } else {
                 updates.points = (u.points || 0) + rewardVal;
-                logMsg += ` (+${rewardVal} Gems)`;
+                updates.dropGameChances = (u.dropGameChances || 0) + 1;
+                logMsg += ` (+${rewardVal} Gems & 1 Drop Chance)`;
             }
-            updates.logs = logAction(u, logMsg);
 
+            updates.logs = logAction(u, logMsg);
             await dbUpdate(`users/${userId}`, updates);
-            return res.json({ success: true, rewardType: rType, rewardAmount: (rType==='money' ? t.reward : rewardVal) });
+
+            return res.json({ success: true });
         } else {
             return res.json({ success: false, error: "Not Joined" });
         }
-    } catch (e) {
-        console.error("Verification Error:", e.message);
-        return res.json({ success: false, error: "Not Joined" });
+    } catch(e) {
+        return res.json({ success: false, error: e.message });
     }
 });
+
+
+app.post('/api/dropgame/start', async (req, res) => {
+    try {
+        const { userId } = req.body;
+        const u = await dbGet(`users/${userId}`);
+        if(!u) return res.status(404).json({success: false, error: "User not found"});
+
+        const now = new Date();
+        const lastPlay = new Date(u.lastDropGamePlay || 0);
+        let chances = u.dropGameChances !== undefined ? u.dropGameChances : 1;
+
+        // Daily reset logic
+        if(now.getDate() !== lastPlay.getDate() || now.getMonth() !== lastPlay.getMonth() || now.getFullYear() !== lastPlay.getFullYear()) {
+            chances = Math.max(chances, 1);
+        }
+
+        if(chances <= 0) {
+            return res.json({success: false, error: "No chances left today"});
+        }
+
+        await dbUpdate(`users/${userId}`, {
+            dropGameChances: chances - 1,
+            lastDropGamePlay: now.toISOString(),
+            currentDropGameScore: 0 // security measure to ensure valid play
+        });
+
+        res.json({success: true, chancesRemaining: chances - 1});
+    } catch(e) {
+        console.error(e);
+        res.status(500).json({success: false, error: e.message});
+    }
+});
+
+app.post('/api/dropgame/claim', async (req, res) => {
+    try {
+        const { userId, score, sessionId } = req.body;
+        const u = await dbGet(`users/${userId}`);
+        if(!u) return res.status(404).json({success: false, error: "User not found"});
+
+        if(!u.activeDropSession || u.activeDropSession !== sessionId) {
+            return res.json({success: false, error: "Invalid Session"});
+        }
+
+        // Basic security check to prevent abuse, e.g. unrealistic score
+        if(score > 150) { 
+            return res.json({success: false, error: "Score too high"});
+        }
+
+        const newPoints = (u.points || 0) + score;
+        await dbUpdate(`users/${userId}`, { points: newPoints, activeDropSession: null });
+
+        res.json({success: true, points: newPoints,
+        dropGameChances: u.dropGameChances, added: score});
+    } catch(e) {
+        console.error(e);
+        res.status(500).json({success: false, error: e.message});
+    }
+});
+// =======================================================
 
 // TASK 3: PROMO CODES
 app.post('/api/claim-promo', async (req, res) => {
@@ -823,7 +905,6 @@ app.post('/api/ensure-user', async (req, res) => {
 });
 
 app.get('/api/config', async (req, res) => res.json((await dbGet('config')) || {}));
-app.get('/api/tasks', async (req, res) => res.json((await dbGet('bonusTasks')) || {}));
 
 // TASK 5: Real Avatar Fetcher
 app.get('/api/avatar/:userId', async (req, res) => {
@@ -991,6 +1072,7 @@ app.post('/api/promo/redeem', async (req, res) => {
     
     await dbUpdate(`users/${userId}`, { 
         points: newPoints,
+        dropGameChances: newDropChances,
         redeemedPromos: redeemed,
         logs: logAction(user, `Redeemed promo code ${code} for ${promo.reward} Gems`)
     });
@@ -1124,11 +1206,69 @@ app.get('/api/campaigns/:userId', async (req, res) => {
     const campaigns = await dbGet('campaigns') || {};
     const userCampaigns = {};
     Object.keys(campaigns).forEach(id => {
-        const campaign = campaigns[id];
-        if(campaign.userId === userId || campaign.ownerId === userId) userCampaigns[id] = campaign;
+        if(campaigns[id].userId === userId) userCampaigns[id] = campaigns[id];
     });
     res.json(userCampaigns);
 });
+
+
+app.post('/api/campaigns/create-v2', async (req, res) => {
+    try {
+        const { userId, campaign } = req.body;
+        if (!userId) return res.json({ success: false, error: 'Missing userId' });
+
+        let budgetTotal, budgetDaily;
+        let finalCampaign = {};
+
+        if (campaign) {
+             budgetTotal = campaign.budget.total;
+             budgetDaily = campaign.budget.daily;
+             finalCampaign = campaign;
+        } else {
+             const config = req.body;
+             budgetTotal = config.budget ? config.budget.total : 0;
+             budgetDaily = config.budget ? config.budget.daily : 0;
+             finalCampaign = config;
+        }
+
+        if(!budgetTotal) return res.json({ success: false, error: 'Invalid budget' });
+
+        if (finalCampaign.creative && finalCampaign.creative.format === 'video' && finalCampaign.creative.duration > 10) {
+            return res.json({success: false, error: "Video duration must be 10 seconds or less"});
+        }
+
+        const user = await dbGet(`users/${userId}`);
+        if (!user) return res.json({ success: false, error: 'User not found' });
+
+        if ((user.points || 0) < budgetTotal) {
+            return res.json({ success: false, error: 'Insufficient balance' });
+        }
+
+        await dbUpdate(`users/${userId}`, {
+            points: user.points - budgetTotal,
+            stuckBalance: (user.stuckBalance || 0) + budgetTotal
+        });
+
+        const campId = "camp_v2_" + Date.now();
+        const campData = {
+            id: campId,
+            ownerId: userId,
+            schemaVersion: 2,
+            ...finalCampaign,
+            budget: { total: budgetTotal, daily: budgetDaily, spent: 0, reserved: budgetTotal },
+            delivery: { status: "Running", priority: 1 },
+            analytics: { impressions: 0, clicks: 0, conversions: 0 },
+            createdAt: Date.now()
+        };
+
+        await dbUpdate(`campaigns/${campId}`, campData);
+        res.json({ success: true, campId });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 
 app.post('/api/campaigns/create', async (req, res) => {
     const { userId, type, icon, name, link, desc, maxUsers, reward } = req.body;
@@ -1161,28 +1301,14 @@ app.post('/api/campaigns/create', async (req, res) => {
 app.post('/api/campaigns/update', async (req, res) => {
     const { userId, campaignId, action, link, desc, value } = req.body;
     const c = await dbGet(`campaigns/${campaignId}`);
-    if(!c || (c.userId !== userId && c.ownerId !== userId)) return res.status(403).json({error: "Unauthorized"});
+    if(!c || c.userId !== userId) return res.status(403).json({error: "Unauthorized"});
 
-    if(c.schemaVersion === 2) {
-        if(action === 'togglePause') {
-            const current = c.delivery?.status || 'Running';
-            const next = current === 'Running' ? 'Paused' : 'Running';
-            await dbUpdate(`campaigns/${campaignId}`, { delivery: { ...(c.delivery || {}), status: next } });
-        } else if(action === 'edit') {
-            await dbUpdate(`campaigns/${campaignId}`, {
-                creative: { ...(c.creative || {}), description: desc ?? c.creative?.description ?? '', destinationUrl: link ?? c.creative?.destinationUrl ?? '' }
-            });
-        } else {
-            return res.json({success:false,error:'Unsupported campaign action'});
-        }
-    } else {
-        if(action === 'edit') {
-            await dbUpdate(`campaigns/${campaignId}`, { link, desc });
-        } else if(action === 'togglePause') {
-            await dbUpdate(`campaigns/${campaignId}`, { paused: !c.paused });
-        } else if(action === 'autoRenew') {
-            await dbUpdate(`campaigns/${campaignId}`, { autoRenew: value });
-        }
+    if(action === 'edit') {
+        await dbUpdate(`campaigns/${campaignId}`, { link, desc });
+    } else if(action === 'togglePause') {
+        await dbUpdate(`campaigns/${campaignId}`, { paused: !c.paused });
+    } else if(action === 'autoRenew') {
+        await dbUpdate(`campaigns/${campaignId}`, { autoRenew: value });
     }
     res.json({success: true});
 });
@@ -1856,20 +1982,7 @@ app.post('/api/admin/css-inject', checkAdmin, async (req, res) => {
     res.json({ success: true });
 });
 
-// // ============================================================================
-// MYFA DROP GAME — server-authoritative session/chance/claim protection
-// ============================================================================
-function dropTimingSafeHex(a,b){try{const aa=Buffer.from(a,'hex'),bb=Buffer.from(b,'hex');return aa.length===bb.length&&crypto.timingSafeEqual(aa,bb)}catch{return false}}
-function dropValidateTelegramInitData(initData){
-    if(!initData) return null;
-    try{const p=new URLSearchParams(initData),hash=p.get('hash');if(!hash)return null;const authDate=Number(p.get('auth_date')||0);if(!authDate||Math.abs(Date.now()/1000-authDate)>86400)return null;const check=Array.from(p.entries()).filter(([k])=>k!=='hash').sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>`${k}=${v}`).join('\n');const secret=crypto.createHmac('sha256','WebAppData').update(BOT_TOKEN).digest();const calc=crypto.createHmac('sha256',secret).update(check).digest('hex');if(!dropTimingSafeHex(calc,hash))return null;const u=JSON.parse(p.get('user')||'{}');return u?.id?String(u.id):null}catch{return null}
-}
-function dropAuthorize(body){const id=String(body.userId||'');if(!id)return {ok:false,error:'Missing userId'};const verified=dropValidateTelegramInitData(body.initData||'');if(body.initData&&!verified)return {ok:false,error:'Invalid Telegram session'};if(verified&&verified!==id)return {ok:false,error:'Telegram user mismatch'};return {ok:true,userId:id}}
-app.get('/api/dropgame/state/:userId',async(req,res)=>{try{const id=String(req.params.userId),verified=dropValidateTelegramInitData(req.query.initData||'');if(req.query.initData&&verified!==id)return res.status(403).json({success:false,error:'Telegram user mismatch'});const u=await dbGet(`users/${id}`);if(!u)return res.status(404).json({success:false,error:'User not found'});const day=new Date().toISOString().slice(0,10);let chances=Number(u.dropGameChances||0);if(u.dropGameDay!==day)chances=Math.max(1,chances);res.set('Cache-Control','no-store');res.json({success:true,chances,day})}catch(e){console.error('[Drop state]',e);res.status(500).json({success:false,error:'Unable to load Drop Game'})}});
-app.post('/api/dropgame/start',async(req,res)=>{try{const auth=dropAuthorize(req.body);if(!auth.ok)return res.status(403).json({success:false,error:auth.error});const id=auth.userId,u=await dbGet(`users/${id}`);if(!u)return res.status(404).json({success:false,error:'User not found'});const day=new Date().toISOString().slice(0,10);let chances=Number(u.dropGameChances||0);if(u.dropGameDay!==day)chances=Math.max(1,chances);if(chances<1)return res.status(409).json({success:false,error:'No Drop chances remaining today'});const sessionId=crypto.randomUUID(),now=Date.now();await dbSet(`dropGameSessions/${sessionId}`,{userId:id,createdAt:now,expiresAt:now+120000,claimed:false,maxReward:100});await dbUpdate(`users/${id}`,{dropGameChances:chances-1,dropGameDay:day,lastDropGamePlay:now});res.json({success:true,sessionId,chancesRemaining:chances-1,expiresAt:now+120000})}catch(e){console.error('[Drop start]',e);res.status(500).json({success:false,error:'Unable to start game'})}});
-app.post('/api/dropgame/claim',async(req,res)=>{try{const auth=dropAuthorize(req.body);if(!auth.ok)return res.status(403).json({success:false,error:auth.error});const sid=String(req.body.sessionId||'');if(!sid)return res.status(400).json({success:false,error:'Missing game session'});const path=`dropGameSessions/${sid}`,session=await dbGet(path);if(!session)return res.status(404).json({success:false,error:'Game session not found'});if(String(session.userId)!==auth.userId)return res.status(403).json({success:false,error:'Session ownership mismatch'});if(session.claimed)return res.status(409).json({success:false,error:'Reward already claimed'});if(Date.now()>Number(session.expiresAt||0))return res.status(410).json({success:false,error:'Game session expired'});const submitted=Math.max(0,Math.min(Number(session.maxReward||100),Math.floor(Number(req.body.score)||0)));const reward=submitted;const u=await dbGet(`users/${auth.userId}`);if(!u)return res.status(404).json({success:false,error:'User not found'});const newPoints=Number(u.points||0)+reward;await dbUpdate(path,{claimed:true,claimedAt:Date.now(),submittedScore:submitted,reward});await dbUpdate(`users/${auth.userId}`,{points:newPoints,dropGameLastReward:reward,dropGameLastSession:sid,logs:logAction(u,`MYFA Drop reward +${reward} Gems`)});res.json({success:true,reward,points:newPoints})}catch(e){console.error('[Drop claim]',e);res.status(500).json({success:false,error:'Unable to claim reward'})}});
-
-
+// export default app;
 
 
 // ============================================================================
@@ -2061,7 +2174,8 @@ app.post('/api/streak/claim', async (req, res) => {
     logAction(user, `Claimed daily streak: ${reward} points`);
     
     await dbUpdate(`users/${userId}`, { 
-        points: newPoints, 
+        points: newPoints,
+        dropGameChances: newDropChances,
         lastLoginDate: Date.now(),
         logs: user.logs 
     });
@@ -2082,33 +2196,26 @@ app.get('/api/campaigns/:userId/stats', async (req, res) => {
     let totalBudget = 0;
 
     for (const [id, campaign] of Object.entries(campaigns)) {
-        if (campaign.userId === userId || campaign.ownerId === userId) {
+        if (campaign.userId === userId) {
             totalCampaigns++;
             
-            if (campaign.schemaVersion === 2) {
-                const spent = Number(campaign.budget?.spent || 0);
-                const total = Number(campaign.budget?.total || 0);
-                const impressions = Number(campaign.analytics?.impressions || 0);
-                const status = campaign.delivery?.status || 'Running';
-                if (status === 'Refunded' || status === 'Completed') completedCampaigns++;
-                else if (status !== 'Running') pausedCampaigns++;
-                else activeCampaigns++;
-                totalImpressions += impressions;
-                totalSpend += spent;
-                totalBudget += total;
+            const maxUsers = campaign.maxUsers || 0;
+            const claims = campaign.claims || 0;
+            const reward = campaign.reward || 0;
+            const views = campaign.views || 0;
+            const isPaused = campaign.status === 'paused';
+            
+            if (claims >= maxUsers) {
+                completedCampaigns++;
+            } else if (isPaused) {
+                pausedCampaigns++;
             } else {
-                const maxUsers = campaign.maxUsers || 0;
-                const claims = campaign.claims || 0;
-                const reward = campaign.reward || 0;
-                const views = campaign.views || 0;
-                const isPaused = campaign.status === 'paused';
-                if (claims >= maxUsers) completedCampaigns++;
-                else if (isPaused) pausedCampaigns++;
-                else activeCampaigns++;
-                totalImpressions += views;
-                totalSpend += claims * reward;
-                totalBudget += maxUsers * reward;
+                activeCampaigns++;
             }
+            
+            totalImpressions += views;
+            totalSpend += claims * reward;
+            totalBudget += maxUsers * reward;
         }
     }
     
@@ -2126,52 +2233,6 @@ app.get('/api/campaigns/:userId/stats', async (req, res) => {
     });
 });
 
-app.post('/api/campaigns/create-v2', async (req, res) => {
-    try {
-        const config = req.body;
-        // if the request comes with config directly on req.body
-        const objective = config.objective;
-        const creative = config.creative;
-        const targeting = config.targeting;
-        const budget = config.budget;
-        const task = config.task;
-        const userId = req.body.userId || config.userId; // handle both
-
-        if (!userId) return res.json({ success: false, error: 'Missing userId' });
-        
-        const user = await dbGet(`users/${userId}`);
-        if (!user) return res.json({ success: false, error: 'User not found' });
-        
-        if ((user.points || 0) < budget.total) {
-            return res.json({ success: false, error: 'Insufficient balance' });
-        }
-        
-        await dbUpdate(`users/${userId}`, {
-            points: user.points - budget.total,
-            stuckBalance: (user.stuckBalance || 0) + budget.total
-        });
-        
-        const campId = "camp_v2_" + Date.now();
-        const campaign = {
-            id: campId,
-            ownerId: userId,
-            schemaVersion: 2,
-            objective: objective,
-            creative: creative,
-            targeting: targeting,
-            budget: { total: budget.total, daily: budget.daily, spent: 0, reserved: budget.total },
-            task: task,
-            delivery: { status: "Running", priority: 1 },
-            analytics: { impressions: 0, clicks: 0, conversions: 0 },
-            createdAt: Date.now()
-        };
-        
-        await dbUpdate(`campaigns/${campId}`, campaign);
-        res.json({ success: true, campaign });
-    } catch(e) {
-        res.json({ success: false, error: e.message });
-    }
-});
 
 app.post('/api/campaigns/:id/refund', async (req, res) => {
     try {

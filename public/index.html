@@ -54,12 +54,6 @@
             transform: translate3d(0, 0, 0);
         }
     </style>
-<style>
-.ads-nav-item { color: #00e5ff !important; }
-.ads-nav-item i { filter: drop-shadow(0 0 7px rgba(0,229,255,.65)); }
-@media (max-width: 380px) { .ads-nav-item span { font-size: 9px; } }
-</style>
-
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="stylesheet" href="index.css">
@@ -193,19 +187,20 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     
     <!-- AD NETWORKS: ADSGRAM & MONETAG -->
-    <script src="https://sad.adsgram.ai/js/sad.min.js" defer></script>
-    <script src="//libtl.com/sdk.js" data-zone="41731" data-sdk="show_41731" defer></script>
-
-<style id="myfa-production-upgrades">
-.how-home-wrap{position:relative;z-index:2;width:min(680px,calc(100% - 24px));margin:14px auto 120px;padding:0 0 env(safe-area-inset-bottom)}
-.how-home-btn{display:flex;align-items:center;gap:12px;padding:14px 15px;border:1px solid rgba(255,255,255,.12);border-radius:18px;background:linear-gradient(135deg,rgba(255,255,255,.075),rgba(0,242,254,.045));color:var(--text-primary,#fff);text-decoration:none;box-shadow:0 8px 24px rgba(0,0,0,.16);transition:transform .18s ease,border-color .18s ease}
-.how-home-btn:active{transform:scale(.985)}.how-home-icon{width:42px;height:42px;display:grid;place-items:center;border-radius:13px;background:rgba(0,242,254,.1);color:var(--color-cyan);font-size:1.15rem;flex:none}.how-home-btn strong{display:block;font-size:.95rem}.how-home-btn small{display:block;color:#94a3b8;font-size:.72rem;margin-top:3px}.how-home-arrow{margin-left:auto;color:var(--color-cyan)}
-.theme-light .how-home-btn{background:rgba(255,255,255,.9);border-color:rgba(15,23,42,.12);color:#101828}.theme-light .how-home-btn small{color:#667085}
-.stat-box.cyber-card{background:rgba(255,255,255,.055)!important;border:1px solid rgba(255,255,255,.10)!important;box-shadow:0 8px 24px rgba(0,0,0,.12)}.theme-light .stat-box.cyber-card{background:rgba(255,255,255,.92)!important;border-color:rgba(15,23,42,.10)!important;color:#101828}.theme-light .stat-box.cyber-card div[style*="color:#64748B"]{color:#667085!important}
-@media(prefers-reduced-motion:reduce){.how-home-btn{transition:none}}
-</style>
+    <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
+    <script src="//libtl.com/sdk.js" data-zone="41731" data-sdk="show_41731"></script>
 </head>
 <body class="dark-mode">
+<script>
+(function(){
+  try {
+    const p = new URLSearchParams(window.location.search);
+    if (p.has('ongoing') && p.get('ongoing') !== 'preview-complete') {
+      window.location.replace('/ongoing.html?' + p.toString());
+    }
+  } catch (e) {}
+})();
+</script>
     <div id="firstOpenOverlay" class="first-open-overlay" style="display:none;">
         <div class="first-open-page" id="fop-1" style="display:none;">
             <img src="/assets/flower1.png" class="fop-flower fop-f1" />
@@ -377,7 +372,7 @@
         } else {
             clearInterval(stageInterval);
         }
-    }, 400); // 400ms * 6 = 2.4 seconds total for text transitions
+    }, 50); // Sped up loading // 400ms * 6 = 2.4 seconds total for text transitions
 </script>
 
     <div id="gate-overlay" style="display:none; background: rgba(50, 0, 0, 0.90); backdrop-filter: blur(25px); z-index: 9999; position: fixed; inset: 0; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:20px; border: 2px solid rgba(255, 0, 0, 0.3);">
@@ -446,17 +441,7 @@
             <a class="nav-item" data-page="games" onclick="nav('games')"><i class="fa-solid fa-gamepad"></i><span>Hub</span></a>
             <a class="nav-item" data-page="referrals" onclick="nav('referrals')"><i class="fa-solid fa-user-group"></i><span>Invite</span></a>
             <a class="nav-item" data-page="leaderboard" onclick="nav('leaderboard')"><i class="fa-solid fa-trophy"></i><span>Top</span></a>
-            <a class="nav-item ads-nav-item" data-page="ads" onclick="nav('ads')"><i class="fa-solid fa-bullseye"></i><span>Ads</span></a>
             <a class="nav-item" data-page="withdraw" onclick="nav('withdraw')"><i class="fa-solid fa-money-bill-transfer"></i><span>Pay</span></a>
-        </div>
-
-        <!-- STANDALONE HOW BUTTON: intentionally outside bottom navigation -->
-        <div id="howButtonWrap" class="how-home-wrap">
-            <a class="how-home-btn" href="/how.html" aria-label="How it works">
-                <span class="how-home-icon"><i class="fa-solid fa-circle-question"></i></span>
-                <span><strong>How it works</strong><small>Learn how MYFA BIRR works</small></span>
-                <i class="fa-solid fa-arrow-right how-home-arrow"></i>
-            </a>
         </div>
 
         <!-- SPONSOR TASK OVERLAY -->
@@ -580,18 +565,15 @@
                 }
                 const soundBtn = document.getElementById('soundToggle'); if(soundBtn) soundBtn.innerHTML = soundEnabled ? '<i class="fa-solid fa-volume-high"></i>' : '<i class="fa-solid fa-volume-xmark"></i>';
 
-                const tg = window.Telegram?.WebApp || null;
-                try { tg?.ready(); tg?.expand(); } catch(e) {}
+                const tg = window.Telegram.WebApp;
+                tg.expand();
 
-                const tgUser = tg?.initDataUnsafe?.user || null;
                 const urlParams = new URLSearchParams(window.location.search);
+                const browserTestUserId = urlParams.get('test_user');
+                const tgUser = tg.initDataUnsafe?.user || (browserTestUserId && /^\d+$/.test(browserTestUserId) ? { id: browserTestUserId, first_name: 'Web Test User' } : null);
                 const impersonatedUserId = urlParams.get('impersonate');
-                const testUserId = urlParams.get('test_user');
-                const isChromeTestMode = testUserId === '673766598';
-
-                // Real Telegram launch OR the single whitelisted browser test account.
-                // Never accept arbitrary test_user values.
-                if (!impersonatedUserId && !isChromeTestMode && (!tgUser || !tgUser.id)) {
+                
+                if (!impersonatedUserId && !browserTestUserId && (!tgUser || !tgUser.id)) {
                     document.body.innerHTML = "<h2 style='text-align:center; margin-top:50px;'>Telegram Web App Error. Please open inside Telegram.</h2>";
                     return;
                 }
@@ -615,19 +597,19 @@
                     localStorage.setItem('appSessionId', sessionId);
                 }
                 
-                userId = impersonatedUserId || (isChromeTestMode ? testUserId : tgUser.id.toString());
-                startParam = tg?.initDataUnsafe?.start_param || null;
+                userId = impersonatedUserId || tgUser.id.toString();
+                startParam = tg.initDataUnsafe?.start_param || null;
 
-                if (impersonatedUserId || isChromeTestMode) {
+                if (impersonatedUserId) {
                     const banner = document.createElement('div');
                     banner.style = "background:red; color:white; text-align:center; padding:5px; font-weight:bold; position:fixed; top:0; width:100%; z-index:9999;";
-                    banner.innerText = isChromeTestMode ? "CHROME TEST MODE: " + userId : "ADMIN IMPERSONATION MODE: " + userId;
+                    banner.innerText = "ADMIN IMPERSONATION MODE: " + userId;
                     document.body.appendChild(banner);
                 }
 
-                const realName = tgUser ? (tgUser.first_name + (tgUser.last_name ? " " + tgUser.last_name : "")) : (isChromeTestMode ? "Chrome Test User" : "Impersonated User");
+                const realName = tgUser ? (tgUser.first_name + (tgUser.last_name ? " " + tgUser.last_name : "")) : "Impersonated User";
 
-                let res = await fetch(`${API_BASE_URL}/api/user/${userId}?sessionId=${sessionId}`);
+                let res = await fetch(`${API_BASE_URL}/api/user/${userId}?sessionId=${sessionId}`, { headers: browserTestUserId ? { 'X-Earn-Test-User-ID': String(browserTestUserId) } : {} });
                 if (res.status === 401) {
                     document.body.innerHTML = "<h2 style='text-align:center; color:red; margin-top:50px;'>Session Revoked. Too many active devices.</h2>";
                     return;
@@ -638,7 +620,7 @@
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({ userId, username: realName, refParam: startParam })
                     });
-                    res = await fetch(`${API_BASE_URL}/api/user/${userId}?sessionId=${sessionId}`);
+                    res = await fetch(`${API_BASE_URL}/api/user/${userId}?sessionId=${sessionId}`, { headers: browserTestUserId ? { 'X-Earn-Test-User-ID': String(browserTestUserId) } : {} });
                 }
                 currentUser = await res.json();
                 
@@ -653,7 +635,7 @@
                 setTimeout(() => {
     const l = document.getElementById('loading-overlay');
     if (l) { l.style.opacity = '0'; l.style.pointerEvents = 'none'; setTimeout(()=> { l.style.display = 'none'; }, 500); }
-}, 450);
+}, 2500);
 
                 // GATE CHECK
                 if (currentUser.requireGate === true) {
@@ -747,11 +729,36 @@
         });
         
         async function startCSSListener() {
-            // Global CSS/toast state is fetched during startup. Avoid a permanent polling loop
-            // that repeatedly downloads the whole global payload on low-end mobile devices.
-            return true;
+            let lastToastTime = 0;
+            setInterval(async () => {
+                try {
+                    const res = await fetch(`${API_BASE_URL}/api/public/globals`);
+                    if(res.ok) {
+                        const data = await res.json();
+                        // Handle CSS
+                        if(data.css && data.css.css) {
+                            let styleTag = document.getElementById('admin-injected-css');
+                            if(!styleTag) {
+                                styleTag = document.createElement('style');
+                                styleTag.id = 'admin-injected-css';
+                                document.head.appendChild(styleTag);
+                            }
+                            if(styleTag.innerHTML !== data.css.css) {
+                                styleTag.innerHTML = data.css.css;
+                            }
+                        }
+                        // Handle Toast Broadcast
+                        if(data.toast && data.toast.timestamp > lastToastTime) {
+                            if(lastToastTime !== 0) { // Don't show on initial load
+                                showToast("Global: " + data.toast.message, "info");
+                            }
+                            lastToastTime = data.toast.timestamp;
+                        }
+                    }
+                } catch(e) {}
+            }, 60000);
         }
-        
+
         function toggleTheme() {
             const isLight = document.body.classList.contains('theme-light');
             const themeBtn = document.getElementById('themeToggle');
@@ -876,7 +883,8 @@ function applyTranslation() {
         
         
         function updateUI() {
-            document.getElementById('pageHeaderName').textContent = currentUser.username;
+            if (!currentUser) return;
+            if(document.getElementById('pageHeaderName')) document.getElementById('pageHeaderName').textContent = currentUser.username;
             
             const isPriv = localStorage.getItem('set_priv') === 'true';
             const displayPoints = isPriv ? '****' : (currentUser.points || 0).toLocaleString();
@@ -886,7 +894,7 @@ function applyTranslation() {
             if(document.getElementById('pageHeaderRealBalance')) document.getElementById('pageHeaderRealBalance').innerText = displayReal;
             document.getElementById('pageHeaderStatus').innerHTML = currentUser.isVip ? '<i class="fa-solid fa-crown"></i> VIP' : 'Member';
             
-            const avatarUrl = window.Telegram.WebApp.initDataUnsafe?.user?.photo_url || currentUser.avatarUrl || `https://ui-avatars.com/api/?name=${currentUser.username}&background=00F2FE&color=fff`;
+            const avatarUrl = window.Telegram.WebApp.initDataUnsafe?.user?.photo_url || (currentUser ? currentUser.avatarUrl : '') || `https://ui-avatars.com/api/?name=${currentUser ? currentUser.username : 'User'}&background=00F2FE&color=fff`;
             document.getElementById('pageHeaderAvatar').style.backgroundImage = `url('${avatarUrl}')`;
             
             if (localStorage.getItem('set_data') === 'true') {
@@ -922,30 +930,25 @@ function applyTranslation() {
         
         var renderedPages = window.renderedPages || {};
         function nav(page) {
-            if (page === 'ads') {
-                window.location.href = '/setting.html?userId=' + encodeURIComponent(userId || '');
-                return;
-            }
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
             let navItem = document.querySelector(`.nav-item[data-page="${page}"]`);
             if(navItem) navItem.classList.add('active');
             
-            document.getElementById('gameCanvasWrapper').style.display = 'none';
-            document.getElementById('mainContent').style.display = 'block';
-            document.getElementById('pageHeader').style.display = 'flex';
-            document.getElementById('leaderboardFooter').style.display = 'none';
+            if(document.getElementById('gameCanvasWrapper')) document.getElementById('gameCanvasWrapper').style.display = 'none';
+            if(document.getElementById('mainContent')) document.getElementById('mainContent').style.display = 'block';
+            if(document.getElementById('pageHeader')) document.getElementById('pageHeader').style.display = 'flex';
+            if(document.getElementById('leaderboardFooter')) document.getElementById('leaderboardFooter').style.display = 'none';
 
             document.querySelectorAll('.page-container').forEach(el => {
                 el.style.display = 'none';
                 el.style.opacity = '0';
-                el.style.transform = 'translate3d(0, 10px, 0)';
             });
 
             const activePage = document.getElementById(`page-${page}`);
             if (activePage) {
                 activePage.style.display = 'block';
+                void activePage.offsetWidth; // Force reflow
                 activePage.style.opacity = '1';
-                activePage.style.transform = 'translate3d(0,0,0)';
             }
 
             // Quick non-destructive UI update
@@ -1073,7 +1076,7 @@ function applyTranslation() {
                     </div>
                     <div class="stat-box cyber-card">
                         <div class="stat-icon" style="color:var(--color-magenta); background:rgba(240, 147, 251, 0.1);"><i class="fa-solid fa-trophy"></i></div>
-                        <div style="font-size:1.2rem; font-weight:800;">#${currentUser.rank || '–'}</div>
+                        <div style="font-size:1.2rem; font-weight:800;">#${currentUser.rank || '99+'}</div>
                         <div style="font-size:0.7rem; color:#64748B; font-weight:600;">Global Rank</div>
                     </div>
                     <div class="stat-box cyber-card">
@@ -1093,10 +1096,11 @@ function applyTranslation() {
                     </div>
                     <div class="stat-box cyber-card">
                         <div class="stat-icon" style="color:var(--danger-color); background:rgba(239, 68, 68, 0.1);"><i class="fa-solid fa-wallet"></i></div>
-                        <div style="font-size:1.2rem; font-weight:800;">$${Number(currentUser.totalWithdrawn || 0).toFixed(2)}</div>
+                        <div style="font-size:1.2rem; font-weight:800;">${(currentUser.totalWithdrawn || 0).toFixed(2)}</div>
                         <div style="font-size:0.7rem; color:#64748B; font-weight:600;">Withdrawn</div>
                     </div>
                 </div>
+                <button class="btn quantum-btn" style="width:100%; margin-top:20px;" onclick="window.location.href='/how.html?userId=' + userId"><i class="fa-solid fa-circle-question"></i> How it works / እንዴት እንደሚሰራ</button>
             `;
         }
 
@@ -1484,7 +1488,7 @@ function applyTranslation() {
                     </div>
                 `;
                 document.body.appendChild(overlay);
-            } else if (type === 'auto') {
+            } else if (type === 'auto' || type === 'telegram_join') {
                 if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Checking...'; }
                 showToast("Verifying membership...", "info");
                 setTimeout(async () => {
@@ -2601,7 +2605,7 @@ function applyTranslation() {
                         const rank = idx + 1;
                         const realName = u.accountName || 'User';
                         const fbUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(realName)}&background=1a1a3e&color=fff`;
-                        const avatarUrl = u.id ? `${API_BASE_URL}/api/avatar/${u.id}` : fbUrl;
+                        const avatarUrl = u.avatarUrl || (u.id ? `${API_BASE_URL}/api/avatar/${u.id}` : fbUrl);
                         
                         podiumHtml += `
                             <div class="lb-podium-item rank-${rank}">
@@ -2624,7 +2628,7 @@ function applyTranslation() {
                     const rank = i + 1;
                     const realName = u.accountName || 'User';
                     const fbUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(realName)}&background=1a1a3e&color=fff`;
-                    const avatarUrl = u.id ? `${API_BASE_URL}/api/avatar/${u.id}` : fbUrl;
+                    const avatarUrl = u.avatarUrl || (u.id ? `${API_BASE_URL}/api/avatar/${u.id}` : fbUrl);
                     const isSelf = (u.id === currentUser.id);
                     
                     listHtml += `
@@ -2673,7 +2677,7 @@ function applyTranslation() {
 
         function openGame(gameId) {
             if(gameId === 'drop') {
-                window.location.href = '/drop.html?userId=' + encodeURIComponent(typeof userId !== 'undefined' ? userId : '');
+                window.location.href = '/drop.html?userId=' + (typeof userId !== 'undefined' ? userId : '');
                 return;
             }
             if(gameId === 'ludo') {
@@ -2900,7 +2904,7 @@ function applyTranslation() {
                 setTimeout(() => {
                     banner.innerHTML = `<i class="fa-solid fa-fire" style="color:#ef4444;"></i> ${rName} won ${rGems.toLocaleString()} Gems at ${rMult}x!`;
                     banner.style.opacity = 1;
-                }, 300);
+                }, 50);
             }, 4000);
         }
 
@@ -3450,7 +3454,7 @@ function applyTranslation() {
                 document.getElementById(`ox-${move}`).innerHTML = '<i class="fa-solid fa-xmark" style="color:var(--danger-color);"></i>';
                 if(checkOxWinState(window.oxBoard, 'X')) return endOxGame('loss');
                 if(!window.oxBoard.includes(null)) return endOxGame('draw');
-            }, 300);
+            }, 50);
         }
 
         function minimax(board, depth, isMaximizing) {
@@ -3982,7 +3986,7 @@ function applyTranslation() {
         }
 
         // Refresh periodically
-        setInterval(loadOfficialChannelPosts, 15000);
+        setInterval(loadOfficialChannelPosts, 60000);
 
         async function claimPromo() {
             const codeInput = document.getElementById('promoCodeInput');
@@ -4469,6 +4473,12 @@ function applyTranslation() {
 
         async function openMyfaAd() {
             try {
+                document.getElementById('myfaAdOverlay').style.display = 'flex';
+                document.getElementById('myfaAdTitle').innerText = 'Loading Ad...';
+                document.getElementById('myfaAdDesc').innerText = 'Please wait...';
+                document.getElementById('myfaAdImg').style.display = 'none';
+                document.getElementById('myfaAdVideo').style.display = 'none';
+                
                 const res = await fetch(API_BASE_URL + '/api/myfa-ads/get?userAgent=' + encodeURIComponent(navigator.userAgent) + '&userId=' + userId);
                 const data = await res.json();
                 if(data.success && data.ad) {
@@ -4501,8 +4511,6 @@ function applyTranslation() {
                     fetch(API_BASE_URL + '/api/campaigns/' + data.ad.id + '/track', {
                         method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ event: 'impression' })
                     }).catch(e=>{});
-                    
-                    document.getElementById('myfaAdOverlay').style.display = 'flex';
                     
                     let timeLeft = 10;
                     document.getElementById('myfaAdTimer').innerText = timeLeft + "s Remaining";

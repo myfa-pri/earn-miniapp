@@ -1,6 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,300;0,400;0,600;0,700;1,400&family=Orbitron:wght@400;600;800;900&display=swap');
 
 :root {
+    --glass-bg: rgba(255,255,255,0.05);
+    --glass-border: rgba(255,255,255,0.1);
     /* Quantum Cyber Palette */
     --brand-orange: #FF6B35;
     --brand-blue: #00A8FF;
@@ -464,6 +466,8 @@ body {
 
 /* --- LIGHT THEME (THEME-LIGHT) --- */
 .theme-light {
+    --glass-bg: rgba(0,0,0,0.05);
+    --glass-border: rgba(0,0,0,0.1);
     --bg-color: #FFFFFF;
     --text-color: #1E293B;
     background-color: #F8FAFC;

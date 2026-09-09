@@ -2,15 +2,17 @@
   "version": 2,
   "headers": [
     { "source": "/myfa.html", "headers": [{ "key": "Cache-Control", "value": "no-store, no-cache, max-age=0, must-revalidate" }] },
-    { "source": "/myfa", "headers": [{ "key": "Cache-Control", "value": "no-store, no-cache, max-age=0, must-revalidate" }] }
+    { "source": "/myfa", "headers": [{ "key": "Cache-Control", "value": "no-store, no-cache, max-age=0, must-revalidate" }] },
+    { "source": "/myfa-admin-live", "headers": [{ "key": "Cache-Control", "value": "no-store, no-cache, max-age=0, must-revalidate" }] }
   ],
   "redirects": [
-    { "source": "/drop.html", "destination": "/api/drop.js", "permanent": false }
+    { "source": "/drop.html", "destination": "/api/drop.js", "permanent": false },
+    { "source": "/myfa.html", "destination": "/myfa-admin-live", "permanent": false },
+    { "source": "/myfa", "destination": "/myfa-admin-live", "permanent": false }
   ],
   "rewrites": {
     "beforeFiles": [
-      { "source": "/myfa.html", "destination": "/public/admin-live.html" },
-      { "source": "/myfa", "destination": "/public/admin-live.html" },
+      { "source": "/myfa-admin-live", "destination": "/public/admin-live.html" },
       { "source": "/api/admin-auth", "destination": "/api/admin-auth.js" },
       { "source": "/api/admin-gateway", "destination": "/api/admin-gateway.js" },
       { "source": "/api/ads", "destination": "/api/ads.js" },

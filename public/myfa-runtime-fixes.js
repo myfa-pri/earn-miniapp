@@ -20,13 +20,47 @@ const setAvatar = (el,url) => {
     el.style.backgroundSize='cover';
     el.style.backgroundPosition='center';
     el.style.backgroundRepeat='no-repeat';
+    el.dataset.myfaAvatarUrl=url;
+};
+
+// Always resolve the avatar from the Telegram account currently opening the app.
+// Prefer MYFA's same-origin avatar route so the DOM never carries another user's
+// persisted avatar URL and the source remains owned by this Telegram user.
+const telegramPhotoUrl = () => tg()?.photo_url || '';
+const ownAvatarUrl = () => {
+    const id=uid();
+    if(!id) return telegramPhotoUrl();
+    const photo=telegramPhotoUrl();
+    let version='current';
+    if(photo){
+        const clean=String(photo).split('?')[0];
+        version=clean.slice(-32).replace(/[^A-Za-z0-9_-]/g,'') || 'current';
+    }
+    return `/api/avatar/${encodeURIComponent(id)}?v=${encodeURIComponent(version)}`;
 };
 
 const applyAvatars = () => {
-    const u=tg(); if(!u?.photo_url) return;
-    document.querySelectorAll('.avatar-inner,.fop-avatar,#pageHeaderAvatar').forEach(el=>setAvatar(el,u.photo_url));
+    const id=uid(); if(!id) return;
+    const proxy=ownAvatarUrl();
+    const fallback=telegramPhotoUrl();
+    document.querySelectorAll('.avatar-inner,#pageHeaderAvatar').forEach(el=>{
+        if(el.dataset.myfaAvatarUrl===proxy) return;
+        setAvatar(el,proxy);
+        // Background images cannot expose load errors directly, so the server
+        // route is the primary source and Telegram's photo_url remains the
+        // direct fallback for IMG elements below.
+    });
+    document.querySelectorAll('.fop-avatar').forEach(img=>{
+        if(img.dataset.myfaAvatarUrl!==proxy) setAvatar(img,proxy);
+        if(fallback){
+            img.onerror=()=>{ if(img.src!==fallback) { img.onerror=null; setAvatar(img,fallback); } };
+        }
+    });
     document.querySelectorAll('img.lb-avatar').forEach(img=>{
-        if(img.src.includes('/api/avatar/')) setAvatar(img,u.photo_url);
+        if(img.dataset.myfaAvatarUrl!==proxy) setAvatar(img,proxy);
+        if(fallback){
+            img.onerror=()=>{ if(img.src!==fallback) { img.onerror=null; setAvatar(img,fallback); } };
+        }
     });
 };
 
@@ -43,10 +77,12 @@ const sync = async () => {
             username:u.username||''
         })});
         if(d.user && typeof currentUser!=='undefined' && currentUser){
-            currentUser.avatarUrl=d.user.avatarUrl||currentUser.avatarUrl;
+            // Keep the live Telegram identity authoritative for the avatar.
+            currentUser.avatarUrl=telegramPhotoUrl() || d.user.avatarUrl || currentUser.avatarUrl;
             currentUser.accountName=d.user.accountName||currentUser.accountName;
             currentUser.username=d.user.username||currentUser.username;
         }
+        applyAvatars();
     }catch(e){}
 };
 
@@ -113,11 +149,6 @@ const startObserver = () => {
 // gets a chance to paint. Give the target page a stable shell first, then defer
 // the real renderer until the next task so the tap paints immediately.
 // ---------------------------------------------------------------------------
-const fastShell = (title, icon='fa-bolt', body='Loading live data…') => c => {
-    if(!c) return;
-    c.innerHTML=`<div style="padding:18px 4px;min-height:220px"><h2 style="margin:0 0 14px;display:flex;align-items:center;gap:10px"><i class="fa-solid ${icon}" style="color:var(--color-cyan)"></i>${title}</h2><div class="cm-note" style="margin-top:10px"><i class="fa-solid fa-bolt"></i> ${body}</div></div>`;
-};
-
 const fastTasksShell = c => {
     if(!c) return;
     c.innerHTML = `
@@ -132,6 +163,11 @@ const fastTasksShell = c => {
         <p style="color:#94A3B8;font-size:.9rem;margin:0">Sponsored ads ready</p>
       </div>
       <div id="taskList"><div class="cm-note" style="margin-top:12px"><i class="fa-solid fa-bolt"></i> Tasks are loading in the background…</div></div>`;
+};
+
+const fastShell = (title, icon='fa-bolt', body='Loading live data…') => c => {
+    if(!c) return;
+    c.innerHTML=`<div style="padding:18px 4px;min-height:220px"><h2 style="margin:0 0 14px;display:flex;align-items:center;gap:10px"><i class="fa-solid ${icon}" style="color:var(--color-cyan)"></i>${title}</h2><div class="cm-note" style="margin-top:10px"><i class="fa-solid fa-bolt"></i> ${body}</div></div>`;
 };
 
 const wrapFastRenderer = (name, shell) => {
@@ -270,6 +306,7 @@ async function claimFastMyfaAd(){
         if(!r.ok || !d.success) throw new Error(d.error||'Reward verification failed');
         myfaCompleted=true;
         finishFastMyfaUi(d);
+        const seconds=Number(myfaSession.minSeconds||10);
         claim.innerHTML='<i class="fa-solid fa-check"></i> Completed';
         const timer=ensureMyfaOverlay().querySelector('#myfaFastAdTimer');
         timer.textContent='Done';

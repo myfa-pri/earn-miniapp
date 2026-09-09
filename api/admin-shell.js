@@ -49,6 +49,18 @@ function buildRuntime() {
     return map[pathname] || null;
   };
 
+  const gateway = async (target, body = {}) => {
+    const session = getSession();
+    if (!session) throw new Error('Admin session missing. Please log in again.');
+    const headers = new Headers({ 'Content-Type':'application/json', 'X-MYFA-ADMIN-SESSION':session });
+    const response = await originalFetch('/api/admin-gateway?target=' + encodeURIComponent(target), {
+      method:'POST', headers, body:JSON.stringify(body)
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || 'Admin request failed');
+    return data;
+  };
+
   const refreshAfterWrite = target => {
     if (['data','logs','backup'].includes(target)) return;
     setTimeout(async () => {
@@ -90,7 +102,7 @@ function buildRuntime() {
     if (!response.ok) {
       try {
         const err = await response.clone().json();
-        if (err?.error) alert(err.error);
+        if (err?.error) console.error('[admin]', err.error);
       } catch (_) {}
       return response;
     }
@@ -98,9 +110,39 @@ function buildRuntime() {
     return response;
   };
 
+  window.fetchAdminData = async () => {
+    const data = await gateway('data');
+    window.globalData = data;
+    try { if (typeof window.populateConfig === 'function') window.populateConfig(data.config || {}); } catch (_) {}
+    try { if (typeof window.populateTasks === 'function') window.populateTasks(data.tasks || {}); } catch (_) {}
+    try { if (typeof window.populateWithdrawals === 'function') window.populateWithdrawals(data.withdrawals || {}); } catch (_) {}
+    try { if (typeof window.populateVerifications === 'function') window.populateVerifications(data.verifications || {}); } catch (_) {}
+    const logBox = document.getElementById('admin_audit_logs') || document.getElementById('adminLogs');
+    if (logBox) logBox.textContent = (data.adminLogs || []).join('\\n');
+    return data;
+  };
+
+  window.fetchAdminLogs = async () => {
+    const logs = await gateway('logs');
+    const list = Array.isArray(logs) ? logs : (logs.adminLogs || []);
+    const logBox = document.getElementById('admin_audit_logs') || document.getElementById('adminLogs');
+    if (logBox) logBox.textContent = list.join('\\n');
+    return list;
+  };
+
+  window.loadChannelPosts = async () => {
+    try {
+      const data = await gateway('data');
+      const posts = Array.isArray(data.channelPosts) ? data.channelPosts : Object.values(data.channelPosts || {});
+      window.channels = posts;
+      if (typeof window.renderPosts === 'function') window.renderPosts(posts);
+      return posts;
+    } catch (_) { return []; }
+  };
+
   const loginAndLoad = async () => {
-    const username = String(document.getElementById('lUser')?.value || '').trim();
-    const password = String(document.getElementById('lPass')?.value || '');
+    const username = String(document.getElementById('lUser')?.value || document.getElementById('loginUser')?.value || '').trim();
+    const password = String(document.getElementById('lPass')?.value || document.getElementById('loginPass')?.value || '');
     try {
       const response = await originalFetch('/api/admin-auth', {
         method:'POST', headers:{'Content-Type':'application/json'},
@@ -110,14 +152,16 @@ function buildRuntime() {
       if (!response.ok || !data.success || !data.token) { alert(data.error || 'Invalid credentials'); return; }
       try { sessionStorage.setItem(SESSION_KEY, data.token); } catch (_) {}
       const gate = document.getElementById('loginGate'); if (gate) gate.style.display='none';
+      const screen = document.getElementById('loginScreen'); if (screen) screen.classList.add('hidden');
+      const app = document.getElementById('adminApp'); if (app) app.classList.remove('hidden');
       await refreshAll();
-    } catch (e) { alert('Admin login failed. Please try again.'); }
+    } catch (e) { alert(e.message || 'Admin login failed. Please try again.'); }
   };
 
   async function refreshAll() {
-    try { if (typeof window.fetchAdminData === 'function') await window.fetchAdminData(); } catch (e) { console.error('Admin data refresh',e); }
-    try { if (typeof window.fetchAdminLogs === 'function') await window.fetchAdminLogs(); } catch (e) { console.error('Admin log refresh',e); }
-    try { if (typeof window.loadChannelPosts === 'function') await window.loadChannelPosts(); } catch (e) { console.error('Channel refresh',e); }
+    try { await window.fetchAdminData(); } catch (e) { console.error('Admin data refresh',e); }
+    try { await window.fetchAdminLogs(); } catch (e) { console.error('Admin log refresh',e); }
+    try { await window.loadChannelPosts(); } catch (e) { console.error('Channel refresh',e); }
   }
 
   window.checkLogin = loginAndLoad;
@@ -128,6 +172,8 @@ function buildRuntime() {
     const data=await response?.json?.().catch?.(()=>({}));
     if(!response?.ok || !data?.success){ try{sessionStorage.removeItem(SESSION_KEY);}catch(_){}; return; }
     const gate=document.getElementById('loginGate'); if(gate) gate.style.display='none';
+    const screen=document.getElementById('loginScreen'); if(screen) screen.classList.add('hidden');
+    const app=document.getElementById('adminApp'); if(app) app.classList.remove('hidden');
     await refreshAll();
   };
 
@@ -145,7 +191,7 @@ export default function handler(req,res){
     const runtime=buildRuntime();
     const injected=html.includes('</body>')?html.replace('</body>',`${runtime}</body>`):`${html}${runtime}`;
     res.setHeader('Content-Type','text/html; charset=utf-8');
-    res.setHeader('Cache-Control','no-store, max-age=0');
+    res.setHeader('Cache-Control','no-store, max-age=0, must-revalidate');
     return res.status(200).send(injected);
   }catch(error){
     console.error('[admin-shell]',error);

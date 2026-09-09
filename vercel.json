@@ -7,6 +7,7 @@
     { "source": "/api/ads", "destination": "/api/ads.js" },
     { "source": "/api/admin/promos", "destination": "/api/admin-promos.js" },
     { "source": "/api/claim-promo", "destination": "/api/claim-promo.js" },
+    { "source": "/api/campaign-manager/campaigns/:id/action", "destination": "/api/campaign-manager-action.js?id=:id" },
     { "source": "/api/(.*)", "destination": "/api/index.js" },
     { "source": "/myfa", "destination": "/public/myfa.html" },
     { "source": "/", "destination": "/public/index.html" },

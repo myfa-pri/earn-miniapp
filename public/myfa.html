@@ -172,10 +172,12 @@
                     <div class="input-group"><label>5. Dynamic Tax Rate (%)</label><input type="number" id="cfg_tax"></div>
                     <div class="input-group"><label>5b. Cash to Gems Tax Rate (%)</label><input type="number" id="cfg_tax_cash_gems"></div>
                     
-                    <div class="input-group"><label>6a. Monetag Daily Limit</label><input type="number" id="cfg_monetag_limit"></div>
-                    <div class="input-group"><label>6b. Adsgram Daily Limit</label><input type="number" id="cfg_adsgram_limit"></div>
-                    <div class="input-group"><label>6c. Adsterra Direct Link</label><input type="text" id="cfg_adsterra_link" placeholder="https://..."></div>
-                    <div class="input-group"><label>6d. Adsterra Daily Limit</label><input type="number" id="cfg_adsterra_limit" placeholder="10"></div>
+                    <div class="input-group"><label>6a. Monetag Zone ID</label><input type="text" id="cfg_monetag_zone" placeholder="Your Monetag rewarded zone"></div>
+                    <div class="input-group"><label>6b. Monetag Daily Limit</label><input type="number" id="cfg_monetag_limit"></div>
+                    <div class="input-group"><label>6c. Adsgram Reward Block ID</label><input type="text" id="cfg_adsgram_block" placeholder="Your AdsGram Reward block ID"></div>
+                    <div class="input-group"><label>6d. Adsgram Daily Limit</label><input type="number" id="cfg_adsgram_limit"></div>
+                    <div class="input-group"><label>6e. Adsterra Direct Link</label><input type="text" id="cfg_adsterra_link" placeholder="https://..."></div>
+                    <div class="input-group"><label>6f. Adsterra Daily Limit</label><input type="number" id="cfg_adsterra_limit" placeholder="10"></div>
                     <div class="input-group"><label>7. Reward Per Ad (Real Money $)</label><input type="number" id="cfg_real_money_ad" step="0.01" placeholder="0.05"></div>
                     <div class="input-group"><label>8. Inviter Referral Bonus</label><input type="number" id="cfg_ref_inviter"></div>
                     <div class="input-group"><label>9. Invitee Referral Bonus</label><input type="number" id="cfg_ref_invitee"></div>
@@ -673,7 +675,7 @@
             const p = document.getElementById('lPass').value;
             if(u === 'admin' && p === 'admin') {
                 document.getElementById('loginGate').style.display = 'none';
-                SECRET = "Yichu123";
+                SECRET = "";
                 localStorage.setItem('ADMIN_SECRET', SECRET);
                 fetchAdminData();
                 fetchAdminLogs();
@@ -751,7 +753,9 @@
             document.getElementById('cfg_rate').value = c.exchangeRate || 100;
             document.getElementById('cfg_tax').value = c.taxRate || 0;
             document.getElementById('cfg_tax_cash_gems').value = c.cashToGemsTaxRate || 0;
+            document.getElementById('cfg_monetag_zone').value = c.monetagZoneId || '';
             document.getElementById('cfg_monetag_limit').value = c.monetagLimit || 5;
+            document.getElementById('cfg_adsgram_block').value = c.adsgramBlockId || '';
             document.getElementById('cfg_adsgram_limit').value = c.adsgramLimit || 5;
             document.getElementById('cfg_adsterra_link').value = c.adsterraLink || '';
             document.getElementById('cfg_adsterra_limit').value = c.adsterraLimit || 10;
@@ -854,7 +858,9 @@ document.getElementById('cfg_support').value = c.supportChannel || '';
                 exchangeRate: document.getElementById('cfg_rate').value,
                 taxRate: document.getElementById('cfg_tax').value,
                 cashToGemsTaxRate: parseFloat(document.getElementById('cfg_tax_cash_gems').value) || 0,
+                monetagZoneId: document.getElementById('cfg_monetag_zone').value.trim(),
                 monetagLimit: document.getElementById('cfg_monetag_limit').value,
+                adsgramBlockId: document.getElementById('cfg_adsgram_block').value.trim(),
                 adsgramLimit: document.getElementById('cfg_adsgram_limit').value,
                 adsterraLink: document.getElementById('cfg_adsterra_link').value,
                 adsterraLimit: document.getElementById('cfg_adsterra_limit').value,

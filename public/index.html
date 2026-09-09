@@ -580,14 +580,18 @@
                 }
                 const soundBtn = document.getElementById('soundToggle'); if(soundBtn) soundBtn.innerHTML = soundEnabled ? '<i class="fa-solid fa-volume-high"></i>' : '<i class="fa-solid fa-volume-xmark"></i>';
 
-                const tg = window.Telegram.WebApp;
-                tg.expand();
+                const tg = window.Telegram?.WebApp || null;
+                try { tg?.ready(); tg?.expand(); } catch(e) {}
 
-                const tgUser = tg.initDataUnsafe?.user;
+                const tgUser = tg?.initDataUnsafe?.user || null;
                 const urlParams = new URLSearchParams(window.location.search);
                 const impersonatedUserId = urlParams.get('impersonate');
-                
-                if (!impersonatedUserId && (!tgUser || !tgUser.id)) {
+                const testUserId = urlParams.get('test_user');
+                const isChromeTestMode = testUserId === '673766598';
+
+                // Real Telegram launch OR the single whitelisted browser test account.
+                // Never accept arbitrary test_user values.
+                if (!impersonatedUserId && !isChromeTestMode && (!tgUser || !tgUser.id)) {
                     document.body.innerHTML = "<h2 style='text-align:center; margin-top:50px;'>Telegram Web App Error. Please open inside Telegram.</h2>";
                     return;
                 }
@@ -611,17 +615,17 @@
                     localStorage.setItem('appSessionId', sessionId);
                 }
                 
-                userId = impersonatedUserId || tgUser.id.toString();
-                startParam = tg.initDataUnsafe?.start_param || null;
+                userId = impersonatedUserId || (isChromeTestMode ? testUserId : tgUser.id.toString());
+                startParam = tg?.initDataUnsafe?.start_param || null;
 
-                if (impersonatedUserId) {
+                if (impersonatedUserId || isChromeTestMode) {
                     const banner = document.createElement('div');
                     banner.style = "background:red; color:white; text-align:center; padding:5px; font-weight:bold; position:fixed; top:0; width:100%; z-index:9999;";
-                    banner.innerText = "ADMIN IMPERSONATION MODE: " + userId;
+                    banner.innerText = isChromeTestMode ? "CHROME TEST MODE: " + userId : "ADMIN IMPERSONATION MODE: " + userId;
                     document.body.appendChild(banner);
                 }
 
-                const realName = tgUser ? (tgUser.first_name + (tgUser.last_name ? " " + tgUser.last_name : "")) : "Impersonated User";
+                const realName = tgUser ? (tgUser.first_name + (tgUser.last_name ? " " + tgUser.last_name : "")) : (isChromeTestMode ? "Chrome Test User" : "Impersonated User");
 
                 let res = await fetch(`${API_BASE_URL}/api/user/${userId}?sessionId=${sessionId}`);
                 if (res.status === 401) {

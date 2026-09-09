@@ -526,60 +526,79 @@ app.get('/api/tasks', async (req, res) => {
 
 // TASK 4: Auto Verify Sponsor Task
 app.post('/api/sponsor/verify-auto', async (req, res) => {
-    const { userId, taskId, channelId, reward } = req.body;
-    
-    const u = await dbGet(`users/${userId}`);
-    if(!u) return res.status(404).json({error:"Not found"});
-    
-    // Check if already claimed
-    if((u.claimedSponsorTasks || []).includes(taskId)) {
-        return res.json({success: false, error: "Already claimed"});
-    }
+    const { userId, taskId, channelId } = req.body || {};
+    const userIdStr = String(userId || '');
+    const u = await dbGet(`users/${userIdStr}`);
+    if(!u) return res.status(404).json({error:'Not found'});
+    if((u.claimedSponsorTasks || []).includes(taskId)) return res.json({success:false,error:'Already claimed'});
 
     const c = await dbGet(`campaigns/${taskId}`);
-    if(!c) return res.status(404).json({error:"Campaign not found"});
-    if(c.paused || c.claims >= c.maxUsers) return res.json({success: false, error: "Campaign is closed or full"});
+    if(!c) return res.status(404).json({error:'Campaign not found'});
 
-    try {
-        const member = await fetchMultiAPI(channelId, userId, BOT_TOKEN);
-        if (member.status === 'error') {
-            return res.json({ success: false, error: member.error || "Verification failed. Is the bot an admin in the channel?" });
-        }
-        if (member.success) {
-            // Update Campaign claims
-            await dbUpdate(`campaigns/${taskId}`, { claims: (c.claims || 0) + 1 });
-            
-            // Deduct reward from Sponsor's stuckBalance
-            const sponsor = await dbGet(`users/${c.userId}`);
-            if(sponsor) {
-                await dbUpdate(`users/${c.userId}`, { 
-                    stuckBalance: Math.max(0, (sponsor.stuckBalance || 0) - c.reward)
-                });
-            }
-
-            // Reward User
-            const finalReward = c.reward;
-            const newBal = (u.points||0) + finalReward;
-            const newClaimed = [...(u.claimedSponsorTasks||[]), taskId];
-            
-            // TASK 5: Add to active7DayEscrows
-            const newEscrows = [...(u.active7DayEscrows||[]), {
-                taskId, channelId, reward: finalReward, sponsorUserId: c.userId, timestamp: Date.now()
-            }];
-            
-            await dbUpdate(`users/${userId}`, {
-                claimedSponsorTasks: newClaimed,
-                active7DayEscrows: newEscrows,
-                points: newBal,
-                logs: logAction(u, `Completed Sponsor Task '${c.name}' (+${finalReward} Gems)`)
+    if(c.schemaVersion === 2) {
+        const task = c.task || {};
+        const maxUsers = Number(task.maxUsers || c.maxUsers || 0);
+        const claims = Number(c.claims || c.analytics?.conversions || 0);
+        const rewardGems = Number(task.reward || c.reward || 0);
+        const remaining = Number(c.taskBudgetRemaining || 0);
+        const verifiedChannel = String(channelId || task.channelId || '');
+        const sponsorId = String(c.ownerId || c.userId || '');
+        if(c.archived || c.paused || (c.status && c.status !== 'active')) return res.json({success:false,error:'Task is closed or paused'});
+        if(!verifiedChannel || rewardGems <= 0) return res.json({success:false,error:'Task verification data is incomplete'});
+        if(maxUsers > 0 && claims >= maxUsers) return res.json({success:false,error:'Task is full!'});
+        if(remaining < rewardGems) return res.json({success:false,error:'Task budget exhausted'});
+        try {
+            const member = await fetchMultiAPI(verifiedChannel, userIdStr, BOT_TOKEN);
+            if(member.status === 'error' || !member.success) return res.json({success:false,error:member.error || 'Verification failed. Is the bot an admin in the channel?'});
+            const nextClaims = claims + 1;
+            const nextRemaining = remaining - rewardGems;
+            const nextBudget = Math.max(0, Number(c.budgetRemaining || 0) - rewardGems);
+            await dbUpdate(`campaigns/${taskId}`, {
+                taskBudgetRemaining: nextRemaining,
+                budgetRemaining: nextBudget,
+                escrowReserved: nextBudget,
+                taskSpend: Number(c.taskSpend || 0) + rewardGems,
+                claims: nextClaims,
+                conversions: nextClaims,
+                analytics: { ...(c.analytics || {}), conversions: nextClaims }
             });
-            
-            return res.json({ success: true, points: newBal });
-        } else {
-            return res.json({ success: false, error: "Not Joined" });
+            const sponsor = sponsorId ? await dbGet(`users/${sponsorId}`) : null;
+            if(sponsor) await dbUpdate(`users/${sponsorId}`, {
+                campaignReserved: Math.max(0, Number(sponsor.campaignReserved || 0) - rewardGems),
+                logs: logAction(sponsor, `Sponsored task completed: ${c.name || taskId} (-${rewardGems} Gems from campaign reserve)`)
+            });
+            const newPoints = Number(u.points || 0) + rewardGems;
+            await dbUpdate(`users/${userIdStr}`, {
+                claimedSponsorTasks:[...(u.claimedSponsorTasks || []), taskId],
+                active7DayEscrows:[...(u.active7DayEscrows || []), {taskId,channelId:verifiedChannel,reward:rewardGems,sponsorUserId:sponsorId,timestamp:Date.now()}],
+                points:newPoints,
+                logs:logAction(u, `Completed Sponsor Task '${c.name || taskId}' (+${rewardGems} Gems)`)
+            });
+            return res.json({success:true,points:newPoints,reward:rewardGems,remaining:nextRemaining});
+        } catch(e) {
+            return res.json({success:false,error:e.message || 'Verification failed'});
         }
-    } catch (e) {
-        return res.json({ success: false, error: "Not Joined" });
+    }
+
+    if(c.paused || c.claims >= c.maxUsers) return res.json({success:false,error:'Campaign is closed or full'});
+    try {
+        const member = await fetchMultiAPI(channelId, userIdStr, BOT_TOKEN);
+        if(member.status === 'error') return res.json({success:false,error:member.error || 'Verification failed. Is the bot an admin in the channel?'});
+        if(!member.success) return res.json({success:false,error:'Not Joined'});
+        const finalReward = Number(c.reward || 0);
+        const sponsor = await dbGet(`users/${c.userId}`);
+        await dbUpdate(`campaigns/${taskId}`, {claims:(c.claims||0)+1});
+        if(sponsor) await dbUpdate(`users/${c.userId}`, {stuckBalance:Math.max(0,Number(sponsor.stuckBalance||0)-finalReward)});
+        const newBal = Number(u.points||0) + finalReward;
+        await dbUpdate(`users/${userIdStr}`, {
+            claimedSponsorTasks:[...(u.claimedSponsorTasks||[]),taskId],
+            active7DayEscrows:[...(u.active7DayEscrows||[]),{taskId,channelId,reward:finalReward,sponsorUserId:c.userId,timestamp:Date.now()}],
+            points:newBal,
+            logs:logAction(u,`Completed Sponsor Task '${c.name}' (+${finalReward} Gems)`)
+        });
+        return res.json({success:true,points:newBal,reward:finalReward});
+    } catch(e) {
+        return res.json({success:false,error:'Not Joined'});
     }
 });
 

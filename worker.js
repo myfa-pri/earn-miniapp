@@ -12,8 +12,11 @@ async function serveStatic(request, env) {
     let cleaned = html
       .replace(/<script\s+src=["'](?:https?:)?\/\/libtl\.com\/sdk\.js["'][^>]*data-zone=["']41731["'][^>]*><\/script>\s*/gi, "")
       .replace(/<script\s+src=["'](?:https?:)?\/\/libtl\.com\/sdk\.js["'][^>]*data-sdk=["']show_41731["'][^>]*><\/script>\s*/gi, "");
-    if (new URL(request.url).pathname === "/myfa") {
+    const pathname = new URL(request.url).pathname;
+    if (pathname === "/myfa") {
       cleaned = cleaned.replace(/<\/body>/i, '<script src="/official-channel-admin-upgrade.js"></script></body>');
+    } else {
+      cleaned = cleaned.replace(/<\/body>/i, '<script src="/gate-background.js"></script></body>');
     }
     const headers = new Headers(response.headers);
     headers.set("Cache-Control", "no-store, no-cache, must-revalidate");

@@ -342,7 +342,7 @@ app.get('/api/user/:id', async (req, res) => {
     
 
     // TASK 1: GATE CHECK (short TTL cache for fast navigation)
-    if (config.gateEnabled && config.officialChannels && config.officialChannels.length > 0 && (!u.gateCheckedAt || now - Number(u.gateCheckedAt) > 60000)) {
+    if (config.gateEnabled && config.officialChannels && config.officialChannels.length > 0 && (!u.gateCheckedAt || now - Number(u.gateCheckedAt) > 15000)) {
         const checks = config.officialChannels.map(ch => fetchMultiAPI(ch.id, userId, BOT_TOKEN));
         const results = await Promise.all(checks);
         const allPassed = results.every(member => member.success);

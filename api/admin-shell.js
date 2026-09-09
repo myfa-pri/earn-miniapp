@@ -49,6 +49,16 @@ function buildRuntime() {
     return map[pathname] || null;
   };
 
+  const refreshAfterWrite = target => {
+    if (['data','logs','backup'].includes(target)) return;
+    setTimeout(async () => {
+      try { if (typeof window.fetchAdminData === 'function') await window.fetchAdminData(); } catch (_) {}
+      if (target === 'channel/post') {
+        try { if (typeof window.loadChannelPosts === 'function') await window.loadChannelPosts(); } catch (_) {}
+      }
+    }, 0);
+  };
+
   window.fetch = async (input, init = {}) => {
     let url = typeof input === 'string' ? input : input?.url || '';
     let parsed;
@@ -59,7 +69,11 @@ function buildRuntime() {
     const session = getSession();
     const target = routeTarget(pathname);
     if (!target) return originalFetch(input, init);
-    if (!session) return new Response(JSON.stringify({success:false,error:'Admin session missing. Please log in again.'}), {status:401,headers:{'Content-Type':'application/json'}});
+    if (!session) {
+      return new Response(JSON.stringify({success:false,error:'Admin session missing. Please log in again.'}), {
+        status:401, headers:{'Content-Type':'application/json'}
+      });
+    }
 
     const nextInit = { ...init, headers: new Headers(init.headers || {}) };
     nextInit.headers.set('X-MYFA-ADMIN-SESSION', session);
@@ -71,7 +85,17 @@ function buildRuntime() {
       } catch (_) {}
     }
     if (target === 'backup') nextInit.body = nextInit.body || '{}';
-    return originalFetch('/api/admin-gateway?target=' + encodeURIComponent(target), nextInit);
+
+    const response = await originalFetch('/api/admin-gateway?target=' + encodeURIComponent(target), nextInit);
+    if (!response.ok) {
+      try {
+        const err = await response.clone().json();
+        if (err?.error) alert(err.error);
+      } catch (_) {}
+      return response;
+    }
+    refreshAfterWrite(target);
+    return response;
   };
 
   const loginAndLoad = async () => {

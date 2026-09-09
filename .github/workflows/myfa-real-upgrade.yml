@@ -1,0 +1,598 @@
+name: MYFA real upgrade
+
+on:
+  push:
+    paths:
+      - '.github/workflows/myfa-real-upgrade.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  upgrade:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply real Telegram, Drop, Streak and Campaign upgrades
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          # -----------------------------------------------------------------
+          # 1) Backend: profile sync, real avatar proxy, authoritative streak,
+          #    and a real campaign manager API.
+          # -----------------------------------------------------------------
+          api = Path('api/index.js')
+          s = api.read_text()
+
+          avatar_start = s.find("app.get('/api/avatar/:userId'")
+          if avatar_start >= 0:
+              avatar_end = s.find("\n});", avatar_start)
+              if avatar_end >= 0:
+                  avatar_end += len("\n});")
+                  avatar_route = r'''app.get('/api/avatar/:userId', async (req, res) => {
+              try {
+                  const userId = String(req.params.userId);
+                  const u = await dbGet(`users/${userId}`);
+                  if (u && u.avatarUrl && /^https:\/\//i.test(String(u.avatarUrl))) {
+                      res.set('Cache-Control', 'public, max-age=3600');
+                      return res.redirect(302, u.avatarUrl);
+                  }
+                  const photos = await bot.getUserProfilePhotos(userId, { limit: 1 });
+                  if (photos.total_count > 0) {
+                      const fileId = photos.photos[0][0].file_id;
+                      const file = await bot.getFile(fileId);
+                      const url = `https://api.telegram.org/file/bot${BOT_TOKEN}/${file.file_path}`;
+                      const response = await fetch(url);
+                      if (response.ok) {
+                          const buffer = await response.arrayBuffer();
+                          res.set('Cache-Control', 'public, max-age=3600');
+                          res.set('Content-Type', response.headers.get('content-type') || 'image/jpeg');
+                          return res.send(Buffer.from(buffer));
+                      }
+                  }
+                  return res.redirect(302, `https://ui-avatars.com/api/?name=${encodeURIComponent((u && (u.accountName || u.username)) || 'User')}&background=B026FF&color=fff&size=256`);
+              } catch (e) {
+                  return res.redirect(302, 'https://ui-avatars.com/api/?name=User&background=B026FF&color=fff&size=256');
+              }
+          });'''
+                  s = s[:avatar_start] + avatar_route + s[avatar_end:]
+
+          marker = 'export default app;'
+          insert_at = s.rfind(marker)
+          if insert_at < 0:
+              raise SystemExit('export default app marker not found')
+
+          campaign_block = r'''
+          // ============================================================================
+          // REAL PROFILE SYNC / AUTHORITATIVE DAILY STREAK
+          // ============================================================================
+          const cmDateKey = (ms = Date.now()) => new Intl.DateTimeFormat('en-CA', {
+              timeZone: 'Africa/Addis_Ababa', year: 'numeric', month: '2-digit', day: '2-digit'
+          }).format(new Date(ms));
+          const cmDayNumber = (key) => {
+              if (!key) return null;
+              const m = String(key).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+              return m ? Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
+          };
+          const cmDaysBetween = (a, b) => {
+              const aa = cmDayNumber(a), bb = cmDayNumber(b);
+              return aa == null || bb == null ? null : Math.round((bb - aa) / 86400000);
+          };
+          const cmStreakHistory = (u) => Array.isArray(u?.streakHistory) ? u.streakHistory : [];
+          const cmCurrentStreakFromHistory = (u) => {
+              const h = cmStreakHistory(u);
+              return h.length ? Math.max(1, Math.min(7, Number(h[h.length - 1].day || 1))) : Math.max(1, Math.min(7, Number(u?.streakCount || u?.streak || 1)));
+          };
+          const cmRewardForDay = async (day) => {
+              const c = await dbGet('config') || {};
+              const baseReward = Number(c.loginBase ?? c.dailyLoginBase ?? 50) || 50;
+              const multiplier = Number(c.loginMult ?? c.dailyLoginMult ?? 1) || 1;
+              const eventMultiplier = Number(c.globalMultiplier || 1) || 1;
+              return Math.max(1, Math.round(baseReward * Math.min(7, Math.max(1, Number(day || 1))) * multiplier * eventMultiplier));
+          };
+
+          app.post('/api/profile/sync', async (req, res) => {
+              try {
+                  const { userId, photoUrl, firstName, lastName, username } = req.body || {};
+                  if (!userId) return res.status(400).json({ success: false, error: 'Missing userId' });
+                  const u = await dbGet(`users/${userId}`);
+                  if (!u) return res.status(404).json({ success: false, error: 'User not found' });
+                  const cleanPhoto = typeof photoUrl === 'string' && /^https:\/\//i.test(photoUrl) ? photoUrl : null;
+                  const accountName = `${firstName || ''} ${lastName || ''}`.trim() || u.accountName || u.username || 'User';
+                  const patch = {
+                      accountName,
+                      username: username || u.username || accountName,
+                      telegramFirstName: firstName || u.telegramFirstName || '',
+                      telegramLastName: lastName || u.telegramLastName || '',
+                      telegramUsername: username || u.telegramUsername || ''
+                  };
+                  if (cleanPhoto) patch.avatarUrl = cleanPhoto;
+                  await dbUpdate(`users/${userId}`, patch);
+                  res.set('Cache-Control', 'no-store');
+                  res.json({ success: true, user: { ...u, ...patch } });
+              } catch (e) {
+                  res.status(500).json({ success: false, error: 'Profile sync failed' });
+              }
+          });
+
+          app.get('/api/daily-streak/status/:userId', async (req, res) => {
+              try {
+                  const userId = String(req.params.userId);
+                  const u = await dbGet(`users/${userId}`);
+                  if (!u) return res.status(404).json({ success: false, error: 'User not found' });
+                  const today = cmDateKey();
+                  const history = cmStreakHistory(u);
+                  const last = history.length ? history[history.length - 1].date : (u.streakLastClaimDate || u.streakClaimDate || null);
+                  let streak = cmCurrentStreakFromHistory(u);
+                  const gap = last ? cmDaysBetween(last, today) : null;
+                  const claimedToday = last === today;
+                  if (!claimedToday && gap != null && gap > 1) streak = 1;
+                  let nextDay = claimedToday ? streak : (gap === 1 ? Math.min(7, streak + 1) : streak);
+                  const reward = await cmRewardForDay(nextDay);
+                  res.set('Cache-Control', 'no-store');
+                  res.json({ success: true, today, claimedToday, streak, nextDay, reward, history: history.slice(-7) });
+              } catch (e) {
+                  res.status(500).json({ success: false, error: 'Unable to load streak' });
+              }
+          });
+
+          app.post('/api/daily-streak/claim', async (req, res) => {
+              try {
+                  const { userId } = req.body || {};
+                  if (!userId) return res.status(400).json({ success: false, error: 'Missing userId' });
+                  const u = await dbGet(`users/${userId}`);
+                  if (!u) return res.status(404).json({ success: false, error: 'User not found' });
+                  const today = cmDateKey();
+                  let history = cmStreakHistory(u);
+                  const last = history.length ? history[history.length - 1].date : (u.streakLastClaimDate || u.streakClaimDate || null);
+                  if (last === today) {
+                      return res.json({ success: false, alreadyClaimed: true, error: 'Daily streak already claimed today', streak: cmCurrentStreakFromHistory(u) });
+                  }
+                  const gap = last ? cmDaysBetween(last, today) : null;
+                  let day = cmCurrentStreakFromHistory(u);
+                  if (!history.length && !last) day = Math.max(1, Math.min(7, Number(u.streakCount || u.streak || 1)));
+                  else if (gap === 1) day = Math.min(7, day + 1);
+                  else if (gap == null || gap > 1) day = 1;
+                  const reward = await cmRewardForDay(day);
+                  const entry = { date: today, day, reward, timestamp: Date.now() };
+                  history = [...history, entry].slice(-30);
+                  const newPoints = (u.points || 0) + reward;
+                  await dbUpdate(`users/${userId}`, {
+                      points: newPoints,
+                      streak: day,
+                      streakCount: day,
+                      streakLastClaimDate: today,
+                      streakClaimDate: today,
+                      streakHistory: history,
+                      lastActivityDate: Date.now(),
+                      logs: logAction(u, `Daily Streak Day ${day} claimed (+${reward} Gems)`)
+                  });
+                  res.json({ success: true, streak: day, reward, newPoints, claimDate: today, history: history.slice(-7) });
+              } catch (e) {
+                  res.status(500).json({ success: false, error: 'Daily streak claim failed' });
+              }
+          });
+
+          // ============================================================================
+          // REAL CAMPAIGN MANAGER API
+          // ============================================================================
+          const cmOwner = (c) => String(c?.ownerId || c?.userId || '');
+          const cmNum = (v, d=0) => Number.isFinite(Number(v)) ? Number(v) : d;
+          const cmCsv = (v) => String(v || '').split(',').map(x => x.trim()).filter(Boolean).slice(0, 50);
+          const cmValidUrl = (url) => { try { const u = new URL(String(url || '')); return ['http:', 'https:'].includes(u.protocol) && !!u.hostname; } catch { return false; } };
+          const cmBudgetState = (c) => ({
+              total: cmNum(c?.budgetTotal, typeof c?.budget === 'object' ? c.budget.total : c?.budget),
+              remaining: Math.max(0, cmNum(c?.budgetRemaining, typeof c?.budget === 'object' ? c.budget.remaining : c?.budget)),
+              ad: Math.max(0, cmNum(c?.adBudgetRemaining, c?.mode === 'task' ? 0 : c?.adBudget)),
+              task: Math.max(0, cmNum(c?.taskBudgetRemaining, c?.taskBudget || c?.stuckBalance || 0))
+          });
+          const cmAudit = (c, action, userId, meta={}) => {
+              const logs = Array.isArray(c.auditLog) ? c.auditLog : [];
+              logs.push({ timestamp: Date.now(), action, userId: String(userId), meta });
+              return logs.slice(-100);
+          };
+          const cmNormalize = (c, id) => ({
+              ...c,
+              id: c.id || id,
+              ownerId: cmOwner(c),
+              name: c.name || 'Untitled campaign',
+              mode: c.mode || (c.sponsoredTask ? 'task' : 'advertisement'),
+              status: c.archived ? 'archived' : (c.paused ? 'paused' : (c.status || 'active')),
+              budgetState: cmBudgetState(c),
+              impressions: cmNum(c.impressions || c.views),
+              clicks: cmNum(c.adClicks),
+              conversions: cmNum(c.conversions || c.claims || c.analytics?.conversions),
+              spend: cmNum(c.adSpend),
+              ctr: cmNum(c.impressions || c.views) > 0 ? Number(((cmNum(c.adClicks) / cmNum(c.impressions || c.views)) * 100).toFixed(2)) : 0,
+              cpa: cmNum(c.conversions || c.claims || c.analytics?.conversions) > 0 ? Number((cmNum(c.adSpend) / cmNum(c.conversions || c.claims || c.analytics?.conversions)).toFixed(2)) : 0
+          });
+          const cmReadOwned = async (id, userId) => {
+              const c = await dbGet(`campaigns/${id}`);
+              if (!c || cmOwner(c) !== String(userId)) return null;
+              return c;
+          };
+          const cmSetCompatibility = (c) => {
+              const taskLike = c.mode === 'task' || c.mode === 'hybrid';
+              const state = cmBudgetState(c);
+              c.ownerId = cmOwner(c);
+              c.userId = cmOwner(c);
+              c.paused = !!c.paused;
+              c.archived = !!c.archived;
+              c.budgetTotal = state.total;
+              c.budgetRemaining = state.remaining;
+              c.adBudgetRemaining = state.ad;
+              c.taskBudgetRemaining = state.task;
+              c.adBudget = cmNum(c.adBudget);
+              c.taskBudget = cmNum(c.taskBudget);
+              c.escrowReserved = state.remaining;
+              c.stuckBalance = state.task;
+              c.claims = cmNum(c.analytics?.conversions || c.claims);
+              c.conversions = c.claims;
+              if (taskLike) {
+                  c.sponsoredTask = true;
+                  c.reward = cmNum(c.reward || c.task?.reward);
+                  c.maxUsers = cmNum(c.maxUsers || c.task?.maxUsers);
+                  c.channelId = c.channelId || c.task?.channelId || '';
+                  c.type = c.task?.type || c.type || 'channel';
+                  c.task = { ...(c.task || {}), enabled: true, reward: c.reward, maxUsers: c.maxUsers, type: c.type, channelId: c.channelId };
+                  c.delivery = { ...(c.delivery || {}), status: c.paused || c.archived ? 'Paused' : 'Running' };
+                  c.analytics = { ...(c.analytics || {}), conversions: c.claims };
+                  c.budget = { ...(typeof c.budget === 'object' ? c.budget : {}), total: state.total, remaining: state.remaining };
+              } else {
+                  c.sponsoredTask = false;
+                  c.budget = state.ad;
+              }
+              return c;
+          };
+
+          app.get('/api/campaign-manager/dashboard/:userId', async (req, res) => {
+              try {
+                  const userId = String(req.params.userId);
+                  const [u, all] = await Promise.all([dbGet(`users/${userId}`), dbGet('campaigns') || {}]);
+                  if (!u) return res.status(404).json({ success: false, error: 'User not found' });
+                  const campaigns = Object.entries(all || {}).map(([id,c]) => cmNormalize(c, id)).filter(c => cmOwner(c) === userId && !c.archived).sort((a,b) => cmNum(b.updatedAt || b.createdAt) - cmNum(a.updatedAt || a.createdAt));
+                  const summary = campaigns.reduce((m,c) => { m.active += c.status === 'active' ? 1 : 0; m.impressions += c.impressions; m.clicks += c.clicks; m.conversions += c.conversions; m.spend += c.spend; m.reserved += c.budgetState.remaining; return m; }, { active:0, impressions:0, clicks:0, conversions:0, spend:0, reserved:0 });
+                  res.set('Cache-Control', 'no-store');
+                  res.json({ success: true, user: { id:userId, points:u.points||0, stuckBalance:u.stuckBalance||0 }, campaigns, summary });
+              } catch (e) { res.status(500).json({ success:false, error:'Unable to load campaign workspace' }); }
+          });
+
+          app.post('/api/campaign-manager/campaigns', async (req, res) => {
+              try {
+                  const b = req.body || {};
+                  const userId = String(b.userId || '');
+                  const mode = ['advertisement','task','hybrid'].includes(b.mode) ? b.mode : 'advertisement';
+                  const name = String(b.name || '').trim();
+                  if (!userId || !name) return res.status(400).json({ success:false, error:'Campaign name and userId are required' });
+                  if (mode !== 'task' && !cmValidUrl(b.link)) return res.status(400).json({ success:false, error:'A valid destination URL is required for an advertisement' });
+                  const u = await dbGet(`users/${userId}`);
+                  if (!u) return res.status(404).json({ success:false, error:'User not found' });
+                  const maxUsers = Math.max(0, Math.floor(cmNum(b.maxUsers)));
+                  const reward = Math.max(0, cmNum(b.reward));
+                  const adBudget = mode === 'task' ? 0 : Math.max(0, cmNum(b.impressionBudget));
+                  const taskBudget = mode === 'advertisement' ? 0 : maxUsers * reward;
+                  const total = adBudget + taskBudget;
+                  if (total <= 0) return res.status(400).json({ success:false, error:'Budget must be greater than zero' });
+                  if (cmNum(u.points) < total) return res.status(400).json({ success:false, error:`Need ${total} Gems, but only ${cmNum(u.points)} are available` });
+                  const id = `cm_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+                  const taskLike = mode === 'task' || mode === 'hybrid';
+                  const campaign = {
+                      id, ownerId:userId, userId, schemaVersion:2, mode, name,
+                      link: String(b.link||''), url: String(b.link||''), imageUrl: String(b.imageUrl||''), videoUrl: String(b.videoUrl||''),
+                      imageUrlB: String(b.imageUrlB||''), headline: String(b.headline||''), cta: String(b.cta||'Visit Now'),
+                      desc: String(b.desc||b.description||b.taskDesc||''), description: String(b.desc||b.description||b.taskDesc||''),
+                      countries: cmCsv(b.countries), devices: cmCsv(b.devices || 'all'), frequencyCap: Math.max(0, Math.floor(cmNum(b.frequencyCap))),
+                      startDate: b.startDate || null, endDate: b.endDate || null, dailyBudget: Math.max(0, cmNum(b.dailyBudget)),
+                      adBudget, taskBudget, adBudgetRemaining:adBudget, taskBudgetRemaining:taskBudget,
+                      budgetTotal:total, budgetRemaining:total, escrowReserved:total, stuckBalance:taskBudget,
+                      budget: taskLike ? { total, remaining: total } : adBudget,
+                      reward, maxUsers, claims:0, conversions:0, impressions:0, adClicks:0, adSpend:0,
+                      paused:false, archived:false, fraudProtection:b.fraudProtection !== false,
+                      autoScale:!!b.autoScale, autoPauseThreshold:Math.max(0, Math.min(100, cmNum(b.autoPauseThreshold))),
+                      abEnabled:b.abEnabled !== false, trackingToken:crypto.randomBytes(18).toString('hex'),
+                      task: taskLike ? { enabled:true, reward, maxUsers, type:String(b.taskType||'auto'), channelId:String(b.channelId||''), instructions:String(b.taskDesc||'') } : null,
+                      delivery:{ status:'Running' }, analytics:{ conversions:0 }, createdAt:Date.now(), updatedAt:Date.now(),
+                      auditLog:[{timestamp:Date.now(), action:'created', userId, meta:{mode,total}}], notes:String(b.notes||''), tags:cmCsv(b.tags),
+                      eventIds:[]
+                  };
+                  cmSetCompatibility(campaign);
+                  await dbSet(`campaigns/${id}`, campaign);
+                  await dbUpdate(`users/${userId}`, { points:cmNum(u.points) - total, logs:logAction(u, `Campaign created: ${name} (-${total} Gems)`) });
+                  const all = await dbGet('campaigns') || {};
+                  res.json({ success:true, campaign:cmNormalize(campaign,id), user:{...u,points:cmNum(u.points)-total}, campaigns:Object.entries(all).map(([cid,c])=>cmNormalize(c,cid)).filter(c=>cmOwner(c)===userId && !c.archived) });
+              } catch(e) { res.status(500).json({ success:false, error:e.message || 'Campaign create failed' }); }
+          });
+
+          app.post('/api/campaign-manager/campaigns/:id/settings', async (req, res) => {
+              try {
+                  const id = String(req.params.id), b=req.body||{}, userId=String(b.userId||'');
+                  const c = await cmReadOwned(id,userId);
+                  if(!c) return res.status(404).json({success:false,error:'Campaign not found or not owned by this user'});
+                  const u = await dbGet(`users/${userId}`);
+                  let current = { ...c };
+                  let state = cmBudgetState(current);
+                  const patch = {};
+                  const simple = ['name','link','url','imageUrl','videoUrl','imageUrlB','headline','cta','desc','description','startDate','endDate','dailyBudget','frequencyCap','autoScale','autoPauseThreshold','fraudProtection','abEnabled','notes'];
+                  for (const k of simple) if (Object.prototype.hasOwnProperty.call(b,k)) patch[k] = ['dailyBudget','frequencyCap','autoPauseThreshold'].includes(k) ? cmNum(b[k]) : b[k];
+                  if (Object.prototype.hasOwnProperty.call(b,'countries')) patch.countries = Array.isArray(b.countries) ? b.countries : cmCsv(b.countries);
+                  if (Object.prototype.hasOwnProperty.call(b,'devices')) patch.devices = Array.isArray(b.devices) ? b.devices : cmCsv(b.devices);
+                  if (Object.prototype.hasOwnProperty.call(b,'tags')) patch.tags = Array.isArray(b.tags) ? b.tags : cmCsv(b.tags);
+                  const taskLike = current.mode === 'task' || current.mode === 'hybrid';
+                  let oldPlannedTask = cmNum(current.taskBudget);
+                  let oldSpentTask = Math.max(0, oldPlannedTask - state.task);
+                  if (taskLike && (Object.prototype.hasOwnProperty.call(b,'reward') || Object.prototype.hasOwnProperty.call(b,'maxUsers'))) {
+                      const nextReward = Math.max(0, cmNum(b.reward, cmNum(current.reward)));
+                      const nextMax = Math.max(0, Math.floor(cmNum(b.maxUsers, cmNum(current.maxUsers))));
+                      const nextPlannedTask = nextReward * nextMax;
+                      if (nextPlannedTask < oldSpentTask) return res.status(400).json({success:false,error:'New task budget is below what has already been spent'});
+                      const delta = nextPlannedTask - oldPlannedTask;
+                      if (delta > 0 && cmNum(u.points) < delta) return res.status(400).json({success:false,error:`Need ${delta} additional Gems to apply this task budget change`});
+                      patch.reward = nextReward; patch.maxUsers = nextMax;
+                      patch.taskBudget = nextPlannedTask;
+                      patch.taskBudgetRemaining = Math.max(0, nextPlannedTask - oldSpentTask);
+                      patch.budgetTotal = cmNum(current.budgetTotal) + delta;
+                      patch.budgetRemaining = state.remaining + delta;
+                      patch.escrowReserved = state.remaining + delta;
+                      patch.stuckBalance = patch.taskBudgetRemaining;
+                      patch.budget = { ...(typeof current.budget === 'object' ? current.budget : {}), total:patch.budgetTotal, remaining:patch.budgetRemaining };
+                      patch.task = { ...(current.task||{}), reward:nextReward, maxUsers:nextMax, enabled:true, type:String(b.taskType||current.task?.type||'auto'), channelId:String(b.channelId||current.task?.channelId||''), instructions:String(b.taskDesc||current.task?.instructions||'') };
+                      if (Object.prototype.hasOwnProperty.call(b,'taskType')) patch.type = String(b.taskType || current.type || 'channel');
+                      if (Object.prototype.hasOwnProperty.call(b,'channelId')) patch.channelId = String(b.channelId || '');
+                      if (patch.budgetTotal > cmNum(current.budgetTotal)) patch.auditLog = cmAudit(current,'budget_increased',userId,{delta,bucket:'task'});
+                      await dbUpdate(`users/${userId}`, { points:cmNum(u.points)-delta, logs:logAction(u, `Campaign budget updated: ${current.name}`) });
+                      current={...current,...patch};
+                  } else if (taskLike) {
+                      if (Object.prototype.hasOwnProperty.call(b,'taskType') || Object.prototype.hasOwnProperty.call(b,'channelId') || Object.prototype.hasOwnProperty.call(b,'taskDesc')) {
+                          patch.task = { ...(current.task||{}), type:String(b.taskType||current.task?.type||'auto'), channelId:String(b.channelId||current.task?.channelId||''), instructions:String(b.taskDesc||current.task?.instructions||'') };
+                          if (Object.prototype.hasOwnProperty.call(b,'channelId')) patch.channelId = String(b.channelId||'');
+                      }
+                  }
+                  patch.auditLog = cmAudit(current,'settings_updated',userId,{fields:Object.keys(patch)});
+                  patch.updatedAt = Date.now();
+                  const next = {...current,...patch}; cmSetCompatibility(next);
+                  await dbUpdate(`campaigns/${id}`, next);
+                  res.json({success:true,campaign:cmNormalize(next,id),user:{...u,points:cmNum((await dbGet(`users/${userId}`))?.points)}});
+              } catch(e) { res.status(500).json({success:false,error:e.message||'Settings update failed'}); }
+          });
+
+          app.post('/api/campaign-manager/campaigns/:id/budget', async (req, res) => {
+              try {
+                  const id=String(req.params.id), {userId,amount,bucket='ad'}=req.body||{};
+                  const delta=cmNum(amount);
+                  if (!delta) return res.status(400).json({success:false,error:'Budget amount cannot be zero'});
+                  const c=await cmReadOwned(id,userId), u=await dbGet(`users/${userId}`);
+                  if(!c||!u) return res.status(404).json({success:false,error:'Campaign or user not found'});
+                  const state=cmBudgetState(c);
+                  const key=bucket==='task'?'task':'ad';
+                  const currentBucket=state[key];
+                  if(delta>0 && cmNum(u.points)<delta) return res.status(400).json({success:false,error:'Not enough Gems'});
+                  if(delta<0 && currentBucket < Math.abs(delta)) return res.status(400).json({success:false,error:'Cannot refund more than remaining budget in this bucket'});
+                  const next={...c};
+                  if(key==='task'){ next.taskBudget = cmNum(c.taskBudget)+delta; next.taskBudgetRemaining = Math.max(0,state.task+delta); next.stuckBalance=next.taskBudgetRemaining; }
+                  else { next.adBudget = cmNum(c.adBudget)+delta; next.adBudgetRemaining=Math.max(0,state.ad+delta); }
+                  next.budgetTotal=state.total+delta; next.budgetRemaining=state.remaining+delta; next.escrowReserved=Math.max(0,next.budgetRemaining); next.budget=(c.mode==='task'||c.mode==='hybrid')?{...(typeof c.budget==='object'?c.budget:{}),total:next.budgetTotal,remaining:next.budgetRemaining}:next.adBudgetRemaining;
+                  next.auditLog=cmAudit(c,delta>0?'budget_added':'budget_refunded',userId,{amount:delta,bucket:key}); next.updatedAt=Date.now(); cmSetCompatibility(next);
+                  await dbUpdate(`campaigns/${id}`,next); await dbUpdate(`users/${userId}`,{points:cmNum(u.points)-delta,logs:logAction(u,`Campaign budget ${delta>0?'added':'refunded'}: ${c.name}`)});
+                  res.json({success:true,campaign:cmNormalize(next,id),refunded:delta<0?Math.abs(delta):0,user:{...u,points:cmNum(u.points)-delta}});
+              } catch(e){res.status(500).json({success:false,error:e.message||'Budget update failed'});}
+          });
+
+          app.post('/api/campaign-manager/campaigns/:id/action', async (req,res)=>{
+              try{
+                  const id=String(req.params.id),{userId,action}=req.body||{}; let c=await cmReadOwned(id,userId),u=await dbGet(`users/${userId}`);
+                  if(!c||!u)return res.status(404).json({success:false,error:'Campaign not found'});
+                  const next={...c}; let refund=0;
+                  if(action==='pause'){next.paused=true;next.status='paused';}
+                  else if(action==='resume'){next.paused=false;next.archived=false;next.status='active';}
+                  else if(action==='archive'||action==='liquidate'||action==='refund'){
+                      refund=cmBudgetState(c).remaining; next.paused=true; next.archived=true; next.status='archived'; next.budgetRemaining=0; next.adBudgetRemaining=0; next.taskBudgetRemaining=0; next.escrowReserved=0; next.stuckBalance=0; next.budget=(next.mode==='task'||next.mode==='hybrid')?{...(typeof next.budget==='object'?next.budget:{}),remaining:0}:0;
+                  } else if(action==='duplicate'){
+                      const state=cmBudgetState(c),total=state.total;
+                      if(total<=0)return res.status(400).json({success:false,error:'Nothing to duplicate'});
+                      if(cmNum(u.points)<total)return res.status(400).json({success:false,error:`Need ${total} Gems to duplicate this campaign`});
+                      const nid=`cm_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+                      const dup={...c,id:nid,name:`${c.name} Copy`,createdAt:Date.now(),updatedAt:Date.now(),archived:false,paused:false,status:'active',impressions:0,adClicks:0,conversions:0,claims:0,adSpend:0,budgetRemaining:total,escrowReserved:total,adBudgetRemaining:state.ad,taskBudgetRemaining:state.task,eventIds:[],auditLog:[{timestamp:Date.now(),action:'duplicated',userId,meta:{source:id}}]}; cmSetCompatibility(dup); await dbSet(`campaigns/${nid}`,dup); await dbUpdate(`users/${userId}`,{points:cmNum(u.points)-total,logs:logAction(u,`Campaign duplicated: ${c.name}`)}); const all=await dbGet('campaigns')||{}; return res.json({success:true,campaign:cmNormalize(dup,nid),user:{...u,points:cmNum(u.points)-total},campaigns:Object.entries(all).map(([cid,x])=>cmNormalize(x,cid)).filter(x=>cmOwner(x)===String(userId)&&!x.archived)});
+                  } else return res.status(400).json({success:false,error:'Unknown campaign action'});
+                  next.auditLog=cmAudit(c,action,userId,{refund}); next.updatedAt=Date.now(); cmSetCompatibility(next); await dbUpdate(`campaigns/${id}`,next); if(refund)await dbUpdate(`users/${userId}`,{points:cmNum(u.points)+refund,logs:logAction(u,`Campaign refunded: ${c.name} (+${refund} Gems)`)}); const latestUser=await dbGet(`users/${userId}`); res.json({success:true,campaign:cmNormalize(next,id),refunded:refund,user:{...u,points:cmNum(latestUser?.points)}});
+              }catch(e){res.status(500).json({success:false,error:e.message||'Campaign action failed'});}
+          });
+
+          app.post('/api/campaign-manager/campaigns/:id/track', async (req,res)=>{
+              try{
+                  const id=String(req.params.id),{token,event='impression',eventId=''}=req.body||{}; const c=await dbGet(`campaigns/${id}`);
+                  if(!c||String(c.trackingToken||'')!==String(token||''))return res.status(403).json({success:false,error:'Invalid tracking token'});
+                  if(!['impression','click','conversion'].includes(event))return res.status(400).json({success:false,error:'Invalid event'});
+                  const next={...c}; next.eventIds=Array.isArray(c.eventIds)?c.eventIds:[];
+                  if(eventId && next.eventIds.includes(String(eventId)))return res.json({success:true,deduped:true});
+                  if(eventId)next.eventIds=[...next.eventIds,String(eventId)].slice(-500);
+                  const fraud=next.fraudProtection!==false;
+                  if(fraud && event==='click' && cmNum(next.impressions)>0 && cmNum(next.adClicks)>=cmNum(next.impressions)*10)return res.status(429).json({success:false,error:'Click rate blocked by fraud protection'});
+                  const state=cmBudgetState(next); const cost=event==='impression'?1:(event==='click'?2:0);
+                  if((event==='impression'||event==='click') && state.ad<=0 && next.mode==='advertisement')return res.json({success:false,served:false,error:'Ad budget exhausted'});
+                  if(event==='impression'){next.impressions=cmNum(next.impressions)+1;next.adBudgetRemaining=Math.max(0,state.ad-cost);next.adSpend=cmNum(next.adSpend)+cost;}
+                  else if(event==='click'){next.adClicks=cmNum(next.adClicks)+1;next.adBudgetRemaining=Math.max(0,state.ad-cost);next.adSpend=cmNum(next.adSpend)+cost;}
+                  else {next.conversions=cmNum(next.conversions)+1;next.claims=next.conversions;next.analytics={...(next.analytics||{}),conversions:next.conversions};}
+                  next.budgetRemaining=Math.max(0,cmNum(next.adBudgetRemaining)+cmNum(next.taskBudgetRemaining));
+                  next.escrowReserved=next.budgetRemaining; next.budget=(next.mode==='task'||next.mode==='hybrid')?{...(typeof next.budget==='object'?next.budget:{}),remaining:next.budgetRemaining}:next.adBudgetRemaining;
+                  const ctr=next.impressions?next.adClicks/next.impressions*100:0;
+                  if(next.autoPauseThreshold>0 && next.budgetTotal>0 && next.budgetRemaining<=next.budgetTotal*(next.autoPauseThreshold/100)){next.paused=true;next.status='paused';}
+                  next.auditLog=cmAudit(c,`track_${event}`,'public',{eventId:String(eventId||'')}); next.updatedAt=Date.now(); cmSetCompatibility(next); await dbUpdate(`campaigns/${id}`,next);
+                  res.json({success:true,ctr:Number(ctr.toFixed(2)),campaignId:id});
+              }catch(e){res.status(500).json({success:false,error:'Tracking failed'});}
+          });
+
+          app.get('/api/campaign-manager/serve/:userId', async (req,res)=>{
+              try{
+                  const userId=String(req.params.userId),device=String(req.query.device||'all').toLowerCase(),country=String(req.query.country||'').toLowerCase(),test=req.query.test==='1';
+                  const all=await dbGet('campaigns')||{}; const now=Date.now(); const candidates=[];
+                  for(const [id,raw] of Object.entries(all)){const c=cmNormalize(raw,id);if(c.archived||c.paused||c.mode==='task')continue;if(c.startDate&&now<new Date(c.startDate).getTime())continue;if(c.endDate&&now>new Date(c.endDate).getTime())continue;if(c.budgetState.ad<=0)continue;const ds=(c.devices||[]).map(x=>String(x).toLowerCase());if(ds.length&&!ds.includes('all')&&!ds.includes(device))continue;const cs=(c.countries||[]).map(x=>String(x).toLowerCase());if(country&&cs.length&&!cs.includes(country))continue;candidates.push(c)}
+                  if(!candidates.length)return res.json({success:true,ad:null});
+                  candidates.sort((a,b)=>cmNum(a.impressions)-cmNum(b.impressions)); const c=candidates[0];
+                  const selectedImage=(c.abEnabled!==false&&c.imageUrlB)?((parseInt(userId.slice(-1),10)||0)%2===0?c.imageUrl:c.imageUrlB):c.imageUrl;
+                  if(!test){
+                      const cap=Math.max(0,Math.floor(cmNum(c.frequencyCap))); if(cap>0){const today=cmDateKey();const f=((c.frequency||{})[userId]||{});if(f.date===today&&cmNum(f.count)>=cap)return res.json({success:true,ad:null});await dbUpdate(`campaigns/${c.id}/frequency/${userId}`,{date:today,count:(f.date===today?cmNum(f.count):0)+1});}
+                      const raw=await dbGet(`campaigns/${c.id}`); if(raw){raw.impressions=cmNum(raw.impressions)+1;raw.adBudgetRemaining=Math.max(0,cmNum(raw.adBudgetRemaining)-1);raw.adSpend=cmNum(raw.adSpend)+1;raw.budgetRemaining=Math.max(0,cmNum(raw.adBudgetRemaining)+cmNum(raw.taskBudgetRemaining));raw.escrowReserved=raw.budgetRemaining;raw.auditLog=cmAudit(raw,'served',userId,{test:false});cmSetCompatibility(raw);await dbUpdate(`campaigns/${c.id}`,raw);}
+                  }
+                  res.json({success:true,test,ad:{id:c.id,name:c.name,headline:c.headline,description:c.desc,cta:c.cta,link:c.link,imageUrl:selectedImage,videoUrl:c.videoUrl||'',trackingToken:c.trackingToken}});
+              }catch(e){res.status(500).json({success:false,error:'Ad serving failed'});}
+          });
+
+          app.post('/api/campaign-manager/campaigns/:id/validate', async (req,res)=>{
+              try{const {userId}=req.body||{}, c=await cmReadOwned(String(req.params.id),userId);if(!c)return res.status(404).json({success:false,error:'Campaign not found'});if(!cmValidUrl(c.link))return res.json({success:false,valid:false,error:'Destination URL is invalid'});const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),4000);try{const r=await fetch(c.link,{method:'HEAD',redirect:'manual',signal:controller.signal});clearTimeout(timer);res.json({success:true,valid:r.ok||[301,302,303,307,308].includes(r.status),status:r.status});}catch(e){clearTimeout(timer);res.json({success:true,valid:false,error:'Destination could not be reached within 4 seconds'});}}catch(e){res.status(500).json({success:false,error:'Validation failed'});}
+          });
+
+          app.get('/api/campaign-manager/audit/:id', async (req,res)=>{try{const c=await cmReadOwned(String(req.params.id),String(req.query.userId||''));if(!c)return res.status(404).json({success:false,error:'Campaign not found'});res.json({success:true,audit:(c.auditLog||[]).slice().reverse()});}catch(e){res.status(500).json({success:false,error:'Audit unavailable'});}});
+
+          app.get('/api/campaign-manager/export/:id', async (req,res)=>{try{const c=await cmReadOwned(String(req.params.id),String(req.query.userId||''));if(!c)return res.status(404).json({success:false,error:'Campaign not found'});res.set('Content-Disposition',`attachment; filename="${String(c.name||'campaign').replace(/[^a-z0-9_-]+/gi,'_')}.json"`);res.json(cmNormalize(c,c.id));}catch(e){res.status(500).json({success:false,error:'Export failed'});}});
+          '''
+
+          if 'app.get(\'/api/daily-streak/status/:userId\'' not in s:
+              s = s[:insert_at] + campaign_block + '\n\n' + s[insert_at:]
+              api.write_text(s)
+
+          # -----------------------------------------------------------------
+          # 2) Drop Game: Aday Abeba flower, smaller catcher, level scaling.
+          # -----------------------------------------------------------------
+          drop = Path('public/drop.html')
+          d = drop.read_text()
+          d = d.replace('const flowerImgUrl = "https://i.ibb.co/d03YYXbj/images.jpg";', 'const flowerImgUrl = "https://i.ibb.co/gpMFrYr/image.png";')
+          d = d.replace('width: 80px; height: 80px;', 'width: 68px; height: 68px;', 1)
+          d = d.replace('<div id="timeDisplay"><i class="fa-solid fa-clock"></i> <span id="time">15</span>s</div>', '<div id="levelDisplay" style="font-size:1rem;font-weight:900;color:var(--color-cyan);">LV <span id="level">1</span></div><div id="timeDisplay"><i class="fa-solid fa-clock"></i> <span id="time">15</span>s</div>')
+          d = d.replace('let score = 0;\n        let timeLeft = 15;', 'let score = 0;\n        let timeLeft = 15;\n        let gameLevel = 1;')
+          d = d.replace('score = 0;\n            timeLeft = 15;', 'score = 0;\n            timeLeft = 15;\n            gameLevel = 1;\n            document.getElementById(\'level\').innerText = gameLevel;')
+          d = d.replace("timeLeft--;\n                document.getElementById('time').innerText = timeLeft;", "timeLeft--;\n                gameLevel = Math.min(5, 1 + Math.floor(score / 20) + Math.floor((15 - timeLeft) / 5));\n                document.getElementById('time').innerText = timeLeft;\n                document.getElementById('level').innerText = gameLevel;")
+          d = d.replace('const delay = isFrozen ? 1000 : 500;', 'const delay = isFrozen ? Math.max(650, 1000 - gameLevel*60) : Math.max(260, 500 - gameLevel*45);')
+          d = d.replace("if(rand < 0.2) type = 'bomb';\n            else if(rand < 0.3) type = 'freeze';", "const bombChance = Math.min(0.48, 0.28 + (gameLevel - 1) * 0.05);\n            const freezeChance = Math.max(0.04, 0.10 - (gameLevel - 1) * 0.01);\n            if(rand < bombChance) type = 'bomb';\n            else if(rand < bombChance + freezeChance) type = 'freeze';")
+          d = d.replace('const speed = (Math.random() * 3 + 2) * dropSpeedMultiplier;', 'const speed = (Math.random() * (3 + gameLevel) + 3 + gameLevel * 0.6) * dropSpeedMultiplier;')
+          d = d.replace('score += 5; // 5 gems per flower', 'score += Math.min(8, 4 + gameLevel); // higher levels reward fewer safe catches but keep progression')
+          d = d.replace('score = Math.max(0, score - 10);', 'score = Math.max(0, score - (10 + gameLevel * 2));')
+          drop.write_text(d)
+
+          # -----------------------------------------------------------------
+          # 3) Real profile/streak runtime for the main miniapp.
+          # -----------------------------------------------------------------
+          runtime = Path('public/myfa-runtime-fixes.js')
+          runtime.write_text(r'''(() => {
+          'use strict';
+          const tg = () => window.Telegram?.WebApp?.initDataUnsafe?.user || null;
+          const uid = () => String(tg()?.id || new URLSearchParams(location.search).get('userId') || '');
+          const api = async (path, options={}) => { const r=await fetch(path,{...options,headers:{'Content-Type':'application/json',...(options.headers||{})}}); const d=await r.json().catch(()=>({})); return {r,d}; };
+          const setAvatar = (el,url) => { if(!el || !url) return; if(el.tagName === 'IMG') el.src=url; else el.style.backgroundImage=`url("${url.replace(/"/g,'%22')}")`; el.style.backgroundSize='cover'; el.style.backgroundPosition='center'; el.style.backgroundRepeat='no-repeat'; };
+          const applyAvatars = () => {
+              const u=tg(); if(!u?.photo_url) return;
+              document.querySelectorAll('.avatar-inner,.fop-avatar,#pageHeaderAvatar').forEach(el=>setAvatar(el,u.photo_url));
+              document.querySelectorAll('img.lb-avatar').forEach(img=>{ if(img.src.includes('/api/avatar/')) setAvatar(img,u.photo_url); });
+          };
+          const sync = async () => {
+              const u=tg(), id=uid(); if(!u?.id || !id) return;
+              applyAvatars();
+              try{ const {d}=await api('/api/profile/sync',{method:'POST',body:JSON.stringify({userId:id,photoUrl:u.photo_url||'',firstName:u.first_name||'',lastName:u.last_name||'',username:u.username||''})}); if(d.user && typeof currentUser!=='undefined' && currentUser){ currentUser.avatarUrl=d.user.avatarUrl||currentUser.avatarUrl; currentUser.accountName=d.user.accountName||currentUser.accountName; currentUser.username=d.user.username||currentUser.username; } }catch(e){}
+          };
+          const streakContainer = () => document.querySelector('.streak-card')?.parentElement?.parentElement || document.querySelector('.timeline')?.parentElement || null;
+          const paintStreak = async () => {
+              const id=uid(); if(!id) return; const {r,d}=await api(`/api/daily-streak/status/${encodeURIComponent(id)}`); if(!r.ok||!d.success) return;
+              if(typeof currentUser!=='undefined' && currentUser){ currentUser.streakCount=d.streak; currentUser.streak=d.streak; }
+              document.querySelectorAll('.streak-card').forEach(el=>{ const n=Number((el.querySelector('div')?.textContent||'').replace(/\D/g,'')); if(!n)return; const active=n<=d.streak; const next=n===d.nextDay&&!d.claimedToday; el.classList.toggle('claimed',active); el.classList.toggle('current',next); const icon=el.querySelector('div:nth-child(2)'); if(icon)icon.innerHTML=active?'<i class="fa-solid fa-circle-check" style="color:#078930"></i>':(next?'<i class="fa-solid fa-gift fa-beat" style="color:#F5A623"></i>':'<i class="fa-solid fa-lock" style="color:#64748B"></i>'); });
+              let host=streakContainer(); if(!host)return; let btn=document.getElementById('realDailyStreakClaim'); if(!btn){btn=document.createElement('button');btn.id='realDailyStreakClaim';btn.className='btn quantum-btn';btn.style='width:100%;margin-top:12px;';host.appendChild(btn);btn.addEventListener('click',async()=>{btn.disabled=true;const {r,d}=await api('/api/daily-streak/claim',{method:'POST',body:JSON.stringify({userId:id})});if(d.success){btn.textContent=`Day ${d.streak} claimed • +${d.reward} Gems`; if(typeof currentUser!=='undefined'&&currentUser){currentUser.points=d.newPoints;currentUser.streakCount=d.streak;currentUser.streak=d.streak;} const bal=document.getElementById('pageHeaderBalance');if(bal)bal.textContent=Number(d.newPoints).toLocaleString();applyAvatars();}else{btn.textContent=d.alreadyClaimed?'Already claimed today':(d.error||'Claim failed');}setTimeout(()=>paintStreak(),350);});}
+              btn.disabled=d.claimedToday; btn.textContent=d.claimedToday?`Day ${d.streak} claimed today`:`Claim Day ${d.nextDay} • +${d.reward} Gems`;
+          };
+          const startObserver = () => { const mo=new MutationObserver(()=>{applyAvatars();paintStreak();}); mo.observe(document.body,{childList:true,subtree:true}); };
+          document.addEventListener('DOMContentLoaded',()=>{ setTimeout(sync,100); setTimeout(paintStreak,350); startObserver(); });
+          window.addEventListener('load',()=>{setTimeout(applyAvatars,50);setTimeout(paintStreak,300);});
+          setInterval(()=>{applyAvatars();paintStreak();},60000);
+          })();
+          ''')
+
+          # Inject runtime script into the main HTML and make the ADS button point to the real standalone page.
+          index = Path('public/index.html')
+          h = index.read_text()
+          if '/myfa-runtime-fixes.js' not in h:
+              h = h.replace('</body>', '    <script src="/myfa-runtime-fixes.js" defer></script>\n</body>')
+          h = h.replace("window.location.href = '/setting.html?userId=' + userId", "window.location.href = '/ad-studio-pro.html?userId=' + userId")
+          # Remove the artificial 2.5s loading wall if it remains in the inline bootstrap.
+          h = h.replace('}, 2500);', '}, 80);')
+          h = h.replace('}, 3000);', '}, 1000);')
+          index.write_text(h)
+
+          # -----------------------------------------------------------------
+          # 4) Replace the cosmetic standalone Ad Studio with a real campaign manager.
+          # -----------------------------------------------------------------
+          manager = Path('public/campaign-manager.js')
+          manager.write_text(r'''(() => {
+          'use strict';
+          const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
+          const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+          const num=v=>Number(v||0).toLocaleString();
+          const uid=()=>String(window.Telegram?.WebApp?.initDataUnsafe?.user?.id||new URLSearchParams(location.search).get('userId')||'');
+          const state={id:'',user:null,campaigns:[],view:'dashboard',filter:'all',query:''};
+          async function api(path,options={}){const r=await fetch(path,{...options,headers:{'Content-Type':'application/json',...(options.headers||{})}});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Request failed');return d}
+          function toast(t){const n=$('#aspToast');if(!n)return;n.textContent=t;n.classList.add('show');clearTimeout(n._t);n._t=setTimeout(()=>n.classList.remove('show'),2500)}
+          function media(c){if(c.videoUrl)return `<video src="${esc(c.videoUrl)}" muted playsinline preload="metadata"></video>`;if(c.imageUrl)return `<img src="${esc(c.imageUrl)}" alt="">`;return `<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:2rem;"><i class="fa-solid ${c.mode==='task'?'fa-list-check':'fa-rectangle-ad'}"></i></div>`}
+          function activeList(){let l=state.campaigns.slice();if(state.filter!=='all')l=l.filter(c=>{if(state.filter==='active')return c.status==='active';if(state.filter==='paused')return c.status==='paused';if(state.filter==='ads')return c.mode!=='task';if(state.filter==='tasks')return c.mode!=='advertisement';return true});if(state.query)l=l.filter(c=>`${c.name} ${c.desc||''}`.toLowerCase().includes(state.query.toLowerCase()));return l}
+          function card(c){const total=Number(c.budgetState?.total||c.budgetTotal||0),remain=Number(c.budgetState?.remaining||c.budgetRemaining||0),used=Math.max(0,total-remain),pct=total?Math.min(100,(used/total)*100):0;return `<article class="asp-card" style="overflow:hidden;"><div class="asp-media">${media(c)}</div><div class="asp-body"><div class="asp-row"><b>${esc(c.name)}</b><span class="asp-tag">${c.mode.toUpperCase()}</span></div><p>${esc(c.desc||'No description')}</p><div class="asp-metrics"><span><i class="fa-solid fa-eye"></i> ${num(c.impressions)}</span><span><i class="fa-solid fa-arrow-pointer"></i> ${num(c.clicks)}</span><span><i class="fa-solid fa-bullseye"></i> ${num(c.conversions)}</span><span><i class="fa-solid fa-gem"></i> ${num(c.spend)}</span></div><div class="asp-progress"><span style="width:${pct}%"></span></div><div class="asp-row"><small>${esc(c.status)} • ${num(remain)} Gems reserved</small><button class="asp-secondary" data-manage="${esc(c.id)}">Manage <i class="fa-solid fa-chevron-right"></i></button></div></div></article>`}
+          function dashboard(){const m=state.campaigns.reduce((x,c)=>{x.active+=c.status==='active'?1:0;x.i+=Number(c.impressions||0);x.c+=Number(c.clicks||0);x.v+=Number(c.conversions||0);x.s+=Number(c.spend||0);x.r+=Number(c.budgetState?.remaining||0);return x},{active:0,i:0,c:0,v:0,s:0,r:0});return `<section class="asp-hero"><div><span class="asp-eyebrow"><i class="fa-solid fa-bolt"></i> REAL CAMPAIGN CONTROL</span><h1>Your ads.<br><em>Your tasks.</em></h1><p class="asp-copy">Every action below writes real campaign state to Firebase, validates ownership, and updates the reserved Gem balance.</p></div><button class="asp-primary" data-create="advertisement"><i class="fa-solid fa-plus"></i> Create Campaign</button></section><div class="asp-stats"><div class="asp-stat"><i class="fa-solid fa-play"></i><strong>${m.active}</strong><span>Active</span></div><div class="asp-stat"><i class="fa-solid fa-eye"></i><strong>${num(m.i)}</strong><span>Impressions</span></div><div class="asp-stat"><i class="fa-solid fa-bullseye"></i><strong>${num(m.v)}</strong><span>Conversions</span></div><div class="asp-stat"><i class="fa-solid fa-gem"></i><strong>${num(m.r)}</strong><span>Reserved</span></div></div><div class="asp-launch"><button data-create="advertisement"><i class="fa-solid fa-rectangle-ad"></i><b>Advertisement</b><small>Image/video campaign with real delivery budget.</small></button><button data-create="task"><i class="fa-solid fa-list-check"></i><b>Sponsored Task</b><small>Reward users after Telegram task verification.</small></button><button data-create="hybrid"><i class="fa-solid fa-bullseye"></i><b>Ad + Task</b><small>Combine delivery and user action.</small></button></div><section class="asp-section"><div class="asp-section-head"><div><small>Owned inventory</small><h2>Recent campaigns</h2></div><button class="asp-secondary" data-view="campaigns">View all</button></div>${state.campaigns.slice(0,4).map(card).join('')||'<div class="asp-empty"><b>No campaigns yet</b><span>Create your first real campaign.</span><button class="asp-primary" data-create="advertisement">Create campaign</button></div>'}</section>`}
+          function create(mode='advertisement'){const ad=mode!=='task',task=mode!=='advertisement';return `<section class="asp-title"><span>CAMPAIGN BUILDER</span><h1>Create a real campaign.</h1><p class="asp-copy">The backend reserves Gems before the campaign becomes active. No fake success state.</p></section><div class="asp-card"><div class="asp-choice"><button class="${mode==='advertisement'?'active':''}" data-mode="advertisement"><i class="fa-solid fa-rectangle-ad"></i><b>Advertisement</b><small>Paid reach</small></button><button class="${mode==='task'?'active':''}" data-mode="task"><i class="fa-solid fa-list-check"></i><b>Sponsored Task</b><small>Reward action</small></button><button class="${mode==='hybrid'?'active':''}" data-mode="hybrid"><i class="fa-solid fa-bullseye"></i><b>Ad + Task</b><small>Reach + action</small></button></div><form id="createForm"><div class="asp-form-grid"><label class="asp-field">Campaign name<input name="name" required maxlength="80"></label><label class="asp-field">Destination URL<input name="link" type="url" ${ad?'required':''} placeholder="https://example.com"></label></div>${ad?`<div class="asp-form-grid"><label class="asp-field">Creative A image URL<input name="imageUrl" type="url"></label><label class="asp-field">Creative B image URL<input name="imageUrlB" type="url"></label><label class="asp-field">Video URL<input name="videoUrl" type="url"></label><label class="asp-field">CTA<input name="cta" maxlength="32" value="Visit Now"></label></div><div class="asp-form-grid"><label class="asp-field">Headline<input name="headline" maxlength="100"></label><label class="asp-field">Description<textarea name="description" rows="3" maxlength="240"></textarea></label><label class="asp-field">Impression budget<input name="impressionBudget" type="number" min="1" value="1000"></label><label class="asp-field">Daily budget<input name="dailyBudget" type="number" min="0" value="0"></label></div>`:''}${task?`<div class="asp-form-grid"><label class="asp-field">Target users<input name="maxUsers" type="number" min="1" value="100"></label><label class="asp-field">Reward per user<input name="reward" type="number" min="1" value="50"></label><label class="asp-field">Verification<select name="taskType"><option value="auto">Automatic Telegram</option><option value="manual">Manual proof</option></select></label><label class="asp-field">Telegram channel ID<input name="channelId" placeholder="-100... or @channel"></label></div><label class="asp-field">Task instructions<textarea name="taskDesc" rows="3" maxlength="500"></textarea></label>`:''}<div class="asp-form-grid"><label class="asp-field">Countries (comma separated)<input name="countries" placeholder="ET,US"></label><label class="asp-field">Devices<select name="devices"><option value="all">All</option><option value="android">Android</option><option value="ios">iOS</option><option value="web">Web</option></select></label><label class="asp-field">Frequency cap / day<input name="frequencyCap" type="number" min="0" value="0"></label><label class="asp-field">Start date<input name="startDate" type="datetime-local"></label><label class="asp-field">End date<input name="endDate" type="datetime-local"></label><label class="asp-field">Auto-pause at remaining %<input name="autoPauseThreshold" type="number" min="0" max="100" value="0"></label></div><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:16px 0;"><label><input type="checkbox" name="fraudProtection" checked> Fraud protection</label><label><input type="checkbox" name="autoScale"> Auto-scale delivery cap</label><label><input type="checkbox" name="abEnabled" checked> A/B creative rotation</label></div><button class="asp-primary" type="submit"><i class="fa-solid fa-lock"></i> Reserve Gems & Launch</button></form></div>`}
+          function campaignsView(){return `<section class="asp-title"><span>CAMPAIGN INVENTORY</span><h1>Manage your campaigns.</h1></section><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;"><input id="campaignSearch" placeholder="Search campaigns..." value="${esc(state.query)}" style="flex:1;min-width:180px;background:rgba(0,0,0,.25);color:white;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:11px"><select id="campaignFilter" style="background:rgba(0,0,0,.25);color:white;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:11px"><option value="all">All</option><option value="active">Active</option><option value="paused">Paused</option><option value="ads">Ads</option><option value="tasks">Tasks</option></select></div>${activeList().map(card).join('')||'<div class="asp-empty"><b>No matching campaigns</b><span>Change the search/filter or create a new campaign.</span></div>'}`}
+          function manage(c){const remain=Number(c.budgetState?.remaining||0),taskLike=c.mode!=='advertisement';const tracking=`${location.origin}/api/campaign-manager/campaigns/${encodeURIComponent(c.id)}/track`;return `<div><button class="asp-modal-close" data-close><i class="fa-solid fa-xmark"></i></button><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;"><div><span class="asp-eyebrow">${esc(c.mode.toUpperCase())} • ${esc(c.status.toUpperCase())}</span><h2>${esc(c.name)}</h2><p class="asp-copy">30 real management features are grouped below. Changes persist to Firebase.</p></div><button class="asp-secondary" data-action="toggle" data-id="${esc(c.id)}">${c.status==='paused'?'Resume':'Pause'}</button></div><div class="asp-stats"><div class="asp-stat"><strong>${num(c.impressions)}</strong><span>Impressions</span></div><div class="asp-stat"><strong>${num(c.clicks)}</strong><span>Clicks</span></div><div class="asp-stat"><strong>${num(c.conversions)}</strong><span>Conversions</span></div><div class="asp-stat"><strong>${num(remain)}</strong><span>Reserved</span></div></div><div style="display:grid;grid-template-columns:1fr;gap:10px;margin-top:16px;">${feature(1,'Campaign name',`<input data-sfield="name" value="${esc(c.name)}"><button data-save="name">Save</button>`)}${feature(2,'Destination URL',`<input data-sfield="link" value="${esc(c.link||'')}"><button data-save="link">Save</button>`)}${feature(3,'Creative A',`<input data-sfield="imageUrl" value="${esc(c.imageUrl||'')}" placeholder="https://..."><button data-save="imageUrl">Save</button>`)}${feature(4,'Creative B / A-B variant',`<input data-sfield="imageUrlB" value="${esc(c.imageUrlB||'')}" placeholder="https://..."><button data-save="imageUrlB">Save</button>`)}${feature(5,'Headline + CTA',`<div class="asp-form-grid"><input data-sfield="headline" value="${esc(c.headline||'')}" placeholder="Headline"><input data-sfield="cta" value="${esc(c.cta||'Visit Now')}"></div><button data-save="headlineCta">Save</button>`)}${feature(6,'Description / task instructions',`<textarea data-sfield="description" rows="3">${esc(c.desc||'')}</textarea><button data-save="description">Save</button>`)}${feature(7,'Pause / resume',`<button data-action="toggle" data-id="${esc(c.id)}">${c.status==='paused'?'Resume campaign':'Pause campaign'}</button>`)}${feature(8,'Duplicate campaign',`<button data-action="duplicate" data-id="${esc(c.id)}">Duplicate + reserve same budget</button>`)}${feature(9,'Refund & archive',`<button class="asp-danger" data-action="refund" data-id="${esc(c.id)}">Refund ${num(remain)} Gems & archive</button>`)}${feature(10,'Add / refund budget',`<div class="asp-form-grid"><select id="budgetBucket"><option value="ad">Ad budget</option><option value="task">Task budget</option></select><input id="budgetAmount" type="number" step="1" placeholder="+100 / -100"></div><button data-budget="${esc(c.id)}">Apply budget change</button>`)}${feature(11,'Schedule / flight dates',`<div class="asp-form-grid"><input type="datetime-local" id="startDate" value="${c.startDate?new Date(c.startDate).toISOString().slice(0,16):''}"><input type="datetime-local" id="endDate" value="${c.endDate?new Date(c.endDate).toISOString().slice(0,16):''}></div><button data-save="schedule">Save schedule</button>`)}${feature(12,'Daily delivery cap',`<input data-sfield="dailyBudget" type="number" value="${Number(c.dailyBudget||0)}"><button data-save="dailyBudget">Save</button>`)}${feature(13,'Impression budget',`<span>${num(c.adBudgetRemaining||0)} Gems remain for ad delivery</span>`)}${feature(14,'Geo targeting',`<input data-sfield="countries" value="${esc((c.countries||[]).join(', '))}" placeholder="ET, US, KE"><button data-save="countries">Save</button>`)}${feature(15,'Device targeting',`<select data-sfield="devices"><option value="all" ${(c.devices||[]).includes('all')?'selected':''}>All</option><option value="android" ${(c.devices||[]).includes('android')?'selected':''}>Android</option><option value="ios" ${(c.devices||[]).includes('ios')?'selected':''}>iOS</option><option value="web" ${(c.devices||[]).includes('web')?'selected':''}>Web</option></select><button data-save="devices">Save</button>`)}${feature(16,'Frequency cap',`<input data-sfield="frequencyCap" type="number" value="${Number(c.frequencyCap||0)}"><button data-save="frequencyCap">Save</button>`)}${feature(17,'Task reward',taskLike?`<input data-sfield="reward" type="number" value="${Number(c.reward||0)}"><button data-save="reward">Recalculate & save</button>`:'<span>Not applicable to an ad-only campaign</span>')}${feature(18,'Task max users',taskLike?`<input data-sfield="maxUsers" type="number" value="${Number(c.maxUsers||0)}"><button data-save="maxUsers">Recalculate & save</button>`:'<span>Not applicable to an ad-only campaign</span>')}${feature(19,'Verification type',taskLike?`<select data-sfield="taskType"><option value="auto" ${c.task?.type==='auto'?'selected':''}>Automatic Telegram</option><option value="manual" ${c.task?.type==='manual'?'selected':''}>Manual proof</option></select><button data-save="taskType">Save</button>`:'<span>Not applicable</span>')}${feature(20,'Telegram channel ID',taskLike?`<input data-sfield="channelId" value="${esc(c.channelId||c.task?.channelId||'')}"><button data-save="channelId">Save</button>`:'<span>Not applicable</span>')}${feature(21,'Auto-scale delivery cap',`<label><input type="checkbox" data-sfield="autoScale" ${c.autoScale?'checked':''}> enabled</label><button data-save="autoScale">Save</button>`)}${feature(22,'Auto-pause threshold',`<input data-sfield="autoPauseThreshold" type="number" min="0" max="100" value="${Number(c.autoPauseThreshold||0)}"><button data-save="autoPauseThreshold">Save</button>`)}${feature(23,'Fraud protection',`<label><input type="checkbox" data-sfield="fraudProtection" ${c.fraudProtection!==false?'checked':''}> enabled</label><button data-save="fraudProtection">Save</button>`)}${feature(24,'A/B testing rotation',`<label><input type="checkbox" data-sfield="abEnabled" ${c.abEnabled!==false?'checked':''}> enabled</label><button data-save="abEnabled">Save</button>`)}${feature(25,'Conversion tracking',`<code style="display:block;overflow:auto;white-space:nowrap;">${esc(tracking)}</code><button data-copy="${esc(tracking)}">Copy endpoint</button>`)}${feature(26,'Test delivery',`<button data-test="${esc(c.id)}">Preview through real delivery rules</button>`)}${feature(27,'Destination validation',`<button data-validate="${esc(c.id)}">Validate URL</button>`)}${feature(28,'Performance snapshot',`<span>CTR: <b>${Number(c.ctr||0).toFixed(2)}%</b> • CPA: <b>${Number(c.cpa||0).toFixed(2)}</b> • Spend: <b>${num(c.spend)}</b></span>`)}${feature(29,'Audit log',`<button data-audit="${esc(c.id)}">Load audit history</button><pre id="audit-${esc(c.id)}" style="white-space:pre-wrap;max-height:180px;overflow:auto;"></pre>`)}${feature(30,'Export report',`<button data-export="${esc(c.id)}">Export JSON report</button>`)}</div></div>`}
+          function feature(n,title,body){return `<div class="asp-card" style="padding:12px 14px;"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:7px;"><b>${n}. ${title}</b><span class="asp-tag">REAL</span></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">${body}</div></div>`}
+          function render(){const c=$('#aspContent');if(state.view==='dashboard')c.innerHTML=dashboard();if(state.view==='create')c.innerHTML=create(state.createMode||'advertisement');if(state.view==='campaigns')c.innerHTML=campaignsView();$$('.asp-nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===state.view));bind()}
+          async function refresh(){state.id=uid();if(!state.id)throw new Error('Telegram user session not found');const d=await api(`/api/campaign-manager/dashboard/${encodeURIComponent(state.id)}`);state.user=d.user;state.campaigns=d.campaigns||[];$('#aspBalance').textContent=num(state.user.points);render()}
+          function openModal(c){const m=$('#aspModal');m.innerHTML=manage(c);m.classList.add('open');m.setAttribute('aria-hidden','false')}
+          async function saveSettings(fields){const body={userId:state.id};for(const k of fields){const el=document.querySelector(`[data-sfield="${k}"]`);if(!el)continue;body[k]=(el.type==='checkbox')?el.checked:el.value}if(fields.includes('countries'))body.countries=String(body.countries||'').split(',').map(x=>x.trim()).filter(Boolean);if(fields.includes('devices'))body.devices=[body.devices||'all'];if(fields.includes('schedule')){body.startDate=$('#startDate')?.value||null;body.endDate=$('#endDate')?.value||null}if(fields.includes('headlineCta')){body.headline=document.querySelector('[data-sfield="headline"]')?.value||'';body.cta=document.querySelector('[data-sfield="cta"]')?.value||'Visit Now'}if(fields.includes('description'))body.desc=document.querySelector('[data-sfield="description"]')?.value||'';if(['reward','maxUsers'].some(k=>fields.includes(k))){body.reward=document.querySelector('[data-sfield="reward"]')?.value;body.maxUsers=document.querySelector('[data-sfield="maxUsers"]')?.value}const id=$('#aspModal').querySelector('[data-action]')?.dataset.id || document.querySelector('#aspModal [data-budget]')?.dataset.budget;const modalId=id||state.activeId;const r=await api(`/api/campaign-manager/campaigns/${encodeURIComponent(modalId)}/settings`,{method:'POST',body:JSON.stringify(body)});const i=state.campaigns.findIndex(x=>x.id===modalId);if(i>=0)state.campaigns[i]=r.campaign;state.user=r.user;$('#aspBalance').textContent=num(state.user.points);toast('Saved to Firebase');openModal(r.campaign)}
+          async function action(action,id){const r=await api(`/api/campaign-manager/campaigns/${encodeURIComponent(id)}/action`,{method:'POST',body:JSON.stringify({userId:state.id,action})});if(r.user){state.user=r.user;$('#aspBalance').textContent=num(state.user.points)}if(r.campaign){const i=state.campaigns.findIndex(x=>x.id===id);if(i>=0)state.campaigns[i]=r.campaign}if(r.campaigns)state.campaigns=r.campaigns;toast(action==='refund'?`Refunded ${num(r.refunded)} Gems.`:'Campaign updated');$('#aspModal').classList.remove('open');render()}
+          function bind(){
+              $$('[data-view]').forEach(b=>b.onclick=()=>{state.view=b.dataset.view;render()});
+              $$('[data-create]').forEach(b=>b.onclick=()=>{state.createMode=b.dataset.create;state.view='create';render()});
+              $$('[data-mode]').forEach(b=>b.onclick=()=>{state.createMode=b.dataset.mode;render()});
+              $$('[data-manage]').forEach(b=>b.onclick=()=>{state.activeId=b.dataset.manage;openModal(state.campaigns.find(c=>c.id===state.activeId))});
+              $$('[data-close]').forEach(b=>b.onclick=()=>$('#aspModal').classList.remove('open'));
+              $$('[data-action]').forEach(b=>b.onclick=()=>action(b.dataset.action,b.dataset.id));
+              $$('[data-budget]').forEach(b=>b.onclick=async()=>{const a=Number($('#budgetAmount')?.value||0),bucket=$('#budgetBucket')?.value||'ad';if(!a)return;const r=await api(`/api/campaign-manager/campaigns/${b.dataset.budget}/budget`,{method:'POST',body:JSON.stringify({userId:state.id,amount:a,bucket})});const i=state.campaigns.findIndex(x=>x.id===b.dataset.budget);if(i>=0)state.campaigns[i]=r.campaign;state.user=r.user;$('#aspBalance').textContent=num(state.user.points);toast('Budget updated');openModal(r.campaign)});
+              $$('[data-save]').forEach(b=>b.onclick=()=>{state.activeId=state.activeId||b.closest('#aspModal')?.querySelector('[data-action]')?.dataset.id;const f=b.dataset.save;saveSettings(f==='headlineCta'?['headlineCta']:(f==='description'?['description']:[f])) .catch(e=>toast(e.message))});
+              $$('[data-copy]').forEach(b=>b.onclick=async()=>{await navigator.clipboard?.writeText(b.dataset.copy);toast('Tracking endpoint copied')});
+              $$('[data-test]').forEach(b=>b.onclick=async()=>{const r=await api(`/api/campaign-manager/serve/${encodeURIComponent(state.id)}?test=1`);toast(r.ad?`Test served: ${r.ad.name}`:'No eligible ad for current rules');if(r.ad)window.open(r.ad.link,'_blank')});
+              $$('[data-validate]').forEach(b=>b.onclick=async()=>{const r=await api(`/api/campaign-manager/campaigns/${encodeURIComponent(b.dataset.validate)}/validate`,{method:'POST',body:JSON.stringify({userId:state.id})});toast(r.valid?`Destination OK (${r.status||'reachable'})`:(r.error||'Destination invalid'))});
+              $$('[data-audit]').forEach(b=>b.onclick=async()=>{const r=await api(`/api/campaign-manager/audit/${encodeURIComponent(b.dataset.audit)}?userId=${encodeURIComponent(state.id)}`);const p=$(`#audit-${b.dataset.audit}`);if(p)p.textContent=(r.audit||[]).map(x=>`${new Date(x.timestamp).toLocaleString()} • ${x.action}`).join('\n')});
+              $$('[data-export]').forEach(b=>b.onclick=()=>window.open(`/api/campaign-manager/export/${encodeURIComponent(b.dataset.export)}?userId=${encodeURIComponent(state.id)}`,'_blank'));
+              const form=$('#createForm');if(form)form.onsubmit=async e=>{e.preventDefault();const d=Object.fromEntries(new FormData(form));const r=await api('/api/campaign-manager/campaigns',{method:'POST',body:JSON.stringify({userId:state.id,mode:state.createMode||'advertisement',name:d.name,link:d.link,imageUrl:d.imageUrl,imageUrlB:d.imageUrlB,videoUrl:d.videoUrl,headline:d.headline,cta:d.cta,description:d.description,impressionBudget:Number(d.impressionBudget||0),dailyBudget:Number(d.dailyBudget||0),maxUsers:Number(d.maxUsers||0),reward:Number(d.reward||0),taskType:d.taskType,channelId:d.channelId,taskDesc:d.taskDesc,countries:d.countries,devices:d.devices,frequencyCap:Number(d.frequencyCap||0),startDate:d.startDate?new Date(d.startDate).toISOString():null,endDate:d.endDate?new Date(d.endDate).toISOString():null,autoPauseThreshold:Number(d.autoPauseThreshold||0),fraudProtection:d.fraudProtection==='on',autoScale:d.autoScale==='on',abEnabled:d.abEnabled==='on'})});state.user=r.user;state.campaigns=r.campaigns||state.campaigns;$('#aspBalance').textContent=num(state.user.points);state.view='campaigns';toast('Campaign launched and budget reserved');render()};
+              const search=$('#campaignSearch');if(search){search.oninput=()=>{state.query=search.value;state.view='campaigns';render()};}
+              const filter=$('#campaignFilter');if(filter){filter.value=state.filter;filter.onchange=()=>{state.filter=filter.value;render()};}
+          }
+          document.addEventListener('DOMContentLoaded',()=>{$('#adStudioApp').addEventListener('click',e=>{if(e.target.closest('[data-back]'))history.back()});refresh().catch(e=>{$('#aspContent').innerHTML=`<div class="asp-empty"><i class="fa-solid fa-circle-exclamation"></i><b>Campaign manager could not load</b><span>${esc(e.message)}</span><button class="asp-primary" onclick="location.reload()">Retry</button></div>`})});
+          })();
+          ''')
+
+          studio = Path('public/ad-studio-pro.html')
+          a = studio.read_text()
+          if 'telegram-web-app.js' not in a:
+              a = a.replace('</head>', '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">\n<script src="https://telegram.org/js/telegram-web-app.js"></script>\n</head>')
+          a = a.replace('<script src="/ad-studio-pro.js" defer></script>', '<script src="/campaign-manager.js" defer></script>')
+          studio.write_text(a)
+
+          # Keep the old source copy aligned enough that future generated copies use the same avatar fallback.
+          script1 = Path('script1.js')
+          if script1.exists():
+              ss = script1.read_text()
+              ss = ss.replace("const avatarUrl = u.id ? `${API_BASE_URL}/api/avatar/${u.id}` : fbUrl;", "const avatarUrl = u.avatarUrl || (u.id ? `${API_BASE_URL}/api/avatar/${u.id}` : fbUrl);")
+              script1.write_text(ss)
+          PY
+
+      - name: Validate JavaScript
+        run: |
+          node --check api/index.js
+          node --check public/campaign-manager.js
+
+      - name: Commit production changes
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add api/index.js public/drop.html public/index.html public/ad-studio-pro.html public/campaign-manager.js public/myfa-runtime-fixes.js script1.js
+          git diff --cached --quiet && { echo "No production changes to commit"; exit 0; }
+          git commit -m "fix: real profiles streaks drop difficulty and campaign management"
+          git push

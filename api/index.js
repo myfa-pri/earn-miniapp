@@ -963,31 +963,88 @@ app.get('/api/avatar/:userId', async (req, res) => {
 // ============================================================================
 // 6. ECONOMY API (Ads, Promo, Exchange, Withdraw)
 // ============================================================================
+const MYFA_AD_REWARD_SECRET = process.env.ADS_REWARD_SECRET || 'MYFA-ADS-REWARD-ENGINE-2026';
+const verifyLegacyAdToken = (token) => {
+    try {
+        const parts = String(token || '').split('.');
+        if (parts.length !== 2) return null;
+        const payload = parts[0], signature = parts[1];
+        const expected = crypto.createHmac('sha256', MYFA_AD_REWARD_SECRET).update(payload).digest('hex');
+        if (expected !== signature) return null;
+        return JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    } catch { return null; }
+};
+
 app.post('/api/watch-ad', async (req, res) => {
-    const body = req.body || {};
-    const userId = String(body.userId || req.headers['x-telegram-user-id'] || req.query.userId || '');
-    const network = String(body.network || 'monetag');
-    const u = await dbGet(`users/${userId}`);
-    const c = (await dbGet('config')) || {};
-    if(u) {
-        const limit = network === 'monetag' ? (c.monetagLimit || 5) : (c.adsgramLimit || 5);
-        const watchedToday = network === 'monetag' ? (u.monetagWatchedToday || 0) : (u.adsgramWatchedToday || 0);
+    try {
+        const body = req.body || {};
+        const token = body.rewardToken || body.sessionToken || req.headers['x-myfa-ad-token'];
+        const tokenData = verifyLegacyAdToken(token);
+        const userId = String(body.userId || req.headers['x-telegram-user-id'] || req.query.userId || '');
+        const network = String(body.network || tokenData?.network || 'monetag');
+        if (!userId || !tokenData || String(tokenData.userId) !== userId || tokenData.network !== network) {
+            return res.status(403).json({ success:false, error:'Real ad session required' });
+        }
+        if (tokenData.exp && Number(tokenData.exp) < Date.now()) return res.status(403).json({success:false,error:'Expired ad session'});
 
-        if (watchedToday >= limit) return res.status(403).json({ error: "Limit reached" });
+        const session = await dbGet(`adSessions/${userId}/${tokenData.sessionId}`);
+        const u = await dbGet(`users/${userId}`);
+        const c = (await dbGet('config')) || {};
+        if (!u || !session || session.userId !== userId) return res.status(409).json({success:false,error:'Invalid ad session'});
+        if (session.completed) return res.status(409).json({success:false,error:'Reward session already used'});
 
-        const realMoneyAmount = parseFloat(c.realMoneyPerAd || 0.05);
-        
-        let updates = {
-            realBalance: (u.realBalance || 0) + realMoneyAmount,
-            totalAdsWatchedLifetime: (u.totalAdsWatchedLifetime || 0) + 1,
-            logs: logAction(u, `Watched ${network} Ad (+$${realMoneyAmount})`)
+        const minElapsed = network === 'myfa' ? 5000 : 15000;
+        if (Date.now() - Number(session.startedAt || 0) < minElapsed) return res.status(400).json({success:false,error:'Ad view not completed'});
+        const providerResult = body.providerResult || {};
+        if ((network === 'monetag' || network === 'adsgram') && providerResult.done !== true) return res.status(400).json({success:false,error:'Ad provider did not confirm completion'});
+        if (network === 'adsterra' && providerResult.visited !== true) return res.status(400).json({success:false,error:'Premium ad visit was not confirmed'});
+
+        const limit = network === 'monetag' ? Number(c.monetagLimit || 5) : network === 'adsgram' ? Number(c.adsgramLimit || 5) : network === 'adsterra' ? Number(c.adsterraLimit || 10) : Number(c.myfaAdsLimit || 10);
+        const watched = network === 'monetag' ? Number(u.monetagWatchedToday || 0) : network === 'adsgram' ? Number(u.adsgramWatchedToday || 0) : network === 'adsterra' ? Number(u.adsterraWatchedToday || 0) : Number(u.myfaAdsWatchedToday || 0);
+        if (watched >= limit) return res.status(429).json({success:false,error:'Daily limit reached'});
+
+        let rewardCash = 0;
+        let rewardGems = 0;
+        if (network === 'myfa' && tokenData.campaignId) {
+            const campaign = await dbGet(`campaigns/${tokenData.campaignId}`);
+            if (!campaign || campaign.archived || campaign.paused || (campaign.status && campaign.status !== 'active')) return res.status(410).json({success:false,error:'Sponsored ad is no longer available'});
+            const remaining = campaign.schemaVersion === 2 ? Number(campaign.budget?.reserved || 0) - Number(campaign.budget?.spent || 0) : Number(campaign.stuckBalance || 0);
+            rewardGems = Number(campaign.reward || 0) || Number(c.myfaAdRewardGems || 50);
+            if (remaining < rewardGems) return res.status(410).json({success:false,error:'Sponsored budget exhausted'});
+            if (campaign.schemaVersion === 2) {
+                await dbUpdate(`campaigns/${tokenData.campaignId}`, {
+                    'budget/spent': Number(campaign.budget?.spent || 0) + rewardGems,
+                    'budget/spentToday': Number(campaign.budget?.spentToday || 0) + rewardGems,
+                    'analytics/impressions': Number(campaign.analytics?.impressions || 0) + 1
+                });
+                const owner = campaign.ownerId ? await dbGet(`users/${campaign.ownerId}`) : null;
+                if (owner) await dbUpdate(`users/${campaign.ownerId}`, { stuckBalance: Math.max(0, Number(owner.stuckBalance || 0) - rewardGems) });
+            } else {
+                await dbUpdate(`campaigns/${tokenData.campaignId}`, {
+                    stuckBalance: Math.max(0, Number(campaign.stuckBalance || 0) - rewardGems),
+                    impressions: Number(campaign.impressions || 0) + 1,
+                    views: Number(campaign.views || 0) + 1,
+                    claims: Number(campaign.claims || 0) + 1
+                });
+            }
+        } else {
+            rewardCash = Number(c.realMoneyPerAd || 0.05);
+        }
+
+        const field = network === 'monetag' ? 'monetagWatchedToday' : network === 'adsgram' ? 'adsgramWatchedToday' : network === 'adsterra' ? 'adsterraWatchedToday' : 'myfaAdsWatchedToday';
+        const updates = {
+            [field]: watched + 1,
+            realBalance: Number(u.realBalance || 0) + rewardCash,
+            points: Number(u.points || 0) + rewardGems,
+            totalAdsWatchedLifetime: Number(u.totalAdsWatchedLifetime || 0) + 1,
+            logs: logAction(u, `Watched ${network} Ad (+${rewardGems} Gems${rewardCash ? ` / +$${rewardCash}` : ''})`)
         };
-        if (network === 'monetag') updates.monetagWatchedToday = watchedToday + 1;
-        else if (network === 'adsgram') updates.adsgramWatchedToday = watchedToday + 1;
-
         await dbUpdate(`users/${userId}`, updates);
-        res.json({success:true, added: realMoneyAmount});
-    } else res.status(404).send();
+        await dbUpdate(`adSessions/${userId}/${tokenData.sessionId}`, {completed:true,completedAt:Date.now(),rewardCash,rewardGems});
+        return res.json({success:true,added:rewardCash,gems:rewardGems,newPoints:updates.points,newBalance:updates.realBalance});
+    } catch (e) {
+        return res.status(500).json({success:false,error:'Reward processing failed'});
+    }
 });
 
 // TASK 2: ADSGRAM S2S WEBHOOK
@@ -2458,6 +2515,11 @@ app.post('/api/daily-streak/claim', async (req, res) => {
 const cmOwner = (c) => String(c?.ownerId || c?.userId || '');
 const cmNum = (v, d=0) => Number.isFinite(Number(v)) ? Number(v) : d;
 const cmCsv = (v) => String(v || '').split(',').map(x => x.trim()).filter(Boolean).slice(0, 50);
+const cmDateTime = (v) => {
+    const str = String(v ?? '').replace(/\\u([0-9a-fA-F]{4})/g, (_, h) => String.fromCharCode(parseInt(h, 16)));
+    const m = str.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})/);
+    return m ? m[1] : null;
+};
 const cmValidUrl = (url) => { try { const u = new URL(String(url || '')); return ['http:', 'https:'].includes(u.protocol) && !!u.hostname; } catch { return false; } };
 const cmBudgetState = (c) => ({
     total: cmNum(c?.budgetTotal, typeof c?.budget === 'object' ? c.budget.total : c?.budget),
@@ -2477,6 +2539,8 @@ const cmNormalize = (c, id) => ({
     name: c.name || 'Untitled campaign',
     mode: c.mode || (c.sponsoredTask ? 'task' : 'advertisement'),
     status: c.archived ? 'archived' : (c.paused ? 'paused' : (c.status || 'active')),
+    startDate: cmDateTime(c.startDate),
+    endDate: cmDateTime(c.endDate),
     budgetState: cmBudgetState(c),
     impressions: cmNum(c.impressions || c.views),
     clicks: cmNum(c.adClicks),
@@ -2561,7 +2625,7 @@ app.post('/api/campaign-manager/campaigns', async (req, res) => {
             imageUrlB: String(b.imageUrlB||''), headline: String(b.headline||''), cta: String(b.cta||'Visit Now'),
             desc: String(b.desc||b.description||b.taskDesc||''), description: String(b.desc||b.description||b.taskDesc||''),
             countries: cmCsv(b.countries), devices: cmCsv(b.devices || 'all'), frequencyCap: Math.max(0, Math.floor(cmNum(b.frequencyCap))),
-            startDate: b.startDate || null, endDate: b.endDate || null, dailyBudget: Math.max(0, cmNum(b.dailyBudget)),
+            startDate: cmDateTime(b.startDate), endDate: cmDateTime(b.endDate), dailyBudget: Math.max(0, cmNum(b.dailyBudget)),
             adBudget, taskBudget, adBudgetRemaining:adBudget, taskBudgetRemaining:taskBudget,
             budgetTotal:total, budgetRemaining:total, escrowReserved:total, stuckBalance:taskBudget,
             budget: taskLike ? { total, remaining: total } : adBudget,
@@ -2592,7 +2656,7 @@ app.post('/api/campaign-manager/campaigns/:id/settings', async (req, res) => {
         let state = cmBudgetState(current);
         const patch = {};
         const simple = ['name','link','url','imageUrl','videoUrl','imageUrlB','headline','cta','desc','description','startDate','endDate','dailyBudget','frequencyCap','autoScale','autoPauseThreshold','fraudProtection','abEnabled','notes'];
-        for (const k of simple) if (Object.prototype.hasOwnProperty.call(b,k)) patch[k] = ['dailyBudget','frequencyCap','autoPauseThreshold'].includes(k) ? cmNum(b[k]) : b[k];
+        for (const k of simple) if (Object.prototype.hasOwnProperty.call(b,k)) patch[k] = k === 'startDate' || k === 'endDate' ? cmDateTime(b[k]) : (['dailyBudget','frequencyCap','autoPauseThreshold'].includes(k) ? cmNum(b[k]) : b[k]);
         if (Object.prototype.hasOwnProperty.call(b,'countries')) patch.countries = Array.isArray(b.countries) ? b.countries : cmCsv(b.countries);
         if (Object.prototype.hasOwnProperty.call(b,'devices')) patch.devices = Array.isArray(b.devices) ? b.devices : cmCsv(b.devices);
         if (Object.prototype.hasOwnProperty.call(b,'tags')) patch.tags = Array.isArray(b.tags) ? b.tags : cmCsv(b.tags);

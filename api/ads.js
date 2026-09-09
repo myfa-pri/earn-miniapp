@@ -151,7 +151,7 @@ export default async function handler(req, res) {
       if (!user) return json(res, 404, { success: false, error: 'User not found' });
       const config = await get('config') || {};
       const today = todayKey();
-      if (network === 'monetag' && !config.monetagZoneId) return json(res, 503, { success: false, error: 'Monetag is not configured' });
+      if (network === 'monetag' && !(config.monetagZoneId || process.env.MONETAG_ZONE_ID || '41731')) return json(res, 503, { success: false, error: 'Monetag is not configured' });
       if (network === 'adsgram' && !config.adsgramBlockId) return json(res, 503, { success: false, error: 'Adsgram is not configured' });
       if (network === 'adsterra' && !config.adsterraLink) return json(res, 503, { success: false, error: 'Premium Ads are not configured' });
       const limit = providerLimit(config, network);

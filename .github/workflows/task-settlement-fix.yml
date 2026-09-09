@@ -1,0 +1,31 @@
+name: Sponsored task settlement fix
+on:
+  push:
+    branches: [main]
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate patch script
+        run: python3 -m py_compile scripts/final_task_settlement_patch.py
+      - name: Apply scoped task settlement fix
+        run: python3 scripts/final_task_settlement_patch.py
+      - name: Validate production JavaScript
+        run: node --check api/index.js && node --check public/campaign-manager-app.js
+      - name: Validate wiring
+        run: |
+          grep -q 'campaign-manager-app.js?v=20260909-11' public/ad-studio-pro.html
+          grep -q "data-action=\"\${c.status==='paused'?'resume':'pause'}\"" public/campaign-manager-app.js
+          grep -q "c.schemaVersion===2" api/index.js
+      - name: Commit production changes and remove workflow
+        run: |
+          git config user.name "MYFA BIRR Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add api/index.js public/campaign-manager-app.js public/ad-studio-pro.html
+          git commit -m "fix: settle sponsored task rewards from campaign reserve"
+          git rm .github/workflows/task-settlement-fix.yml
+          git commit -m "chore: remove one-time task settlement workflow"
+          git push

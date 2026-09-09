@@ -964,7 +964,9 @@ app.get('/api/avatar/:userId', async (req, res) => {
 // 6. ECONOMY API (Ads, Promo, Exchange, Withdraw)
 // ============================================================================
 app.post('/api/watch-ad', async (req, res) => {
-    const { userId, network } = req.body;
+    const body = req.body || {};
+    const userId = String(body.userId || req.headers['x-telegram-user-id'] || req.query.userId || '');
+    const network = String(body.network || 'monetag');
     const u = await dbGet(`users/${userId}`);
     const c = (await dbGet('config')) || {};
     if(u) {
@@ -2033,7 +2035,7 @@ app.post('/api/admin/css-inject', checkAdmin, async (req, res) => {
 
 
 app.get('/api/myfa-ads/get', async (req, res) => {
-    const userId = req.query.userId;
+    const userId = String(req.query.userId || req.headers['x-telegram-user-id'] || '');
     const ua = req.query.userAgent ? req.query.userAgent.toLowerCase() : '';
     const campaigns = await dbGet('campaigns') || {};
     
@@ -2110,7 +2112,9 @@ app.get('/api/myfa-ads/get', async (req, res) => {
 
 
 app.post('/api/myfa-ads/claim', async (req, res) => {
-    const { userId, campaignId } = req.body;
+    const body = req.body || {};
+    const userId = String(body.userId || req.headers['x-telegram-user-id'] || req.query.userId || '');
+    const campaignId = body.campaignId;
     const user = await dbGet(`users/${userId}`);
     if(!user) return res.json({ success: false });
     

@@ -2,6 +2,9 @@
   "version": 2,
   "rewrites": [
     { "source": "/api/ads", "destination": "/api/ads.js" },
+    { "source": "/api/admin/promos", "destination": "/api/admin-promos.js" },
+    { "source": "/api/claim-promo", "destination": "/api/claim-promo.js" },
+    { "source": "/drop.html", "destination": "/api/drop.js" },
     { "source": "/api/(.*)", "destination": "/api/index.js" },
     { "source": "/myfa", "destination": "/public/myfa.html" },
     { "source": "/", "destination": "/public/index.html" },

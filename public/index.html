@@ -925,7 +925,7 @@ function applyTranslation() {
                 t.classList.remove('show');
                 t.classList.add('hide');
                 setTimeout(() => t.remove(), 300);
-            }, 3000);
+            }, 1000);
         }
 
         
@@ -1060,7 +1060,7 @@ function applyTranslation() {
                     <button class="btn quantum-btn" onclick="postTelegramStory()">
                         <i class="fa-solid fa-camera-retro"></i> Post Story
                     </button>
-                    <button class="btn btn-secondary" onclick="window.location.href = '/setting.html?userId=' + userId">
+                    <button class="btn btn-secondary" onclick="window.location.href = '/ad-studio-pro.html?userId=' + userId">
                         <i class="fa-solid fa-rectangle-ad"></i> ADS
                     </button>
                 </div>
@@ -3346,7 +3346,7 @@ function applyTranslation() {
                 wrapper.className = "aviator-wrapper";
                 drawPlane(0, document.getElementById('avCanvas').height, 1.0);
                 startBettingPhase();
-            }, 3000);
+            }, 1000);
         }
 
         // ==========================================
@@ -4664,5 +4664,6 @@ function applyTranslation() {
         window.requestAnimationFrame(step);
     }
 </script>
+    <script src="/myfa-runtime-fixes.js" defer></script>
 </body>
 </html>

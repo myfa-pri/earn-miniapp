@@ -26,7 +26,7 @@
         }
         .catcher {
             position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-            width: 80px; height: 80px; background: rgba(0,242,254,0.2); border: 2px solid var(--color-cyan);
+            width: 68px; height: 68px; background: rgba(0,242,254,0.2); border: 2px solid var(--color-cyan);
             border-radius: 20px 20px 40px 40px; display: flex; justify-content: center; align-items: center;
             font-size: 2rem; z-index: 5; box-shadow: 0 0 20px rgba(0,242,254,0.5);
             transition: left 0.1s;
@@ -67,7 +67,7 @@
     <div class="header">
         <button class="back-btn" onclick="window.location.href='/index.html?userId=' + encodeURIComponent(userId || '')">Back to MYFA BIRR Hub</button>
         <div id="scoreDisplay"><i class="fa-solid fa-gem"></i> <span id="score">0</span></div>
-        <div id="timeDisplay"><i class="fa-solid fa-clock"></i> <span id="time">15</span>s</div>
+        <div id="levelDisplay" style="font-size:1rem;font-weight:900;color:var(--color-cyan);">LV <span id="level">1</span></div><div id="timeDisplay"><i class="fa-solid fa-clock"></i> <span id="time">15</span>s</div>
     </div>
 
     <div id="gameArea">
@@ -100,6 +100,7 @@
         const API_BASE_URL = window.location.origin;
         let score = 0;
         let timeLeft = 15;
+        let gameLevel = 1;
         let gameInterval;
         let dropInterval;
         let isPlaying = false;
@@ -111,7 +112,7 @@
         const gameArea = document.getElementById('gameArea');
         let catcherX = gameArea.clientWidth / 2;
 
-        const flowerImgUrl = "https://i.ibb.co/d03YYXbj/images.jpg";
+        const flowerImgUrl = "https://i.ibb.co/gpMFrYr/image.png";
 
         async function init() {
             if(!userId) {
@@ -190,6 +191,8 @@
             document.getElementById('startOverlay').style.display = 'none';
             score = 0;
             timeLeft = 15;
+            gameLevel = 1;
+            document.getElementById('level').innerText = gameLevel;
             isFrozen = false;
             dropSpeedMultiplier = 1;
             document.getElementById('score').innerText = score;
@@ -203,7 +206,9 @@
 
             gameInterval = setInterval(() => {
                 timeLeft--;
+                gameLevel = Math.min(5, 1 + Math.floor(score / 20) + Math.floor((15 - timeLeft) / 5));
                 document.getElementById('time').innerText = timeLeft;
+                document.getElementById('level').innerText = gameLevel;
                 if(timeLeft <= 0) {
                     endGame();
                 }
@@ -215,7 +220,7 @@
         function spawnLoop() {
             if(!isPlaying) return;
             spawnItem();
-            const delay = isFrozen ? 1000 : 500;
+            const delay = isFrozen ? Math.max(650, 1000 - gameLevel*60) : Math.max(260, 500 - gameLevel*45);
             dropInterval = setTimeout(spawnLoop, delay);
         }
 
@@ -225,8 +230,10 @@
 
             const rand = Math.random();
             let type = 'flower';
-            if(rand < 0.2) type = 'bomb';
-            else if(rand < 0.3) type = 'freeze';
+            const bombChance = Math.min(0.48, 0.28 + (gameLevel - 1) * 0.05);
+            const freezeChance = Math.max(0.04, 0.10 - (gameLevel - 1) * 0.01);
+            if(rand < bombChance) type = 'bomb';
+            else if(rand < bombChance + freezeChance) type = 'freeze';
 
             if(type === 'flower') {
                 item.style.backgroundImage = `url('${flowerImgUrl}')`;
@@ -251,7 +258,7 @@
 
         function animateItem(item, type) {
             let top = -50;
-            const speed = (Math.random() * 3 + 2) * dropSpeedMultiplier;
+            const speed = (Math.random() * (3 + gameLevel) + 3 + gameLevel * 0.6) * dropSpeedMultiplier;
 
             function step() {
                 if(!isPlaying) { item.remove(); return; }
@@ -289,10 +296,10 @@
             item.remove();
 
             if(type === 'flower') {
-                score += 5; // 5 gems per flower
+                score += Math.min(8, 4 + gameLevel); // higher levels reward fewer safe catches but keep progression
                 document.getElementById('score').innerText = score;
             } else if(type === 'bomb') {
-                score = Math.max(0, score - 10);
+                score = Math.max(0, score - (10 + gameLevel * 2));
                 document.getElementById('score').innerText = score;
                 // Shake effect
                 gameArea.style.transform = 'translate(5px, 5px)';

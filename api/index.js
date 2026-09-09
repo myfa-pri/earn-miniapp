@@ -935,20 +935,29 @@ app.get('/api/config', async (req, res) => res.json((await dbGet('config')) || {
 // TASK 5: Real Avatar Fetcher
 app.get('/api/avatar/:userId', async (req, res) => {
     try {
-        const userId = req.params.userId;
+        const userId = String(req.params.userId);
+        const u = await dbGet(`users/${userId}`);
+        if (u && u.avatarUrl && /^https:\/\//i.test(String(u.avatarUrl))) {
+            res.set('Cache-Control', 'public, max-age=3600');
+            return res.redirect(302, u.avatarUrl);
+        }
         const photos = await bot.getUserProfilePhotos(userId, { limit: 1 });
         if (photos.total_count > 0) {
             const fileId = photos.photos[0][0].file_id;
             const file = await bot.getFile(fileId);
             const url = `https://api.telegram.org/file/bot${BOT_TOKEN}/${file.file_path}`;
             const response = await fetch(url);
-            const buffer = await response.arrayBuffer();
-            res.set('Content-Type', 'image/jpeg');
-            res.send(Buffer.from(buffer));
-        } else {
-            res.redirect(`https://ui-avatars.com/api/?name=${userId}&background=B026FF&color=fff`);
+            if (response.ok) {
+                const buffer = await response.arrayBuffer();
+                res.set('Cache-Control', 'public, max-age=3600');
+                res.set('Content-Type', response.headers.get('content-type') || 'image/jpeg');
+                return res.send(Buffer.from(buffer));
+            }
         }
-    } catch (e) { res.redirect(`https://ui-avatars.com/api/?name=User&background=B026FF&color=fff`); }
+        return res.redirect(302, `https://ui-avatars.com/api/?name=${encodeURIComponent((u && (u.accountName || u.username)) || 'User')}&background=B026FF&color=fff&size=256`);
+    } catch (e) {
+        return res.redirect(302, 'https://ui-avatars.com/api/?name=User&background=B026FF&color=fff&size=256');
+    }
 });
 
 // ============================================================================
@@ -2327,5 +2336,389 @@ app.post('/api/campaigns/:id/track', async (req, res) => {
         res.json({ success: false, error: e.message });
     }
 });
+
+
+// ============================================================================
+// REAL PROFILE SYNC / AUTHORITATIVE DAILY STREAK
+// ============================================================================
+const cmDateKey = (ms = Date.now()) => new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Africa/Addis_Ababa', year: 'numeric', month: '2-digit', day: '2-digit'
+}).format(new Date(ms));
+const cmDayNumber = (key) => {
+    if (!key) return null;
+    const m = String(key).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    return m ? Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
+};
+const cmDaysBetween = (a, b) => {
+    const aa = cmDayNumber(a), bb = cmDayNumber(b);
+    return aa == null || bb == null ? null : Math.round((bb - aa) / 86400000);
+};
+const cmStreakHistory = (u) => Array.isArray(u?.streakHistory) ? u.streakHistory : [];
+const cmCurrentStreakFromHistory = (u) => {
+    const h = cmStreakHistory(u);
+    return h.length ? Math.max(1, Math.min(7, Number(h[h.length - 1].day || 1))) : Math.max(1, Math.min(7, Number(u?.streakCount || u?.streak || 1)));
+};
+const cmRewardForDay = async (day) => {
+    const c = await dbGet('config') || {};
+    const baseReward = Number(c.loginBase ?? c.dailyLoginBase ?? 50) || 50;
+    const multiplier = Number(c.loginMult ?? c.dailyLoginMult ?? 1) || 1;
+    const eventMultiplier = Number(c.globalMultiplier || 1) || 1;
+    return Math.max(1, Math.round(baseReward * Math.min(7, Math.max(1, Number(day || 1))) * multiplier * eventMultiplier));
+};
+
+app.post('/api/profile/sync', async (req, res) => {
+    try {
+        const { userId, photoUrl, firstName, lastName, username } = req.body || {};
+        if (!userId) return res.status(400).json({ success: false, error: 'Missing userId' });
+        const u = await dbGet(`users/${userId}`);
+        if (!u) return res.status(404).json({ success: false, error: 'User not found' });
+        const cleanPhoto = typeof photoUrl === 'string' && /^https:\/\//i.test(photoUrl) ? photoUrl : null;
+        const accountName = `${firstName || ''} ${lastName || ''}`.trim() || u.accountName || u.username || 'User';
+        const patch = {
+            accountName,
+            username: username || u.username || accountName,
+            telegramFirstName: firstName || u.telegramFirstName || '',
+            telegramLastName: lastName || u.telegramLastName || '',
+            telegramUsername: username || u.telegramUsername || ''
+        };
+        if (cleanPhoto) patch.avatarUrl = cleanPhoto;
+        await dbUpdate(`users/${userId}`, patch);
+        res.set('Cache-Control', 'no-store');
+        res.json({ success: true, user: { ...u, ...patch } });
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Profile sync failed' });
+    }
+});
+
+app.get('/api/daily-streak/status/:userId', async (req, res) => {
+    try {
+        const userId = String(req.params.userId);
+        const u = await dbGet(`users/${userId}`);
+        if (!u) return res.status(404).json({ success: false, error: 'User not found' });
+        const today = cmDateKey();
+        const history = cmStreakHistory(u);
+        const last = history.length ? history[history.length - 1].date : (u.streakLastClaimDate || u.streakClaimDate || null);
+        let streak = cmCurrentStreakFromHistory(u);
+        const gap = last ? cmDaysBetween(last, today) : null;
+        const claimedToday = last === today;
+        if (!claimedToday && gap != null && gap > 1) streak = 1;
+        let nextDay = claimedToday ? streak : (gap === 1 ? Math.min(7, streak + 1) : streak);
+        const reward = await cmRewardForDay(nextDay);
+        res.set('Cache-Control', 'no-store');
+        res.json({ success: true, today, claimedToday, streak, nextDay, reward, history: history.slice(-7) });
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Unable to load streak' });
+    }
+});
+
+app.post('/api/daily-streak/claim', async (req, res) => {
+    try {
+        const { userId } = req.body || {};
+        if (!userId) return res.status(400).json({ success: false, error: 'Missing userId' });
+        const u = await dbGet(`users/${userId}`);
+        if (!u) return res.status(404).json({ success: false, error: 'User not found' });
+        const today = cmDateKey();
+        let history = cmStreakHistory(u);
+        const last = history.length ? history[history.length - 1].date : (u.streakLastClaimDate || u.streakClaimDate || null);
+        if (last === today) {
+            return res.json({ success: false, alreadyClaimed: true, error: 'Daily streak already claimed today', streak: cmCurrentStreakFromHistory(u) });
+        }
+        const gap = last ? cmDaysBetween(last, today) : null;
+        let day = cmCurrentStreakFromHistory(u);
+        if (!history.length && !last) day = Math.max(1, Math.min(7, Number(u.streakCount || u.streak || 1)));
+        else if (gap === 1) day = Math.min(7, day + 1);
+        else if (gap == null || gap > 1) day = 1;
+        const reward = await cmRewardForDay(day);
+        const entry = { date: today, day, reward, timestamp: Date.now() };
+        history = [...history, entry].slice(-30);
+        const newPoints = (u.points || 0) + reward;
+        await dbUpdate(`users/${userId}`, {
+            points: newPoints,
+            streak: day,
+            streakCount: day,
+            streakLastClaimDate: today,
+            streakClaimDate: today,
+            streakHistory: history,
+            lastActivityDate: Date.now(),
+            logs: logAction(u, `Daily Streak Day ${day} claimed (+${reward} Gems)`)
+        });
+        res.json({ success: true, streak: day, reward, newPoints, claimDate: today, history: history.slice(-7) });
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Daily streak claim failed' });
+    }
+});
+
+// ============================================================================
+// REAL CAMPAIGN MANAGER API
+// ============================================================================
+const cmOwner = (c) => String(c?.ownerId || c?.userId || '');
+const cmNum = (v, d=0) => Number.isFinite(Number(v)) ? Number(v) : d;
+const cmCsv = (v) => String(v || '').split(',').map(x => x.trim()).filter(Boolean).slice(0, 50);
+const cmValidUrl = (url) => { try { const u = new URL(String(url || '')); return ['http:', 'https:'].includes(u.protocol) && !!u.hostname; } catch { return false; } };
+const cmBudgetState = (c) => ({
+    total: cmNum(c?.budgetTotal, typeof c?.budget === 'object' ? c.budget.total : c?.budget),
+    remaining: Math.max(0, cmNum(c?.budgetRemaining, typeof c?.budget === 'object' ? c.budget.remaining : c?.budget)),
+    ad: Math.max(0, cmNum(c?.adBudgetRemaining, c?.mode === 'task' ? 0 : c?.adBudget)),
+    task: Math.max(0, cmNum(c?.taskBudgetRemaining, c?.taskBudget || c?.stuckBalance || 0))
+});
+const cmAudit = (c, action, userId, meta={}) => {
+    const logs = Array.isArray(c.auditLog) ? c.auditLog : [];
+    logs.push({ timestamp: Date.now(), action, userId: String(userId), meta });
+    return logs.slice(-100);
+};
+const cmNormalize = (c, id) => ({
+    ...c,
+    id: c.id || id,
+    ownerId: cmOwner(c),
+    name: c.name || 'Untitled campaign',
+    mode: c.mode || (c.sponsoredTask ? 'task' : 'advertisement'),
+    status: c.archived ? 'archived' : (c.paused ? 'paused' : (c.status || 'active')),
+    budgetState: cmBudgetState(c),
+    impressions: cmNum(c.impressions || c.views),
+    clicks: cmNum(c.adClicks),
+    conversions: cmNum(c.conversions || c.claims || c.analytics?.conversions),
+    spend: cmNum(c.adSpend),
+    ctr: cmNum(c.impressions || c.views) > 0 ? Number(((cmNum(c.adClicks) / cmNum(c.impressions || c.views)) * 100).toFixed(2)) : 0,
+    cpa: cmNum(c.conversions || c.claims || c.analytics?.conversions) > 0 ? Number((cmNum(c.adSpend) / cmNum(c.conversions || c.claims || c.analytics?.conversions)).toFixed(2)) : 0
+});
+const cmReadOwned = async (id, userId) => {
+    const c = await dbGet(`campaigns/${id}`);
+    if (!c || cmOwner(c) !== String(userId)) return null;
+    return c;
+};
+const cmSetCompatibility = (c) => {
+    const taskLike = c.mode === 'task' || c.mode === 'hybrid';
+    const state = cmBudgetState(c);
+    c.ownerId = cmOwner(c);
+    c.userId = cmOwner(c);
+    c.paused = !!c.paused;
+    c.archived = !!c.archived;
+    c.budgetTotal = state.total;
+    c.budgetRemaining = state.remaining;
+    c.adBudgetRemaining = state.ad;
+    c.taskBudgetRemaining = state.task;
+    c.adBudget = cmNum(c.adBudget);
+    c.taskBudget = cmNum(c.taskBudget);
+    c.escrowReserved = state.remaining;
+    c.stuckBalance = state.task;
+    c.claims = cmNum(c.analytics?.conversions || c.claims);
+    c.conversions = c.claims;
+    if (taskLike) {
+        c.sponsoredTask = true;
+        c.reward = cmNum(c.reward || c.task?.reward);
+        c.maxUsers = cmNum(c.maxUsers || c.task?.maxUsers);
+        c.channelId = c.channelId || c.task?.channelId || '';
+        c.type = c.task?.type || c.type || 'channel';
+        c.task = { ...(c.task || {}), enabled: true, reward: c.reward, maxUsers: c.maxUsers, type: c.type, channelId: c.channelId };
+        c.delivery = { ...(c.delivery || {}), status: c.paused || c.archived ? 'Paused' : 'Running' };
+        c.analytics = { ...(c.analytics || {}), conversions: c.claims };
+        c.budget = { ...(typeof c.budget === 'object' ? c.budget : {}), total: state.total, remaining: state.remaining };
+    } else {
+        c.sponsoredTask = false;
+        c.budget = state.ad;
+    }
+    return c;
+};
+
+app.get('/api/campaign-manager/dashboard/:userId', async (req, res) => {
+    try {
+        const userId = String(req.params.userId);
+        const [u, all] = await Promise.all([dbGet(`users/${userId}`), dbGet('campaigns') || {}]);
+        if (!u) return res.status(404).json({ success: false, error: 'User not found' });
+        const campaigns = Object.entries(all || {}).map(([id,c]) => cmNormalize(c, id)).filter(c => cmOwner(c) === userId && !c.archived).sort((a,b) => cmNum(b.updatedAt || b.createdAt) - cmNum(a.updatedAt || a.createdAt));
+        const summary = campaigns.reduce((m,c) => { m.active += c.status === 'active' ? 1 : 0; m.impressions += c.impressions; m.clicks += c.clicks; m.conversions += c.conversions; m.spend += c.spend; m.reserved += c.budgetState.remaining; return m; }, { active:0, impressions:0, clicks:0, conversions:0, spend:0, reserved:0 });
+        res.set('Cache-Control', 'no-store');
+        res.json({ success: true, user: { id:userId, points:u.points||0, stuckBalance:u.stuckBalance||0 }, campaigns, summary });
+    } catch (e) { res.status(500).json({ success:false, error:'Unable to load campaign workspace' }); }
+});
+
+app.post('/api/campaign-manager/campaigns', async (req, res) => {
+    try {
+        const b = req.body || {};
+        const userId = String(b.userId || '');
+        const mode = ['advertisement','task','hybrid'].includes(b.mode) ? b.mode : 'advertisement';
+        const name = String(b.name || '').trim();
+        if (!userId || !name) return res.status(400).json({ success:false, error:'Campaign name and userId are required' });
+        if (mode !== 'task' && !cmValidUrl(b.link)) return res.status(400).json({ success:false, error:'A valid destination URL is required for an advertisement' });
+        const u = await dbGet(`users/${userId}`);
+        if (!u) return res.status(404).json({ success:false, error:'User not found' });
+        const maxUsers = Math.max(0, Math.floor(cmNum(b.maxUsers)));
+        const reward = Math.max(0, cmNum(b.reward));
+        const adBudget = mode === 'task' ? 0 : Math.max(0, cmNum(b.impressionBudget));
+        const taskBudget = mode === 'advertisement' ? 0 : maxUsers * reward;
+        const total = adBudget + taskBudget;
+        if (total <= 0) return res.status(400).json({ success:false, error:'Budget must be greater than zero' });
+        if (cmNum(u.points) < total) return res.status(400).json({ success:false, error:`Need ${total} Gems, but only ${cmNum(u.points)} are available` });
+        const id = `cm_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+        const taskLike = mode === 'task' || mode === 'hybrid';
+        const campaign = {
+            id, ownerId:userId, userId, schemaVersion:2, mode, name,
+            link: String(b.link||''), url: String(b.link||''), imageUrl: String(b.imageUrl||''), videoUrl: String(b.videoUrl||''),
+            imageUrlB: String(b.imageUrlB||''), headline: String(b.headline||''), cta: String(b.cta||'Visit Now'),
+            desc: String(b.desc||b.description||b.taskDesc||''), description: String(b.desc||b.description||b.taskDesc||''),
+            countries: cmCsv(b.countries), devices: cmCsv(b.devices || 'all'), frequencyCap: Math.max(0, Math.floor(cmNum(b.frequencyCap))),
+            startDate: b.startDate || null, endDate: b.endDate || null, dailyBudget: Math.max(0, cmNum(b.dailyBudget)),
+            adBudget, taskBudget, adBudgetRemaining:adBudget, taskBudgetRemaining:taskBudget,
+            budgetTotal:total, budgetRemaining:total, escrowReserved:total, stuckBalance:taskBudget,
+            budget: taskLike ? { total, remaining: total } : adBudget,
+            reward, maxUsers, claims:0, conversions:0, impressions:0, adClicks:0, adSpend:0,
+            paused:false, archived:false, fraudProtection:b.fraudProtection !== false,
+            autoScale:!!b.autoScale, autoPauseThreshold:Math.max(0, Math.min(100, cmNum(b.autoPauseThreshold))),
+            abEnabled:b.abEnabled !== false, trackingToken:crypto.randomBytes(18).toString('hex'),
+            task: taskLike ? { enabled:true, reward, maxUsers, type:String(b.taskType||'auto'), channelId:String(b.channelId||''), instructions:String(b.taskDesc||'') } : null,
+            delivery:{ status:'Running' }, analytics:{ conversions:0 }, createdAt:Date.now(), updatedAt:Date.now(),
+            auditLog:[{timestamp:Date.now(), action:'created', userId, meta:{mode,total}}], notes:String(b.notes||''), tags:cmCsv(b.tags),
+            eventIds:[]
+        };
+        cmSetCompatibility(campaign);
+        await dbSet(`campaigns/${id}`, campaign);
+        await dbUpdate(`users/${userId}`, { points:cmNum(u.points) - total, logs:logAction(u, `Campaign created: ${name} (-${total} Gems)`) });
+        const all = await dbGet('campaigns') || {};
+        res.json({ success:true, campaign:cmNormalize(campaign,id), user:{...u,points:cmNum(u.points)-total}, campaigns:Object.entries(all).map(([cid,c])=>cmNormalize(c,cid)).filter(c=>cmOwner(c)===userId && !c.archived) });
+    } catch(e) { res.status(500).json({ success:false, error:e.message || 'Campaign create failed' }); }
+});
+
+app.post('/api/campaign-manager/campaigns/:id/settings', async (req, res) => {
+    try {
+        const id = String(req.params.id), b=req.body||{}, userId=String(b.userId||'');
+        const c = await cmReadOwned(id,userId);
+        if(!c) return res.status(404).json({success:false,error:'Campaign not found or not owned by this user'});
+        const u = await dbGet(`users/${userId}`);
+        let current = { ...c };
+        let state = cmBudgetState(current);
+        const patch = {};
+        const simple = ['name','link','url','imageUrl','videoUrl','imageUrlB','headline','cta','desc','description','startDate','endDate','dailyBudget','frequencyCap','autoScale','autoPauseThreshold','fraudProtection','abEnabled','notes'];
+        for (const k of simple) if (Object.prototype.hasOwnProperty.call(b,k)) patch[k] = ['dailyBudget','frequencyCap','autoPauseThreshold'].includes(k) ? cmNum(b[k]) : b[k];
+        if (Object.prototype.hasOwnProperty.call(b,'countries')) patch.countries = Array.isArray(b.countries) ? b.countries : cmCsv(b.countries);
+        if (Object.prototype.hasOwnProperty.call(b,'devices')) patch.devices = Array.isArray(b.devices) ? b.devices : cmCsv(b.devices);
+        if (Object.prototype.hasOwnProperty.call(b,'tags')) patch.tags = Array.isArray(b.tags) ? b.tags : cmCsv(b.tags);
+        const taskLike = current.mode === 'task' || current.mode === 'hybrid';
+        let oldPlannedTask = cmNum(current.taskBudget);
+        let oldSpentTask = Math.max(0, oldPlannedTask - state.task);
+        if (taskLike && (Object.prototype.hasOwnProperty.call(b,'reward') || Object.prototype.hasOwnProperty.call(b,'maxUsers'))) {
+            const nextReward = Math.max(0, cmNum(b.reward, cmNum(current.reward)));
+            const nextMax = Math.max(0, Math.floor(cmNum(b.maxUsers, cmNum(current.maxUsers))));
+            const nextPlannedTask = nextReward * nextMax;
+            if (nextPlannedTask < oldSpentTask) return res.status(400).json({success:false,error:'New task budget is below what has already been spent'});
+            const delta = nextPlannedTask - oldPlannedTask;
+            if (delta > 0 && cmNum(u.points) < delta) return res.status(400).json({success:false,error:`Need ${delta} additional Gems to apply this task budget change`});
+            patch.reward = nextReward; patch.maxUsers = nextMax;
+            patch.taskBudget = nextPlannedTask;
+            patch.taskBudgetRemaining = Math.max(0, nextPlannedTask - oldSpentTask);
+            patch.budgetTotal = cmNum(current.budgetTotal) + delta;
+            patch.budgetRemaining = state.remaining + delta;
+            patch.escrowReserved = state.remaining + delta;
+            patch.stuckBalance = patch.taskBudgetRemaining;
+            patch.budget = { ...(typeof current.budget === 'object' ? current.budget : {}), total:patch.budgetTotal, remaining:patch.budgetRemaining };
+            patch.task = { ...(current.task||{}), reward:nextReward, maxUsers:nextMax, enabled:true, type:String(b.taskType||current.task?.type||'auto'), channelId:String(b.channelId||current.task?.channelId||''), instructions:String(b.taskDesc||current.task?.instructions||'') };
+            if (Object.prototype.hasOwnProperty.call(b,'taskType')) patch.type = String(b.taskType || current.type || 'channel');
+            if (Object.prototype.hasOwnProperty.call(b,'channelId')) patch.channelId = String(b.channelId || '');
+            if (patch.budgetTotal > cmNum(current.budgetTotal)) patch.auditLog = cmAudit(current,'budget_increased',userId,{delta,bucket:'task'});
+            await dbUpdate(`users/${userId}`, { points:cmNum(u.points)-delta, logs:logAction(u, `Campaign budget updated: ${current.name}`) });
+            current={...current,...patch};
+        } else if (taskLike) {
+            if (Object.prototype.hasOwnProperty.call(b,'taskType') || Object.prototype.hasOwnProperty.call(b,'channelId') || Object.prototype.hasOwnProperty.call(b,'taskDesc')) {
+                patch.task = { ...(current.task||{}), type:String(b.taskType||current.task?.type||'auto'), channelId:String(b.channelId||current.task?.channelId||''), instructions:String(b.taskDesc||current.task?.instructions||'') };
+                if (Object.prototype.hasOwnProperty.call(b,'channelId')) patch.channelId = String(b.channelId||'');
+            }
+        }
+        patch.auditLog = cmAudit(current,'settings_updated',userId,{fields:Object.keys(patch)});
+        patch.updatedAt = Date.now();
+        const next = {...current,...patch}; cmSetCompatibility(next);
+        await dbUpdate(`campaigns/${id}`, next);
+        res.json({success:true,campaign:cmNormalize(next,id),user:{...u,points:cmNum((await dbGet(`users/${userId}`))?.points)}});
+    } catch(e) { res.status(500).json({success:false,error:e.message||'Settings update failed'}); }
+});
+
+app.post('/api/campaign-manager/campaigns/:id/budget', async (req, res) => {
+    try {
+        const id=String(req.params.id), {userId,amount,bucket='ad'}=req.body||{};
+        const delta=cmNum(amount);
+        if (!delta) return res.status(400).json({success:false,error:'Budget amount cannot be zero'});
+        const c=await cmReadOwned(id,userId), u=await dbGet(`users/${userId}`);
+        if(!c||!u) return res.status(404).json({success:false,error:'Campaign or user not found'});
+        const state=cmBudgetState(c);
+        const key=bucket==='task'?'task':'ad';
+        const currentBucket=state[key];
+        if(delta>0 && cmNum(u.points)<delta) return res.status(400).json({success:false,error:'Not enough Gems'});
+        if(delta<0 && currentBucket < Math.abs(delta)) return res.status(400).json({success:false,error:'Cannot refund more than remaining budget in this bucket'});
+        const next={...c};
+        if(key==='task'){ next.taskBudget = cmNum(c.taskBudget)+delta; next.taskBudgetRemaining = Math.max(0,state.task+delta); next.stuckBalance=next.taskBudgetRemaining; }
+        else { next.adBudget = cmNum(c.adBudget)+delta; next.adBudgetRemaining=Math.max(0,state.ad+delta); }
+        next.budgetTotal=state.total+delta; next.budgetRemaining=state.remaining+delta; next.escrowReserved=Math.max(0,next.budgetRemaining); next.budget=(c.mode==='task'||c.mode==='hybrid')?{...(typeof c.budget==='object'?c.budget:{}),total:next.budgetTotal,remaining:next.budgetRemaining}:next.adBudgetRemaining;
+        next.auditLog=cmAudit(c,delta>0?'budget_added':'budget_refunded',userId,{amount:delta,bucket:key}); next.updatedAt=Date.now(); cmSetCompatibility(next);
+        await dbUpdate(`campaigns/${id}`,next); await dbUpdate(`users/${userId}`,{points:cmNum(u.points)-delta,logs:logAction(u,`Campaign budget ${delta>0?'added':'refunded'}: ${c.name}`)});
+        res.json({success:true,campaign:cmNormalize(next,id),refunded:delta<0?Math.abs(delta):0,user:{...u,points:cmNum(u.points)-delta}});
+    } catch(e){res.status(500).json({success:false,error:e.message||'Budget update failed'});}
+});
+
+app.post('/api/campaign-manager/campaigns/:id/action', async (req,res)=>{
+    try{
+        const id=String(req.params.id),{userId,action}=req.body||{}; let c=await cmReadOwned(id,userId),u=await dbGet(`users/${userId}`);
+        if(!c||!u)return res.status(404).json({success:false,error:'Campaign not found'});
+        const next={...c}; let refund=0;
+        if(action==='pause'){next.paused=true;next.status='paused';}
+        else if(action==='resume'){next.paused=false;next.archived=false;next.status='active';}
+        else if(action==='archive'||action==='liquidate'||action==='refund'){
+            refund=cmBudgetState(c).remaining; next.paused=true; next.archived=true; next.status='archived'; next.budgetRemaining=0; next.adBudgetRemaining=0; next.taskBudgetRemaining=0; next.escrowReserved=0; next.stuckBalance=0; next.budget=(next.mode==='task'||next.mode==='hybrid')?{...(typeof next.budget==='object'?next.budget:{}),remaining:0}:0;
+        } else if(action==='duplicate'){
+            const state=cmBudgetState(c),total=state.total;
+            if(total<=0)return res.status(400).json({success:false,error:'Nothing to duplicate'});
+            if(cmNum(u.points)<total)return res.status(400).json({success:false,error:`Need ${total} Gems to duplicate this campaign`});
+            const nid=`cm_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+            const dup={...c,id:nid,name:`${c.name} Copy`,createdAt:Date.now(),updatedAt:Date.now(),archived:false,paused:false,status:'active',impressions:0,adClicks:0,conversions:0,claims:0,adSpend:0,budgetRemaining:total,escrowReserved:total,adBudgetRemaining:state.ad,taskBudgetRemaining:state.task,eventIds:[],auditLog:[{timestamp:Date.now(),action:'duplicated',userId,meta:{source:id}}]}; cmSetCompatibility(dup); await dbSet(`campaigns/${nid}`,dup); await dbUpdate(`users/${userId}`,{points:cmNum(u.points)-total,logs:logAction(u,`Campaign duplicated: ${c.name}`)}); const all=await dbGet('campaigns')||{}; return res.json({success:true,campaign:cmNormalize(dup,nid),user:{...u,points:cmNum(u.points)-total},campaigns:Object.entries(all).map(([cid,x])=>cmNormalize(x,cid)).filter(x=>cmOwner(x)===String(userId)&&!x.archived)});
+        } else return res.status(400).json({success:false,error:'Unknown campaign action'});
+        next.auditLog=cmAudit(c,action,userId,{refund}); next.updatedAt=Date.now(); cmSetCompatibility(next); await dbUpdate(`campaigns/${id}`,next); if(refund)await dbUpdate(`users/${userId}`,{points:cmNum(u.points)+refund,logs:logAction(u,`Campaign refunded: ${c.name} (+${refund} Gems)`)}); const latestUser=await dbGet(`users/${userId}`); res.json({success:true,campaign:cmNormalize(next,id),refunded:refund,user:{...u,points:cmNum(latestUser?.points)}});
+    }catch(e){res.status(500).json({success:false,error:e.message||'Campaign action failed'});}
+});
+
+app.post('/api/campaign-manager/campaigns/:id/track', async (req,res)=>{
+    try{
+        const id=String(req.params.id),{token,event='impression',eventId=''}=req.body||{}; const c=await dbGet(`campaigns/${id}`);
+        if(!c||String(c.trackingToken||'')!==String(token||''))return res.status(403).json({success:false,error:'Invalid tracking token'});
+        if(!['impression','click','conversion'].includes(event))return res.status(400).json({success:false,error:'Invalid event'});
+        const next={...c}; next.eventIds=Array.isArray(c.eventIds)?c.eventIds:[];
+        if(eventId && next.eventIds.includes(String(eventId)))return res.json({success:true,deduped:true});
+        if(eventId)next.eventIds=[...next.eventIds,String(eventId)].slice(-500);
+        const fraud=next.fraudProtection!==false;
+        if(fraud && event==='click' && cmNum(next.impressions)>0 && cmNum(next.adClicks)>=cmNum(next.impressions)*10)return res.status(429).json({success:false,error:'Click rate blocked by fraud protection'});
+        const state=cmBudgetState(next); const cost=event==='impression'?1:(event==='click'?2:0);
+        if((event==='impression'||event==='click') && state.ad<=0 && next.mode==='advertisement')return res.json({success:false,served:false,error:'Ad budget exhausted'});
+        if(event==='impression'){next.impressions=cmNum(next.impressions)+1;next.adBudgetRemaining=Math.max(0,state.ad-cost);next.adSpend=cmNum(next.adSpend)+cost;}
+        else if(event==='click'){next.adClicks=cmNum(next.adClicks)+1;next.adBudgetRemaining=Math.max(0,state.ad-cost);next.adSpend=cmNum(next.adSpend)+cost;}
+        else {next.conversions=cmNum(next.conversions)+1;next.claims=next.conversions;next.analytics={...(next.analytics||{}),conversions:next.conversions};}
+        next.budgetRemaining=Math.max(0,cmNum(next.adBudgetRemaining)+cmNum(next.taskBudgetRemaining));
+        next.escrowReserved=next.budgetRemaining; next.budget=(next.mode==='task'||next.mode==='hybrid')?{...(typeof next.budget==='object'?next.budget:{}),remaining:next.budgetRemaining}:next.adBudgetRemaining;
+        const ctr=next.impressions?next.adClicks/next.impressions*100:0;
+        if(next.autoPauseThreshold>0 && next.budgetTotal>0 && next.budgetRemaining<=next.budgetTotal*(next.autoPauseThreshold/100)){next.paused=true;next.status='paused';}
+        next.auditLog=cmAudit(c,`track_${event}`,'public',{eventId:String(eventId||'')}); next.updatedAt=Date.now(); cmSetCompatibility(next); await dbUpdate(`campaigns/${id}`,next);
+        res.json({success:true,ctr:Number(ctr.toFixed(2)),campaignId:id});
+    }catch(e){res.status(500).json({success:false,error:'Tracking failed'});}
+});
+
+app.get('/api/campaign-manager/serve/:userId', async (req,res)=>{
+    try{
+        const userId=String(req.params.userId),device=String(req.query.device||'all').toLowerCase(),country=String(req.query.country||'').toLowerCase(),test=req.query.test==='1';
+        const all=await dbGet('campaigns')||{}; const now=Date.now(); const candidates=[];
+        for(const [id,raw] of Object.entries(all)){const c=cmNormalize(raw,id);if(c.archived||c.paused||c.mode==='task')continue;if(c.startDate&&now<new Date(c.startDate).getTime())continue;if(c.endDate&&now>new Date(c.endDate).getTime())continue;if(c.budgetState.ad<=0)continue;const ds=(c.devices||[]).map(x=>String(x).toLowerCase());if(ds.length&&!ds.includes('all')&&!ds.includes(device))continue;const cs=(c.countries||[]).map(x=>String(x).toLowerCase());if(country&&cs.length&&!cs.includes(country))continue;candidates.push(c)}
+        if(!candidates.length)return res.json({success:true,ad:null});
+        candidates.sort((a,b)=>cmNum(a.impressions)-cmNum(b.impressions)); const c=candidates[0];
+        const selectedImage=(c.abEnabled!==false&&c.imageUrlB)?((parseInt(userId.slice(-1),10)||0)%2===0?c.imageUrl:c.imageUrlB):c.imageUrl;
+        if(!test){
+            const cap=Math.max(0,Math.floor(cmNum(c.frequencyCap))); if(cap>0){const today=cmDateKey();const f=((c.frequency||{})[userId]||{});if(f.date===today&&cmNum(f.count)>=cap)return res.json({success:true,ad:null});await dbUpdate(`campaigns/${c.id}/frequency/${userId}`,{date:today,count:(f.date===today?cmNum(f.count):0)+1});}
+            const raw=await dbGet(`campaigns/${c.id}`); if(raw){raw.impressions=cmNum(raw.impressions)+1;raw.adBudgetRemaining=Math.max(0,cmNum(raw.adBudgetRemaining)-1);raw.adSpend=cmNum(raw.adSpend)+1;raw.budgetRemaining=Math.max(0,cmNum(raw.adBudgetRemaining)+cmNum(raw.taskBudgetRemaining));raw.escrowReserved=raw.budgetRemaining;raw.auditLog=cmAudit(raw,'served',userId,{test:false});cmSetCompatibility(raw);await dbUpdate(`campaigns/${c.id}`,raw);}
+        }
+        res.json({success:true,test,ad:{id:c.id,name:c.name,headline:c.headline,description:c.desc,cta:c.cta,link:c.link,imageUrl:selectedImage,videoUrl:c.videoUrl||'',trackingToken:c.trackingToken}});
+    }catch(e){res.status(500).json({success:false,error:'Ad serving failed'});}
+});
+
+app.post('/api/campaign-manager/campaigns/:id/validate', async (req,res)=>{
+    try{const {userId}=req.body||{}, c=await cmReadOwned(String(req.params.id),userId);if(!c)return res.status(404).json({success:false,error:'Campaign not found'});if(!cmValidUrl(c.link))return res.json({success:false,valid:false,error:'Destination URL is invalid'});const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),4000);try{const r=await fetch(c.link,{method:'HEAD',redirect:'manual',signal:controller.signal});clearTimeout(timer);res.json({success:true,valid:r.ok||[301,302,303,307,308].includes(r.status),status:r.status});}catch(e){clearTimeout(timer);res.json({success:true,valid:false,error:'Destination could not be reached within 4 seconds'});}}catch(e){res.status(500).json({success:false,error:'Validation failed'});}
+});
+
+app.get('/api/campaign-manager/audit/:id', async (req,res)=>{try{const c=await cmReadOwned(String(req.params.id),String(req.query.userId||''));if(!c)return res.status(404).json({success:false,error:'Campaign not found'});res.json({success:true,audit:(c.auditLog||[]).slice().reverse()});}catch(e){res.status(500).json({success:false,error:'Audit unavailable'});}});
+
+app.get('/api/campaign-manager/export/:id', async (req,res)=>{try{const c=await cmReadOwned(String(req.params.id),String(req.query.userId||''));if(!c)return res.status(404).json({success:false,error:'Campaign not found'});res.set('Content-Disposition',`attachment; filename="${String(c.name||'campaign').replace(/[^a-z0-9_-]+/gi,'_')}.json"`);res.json(cmNormalize(c,c.id));}catch(e){res.status(500).json({success:false,error:'Export failed'});}});
+
 
 export default app;

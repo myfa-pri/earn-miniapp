@@ -1253,7 +1253,7 @@ function renderWithdraw(c) {
                         const rank = idx + 1;
                         const realName = u.accountName || u.username || 'Anonymous';
                         const fbUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(realName)}&background=B026FF&color=fff`;
-                        const avatarUrl = u.id ? `${API_BASE_URL}/api/avatar/${u.id}` : fbUrl;
+                        const avatarUrl = u.avatarUrl || (u.id ? `${API_BASE_URL}/api/avatar/${u.id}` : fbUrl);
                         
                         const nameColor = u.usernameColor ? `color: ${u.usernameColor} !important;` : '';
                         const badge = u.titleBadge && u.titleBadge !== 'None' ? `<span style="font-size:0.6rem; background:rgba(255,255,255,0.2); padding:2px 5px; border-radius:4px; margin-right:3px;">${u.titleBadge}</span>` : '';
@@ -1278,7 +1278,7 @@ function renderWithdraw(c) {
                     const rank = i + 1;
                     const realName = u.accountName || u.username || 'Anonymous';
                     const fbUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(realName)}&background=B026FF&color=fff`;
-                    const avatarUrl = u.id ? `${API_BASE_URL}/api/avatar/${u.id}` : fbUrl;
+                    const avatarUrl = u.avatarUrl || (u.id ? `${API_BASE_URL}/api/avatar/${u.id}` : fbUrl);
                     
                     const nameColor = u.usernameColor ? `color: ${u.usernameColor} !important;` : '';
                     const badge = u.titleBadge && u.titleBadge !== 'None' ? `<span style="font-size:0.6rem; background:rgba(255,255,255,0.2); padding:2px 5px; border-radius:4px; margin-right:3px;">${u.titleBadge}</span>` : '';

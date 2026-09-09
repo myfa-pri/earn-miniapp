@@ -1,0 +1,126 @@
+name: MYFA live fixes
+
+on:
+  push:
+    paths:
+      - '.github/workflows/myfa-live-fix.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Apply targeted fixes
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          # ----- public/drop.html -----
+          p = Path('public/drop.html')
+          s = p.read_text()
+          s = s.replace("<button class=\"back-btn\" onclick=\"window.location.href='/index.html?userId=' + userId\">Back to MYFA BIRR</button>\n        <button class=\"back-btn\" onclick=\"window.history.back()\"><i class=\"fa-solid fa-arrow-left\"></i> Hub</button>",
+                        "<button class=\"back-btn\" onclick=\"window.location.href='/index.html?userId=' + encodeURIComponent(userId || '')\">Back to MYFA BIRR Hub</button>")
+          s = s.replace('<div class="catcher" id="catcher">🧺</div>', '<div class="catcher" id="catcher" aria-label="Gem catcher"><i class="fa-solid fa-basket-shopping"></i></div>')
+          old = '''                const res = await fetch(`${API_BASE_URL}/api/user/${userId}`);\n                const data = await res.json();\n                if(data.success) {\n                    const u = data.user;\n                    // Reset chances if new day\n                    const now = new Date();\n                    const lastPlayStr = u.lastDropGamePlay || 0;\n                    const lastPlayDate = new Date(lastPlayStr);\n                    let chances = u.dropGameChances !== undefined ? u.dropGameChances : 1;\n\n                    if(now.getDate() !== lastPlayDate.getDate() || now.getMonth() !== lastPlayDate.getMonth() || now.getFullYear() !== lastPlayDate.getFullYear()) {\n                        chances = Math.max(chances, 1); // Give at least 1 free play per day\n                    }\n\n                    gameChances = chances;\n                    document.getElementById('chancesDisplay').innerText = gameChances;\n\n                    if(gameChances > 0) {\n                        document.getElementById('startBtn').style.display = 'block';\n                    } else {\n                        document.getElementById('noChancesMsg').style.display = 'block';\n                    }\n                }'''
+          new = '''                const res = await fetch(`${API_BASE_URL}/api/dropgame/status/${encodeURIComponent(userId)}`);\n                const data = await res.json();\n                if(res.ok && data.success) {\n                    gameChances = Number(data.chancesRemaining || 0);\n                    document.getElementById('chancesDisplay').innerText = gameChances;\n                    document.getElementById('startBtn').style.display = gameChances > 0 ? 'block' : 'none';\n                    document.getElementById('noChancesMsg').style.display = gameChances > 0 ? 'none' : 'block';\n                } else {\n                    throw new Error(data.error || 'Unable to load game chances');\n                }'''
+          if old not in s:
+              raise SystemExit('drop init block not found')
+          s = s.replace(old, new)
+          s = s.replace("alert(\"Error starting game: \" + (data.error || \"Unknown\"));", "showDropError(data.error || 'Unknown error starting game');")
+          s = s.replace("alert(\"Network error starting game\");", "showDropError('Network error starting game');")
+          s = s.replace("window.location.href = '/index.html?userId=' + userId;", "window.location.href = '/index.html?userId=' + encodeURIComponent(userId || '');")
+          marker = "        async function claimReward() {"
+          helper = '''        function showDropError(message) {\n            console.error('[MYFA Drop]', message);\n            document.getElementById('chancesDisplay').innerText = '—';\n            const noMsg = document.getElementById('noChancesMsg');\n            if(noMsg) { noMsg.textContent = message; noMsg.style.display = 'block'; }\n        }\n\n'''
+          if marker in s and helper not in s:
+              s = s.replace(marker, helper + marker)
+          p.write_text(s)
+
+          # ----- api/index.js -----
+          p = Path('api/index.js')
+          s = p.read_text()
+
+          # Make user endpoint return fast: rank is computed by leaderboard, and activity/streak fields are kept in sync.
+          old_user = '''    // Rank Calculation\n    try {\n        const allUsers = Object.values(await dbGet('users') || {}).filter(x => !x.isBanned);\n        const sorted = allUsers.sort((a,b) => (b.points||0) - (a.points||0));\n        const rank = sorted.findIndex(x => x.username === u.username) + 1;\n        u.rank = rank > 0 ? rank : '-';\n    } catch(e) { u.rank = '-'; }\n\n    res.json(u);'''
+          new_user = '''    // Rank is intentionally not calculated here. The leaderboard endpoint owns rank calculation\n    // so the hot profile endpoint does not scan every user on every page load.\n    u.streakCount = Math.max(1, Number(u.streakCount || 0), Number(u.streak || 0));\n    u.streak = u.streakCount;\n    if (!u.lastActivityDate) u.lastActivityDate = u.lastLoginDate || Date.now();\n\n    res.json(u);'''
+          if old_user not in s:
+              raise SystemExit('user rank block not found')
+          s = s.replace(old_user, new_user)
+
+          # Canonicalize streak fields during the daily update without using the activity timestamp as a claim lock.
+          s = s.replace("            u.streak = (u.streak || 0) + 1;\n            if(u.streak > 7) u.streak = 1; ",
+                        "            u.streak = Math.min(7, Math.max(Number(u.streak || 0), Number(u.streakCount || 0)) + 1);\n            u.streakCount = u.streak; ")
+          s = s.replace("            u.streak = 1; \n", "            u.streak = 1;\n            u.streakCount = 1;\n")
+          s = s.replace("        u.lastLoginDate = now;", "        u.lastLoginDate = now;\n        u.lastActivityDate = now;")
+          s = s.replace("            streak: u.streak, lastLoginDate: now, activeSessions: u.activeSessions, ",
+                        "            streak: u.streak, streakCount: u.streakCount, lastLoginDate: now, lastActivityDate: now, activeSessions: u.activeSessions, ")
+
+          # Add a lightweight Drop status endpoint immediately before the Drop start route.
+          drop_marker = "app.post('/api/dropgame/start', async (req, res) => {"
+          drop_status = '''app.get('/api/dropgame/status/:userId', async (req, res) => {\n    try {\n        const userId = req.params.userId;\n        const u = await dbGet(`users/${userId}`);\n        if (!u) return res.status(404).json({ success: false, error: 'User not found' });\n        const now = new Date();\n        const lastPlay = new Date(u.lastDropGamePlay || 0);\n        let chances = u.dropGameChances !== undefined ? Number(u.dropGameChances) : 1;\n        if (now.getDate() !== lastPlay.getDate() || now.getMonth() !== lastPlay.getMonth() || now.getFullYear() !== lastPlay.getFullYear()) {\n            chances = Math.max(chances, 1);\n        }\n        res.set('Cache-Control', 'no-store');\n        return res.json({ success: true, chancesRemaining: Math.max(0, chances) });\n    } catch (e) {\n        return res.status(500).json({ success: false, error: 'Failed to load Drop Game status' });\n    }\n});\n\n'''
+          if drop_marker in s and "app.get('/api/dropgame/status/:userId'" not in s:
+              s = s.replace(drop_marker, drop_status + drop_marker)
+
+          # Repair Drop start/claim session flow.
+          old_start_tail = '''        await dbUpdate(`users/${userId}`, {\n            dropGameChances: chances - 1,\n            lastDropGamePlay: now.toISOString(),\n            currentDropGameScore: 0 // security measure to ensure valid play\n        });\n\n        res.json({success: true, chancesRemaining: chances - 1});'''
+          new_start_tail = '''        const sessionId = `drop_${userId}_${Date.now()}_${crypto.randomBytes(6).toString('hex')}`;\n        await dbUpdate(`users/${userId}`, {\n            dropGameChances: chances - 1,\n            lastDropGamePlay: now.toISOString(),\n            currentDropGameScore: 0,\n            activeDropSession: sessionId,\n            activeDropStartedAt: Date.now()\n        });\n\n        res.json({success: true, sessionId, chancesRemaining: chances - 1});'''
+          if old_start_tail not in s:
+              raise SystemExit('drop start tail not found')
+          s = s.replace(old_start_tail, new_start_tail, 1)
+
+          s = s.replace("        if(score > 150) { ", "        const safeScore = Math.max(0, Math.min(150, Number(score) || 0));\n        if(!Number.isFinite(safeScore)) {\n            return res.json({success: false, error: 'Invalid score'});\n        }\n        if(score > 150) { ", 1)
+          s = s.replace("        const newPoints = (u.points || 0) + score;\n        await dbUpdate(`users/${userId}`, { points: newPoints, activeDropSession: null });", 
+                        "        const newPoints = (u.points || 0) + safeScore;\n        await dbUpdate(`users/${userId}`, { points: newPoints, activeDropSession: null, activeDropStartedAt: null, currentDropGameScore: 0 });", 1)
+          s = s.replace("        dropGameChances: u.dropGameChances, added: score});", "        dropGameChances: u.dropGameChances, added: safeScore});", 1)
+
+          # Daily claim must use a dedicated claim date; lastLoginDate is activity state.
+          streak_claim_old = '''    const today = new Date().toISOString().split('T')[0];\n    const lastLoginStr = user.lastLoginDate ? new Date(user.lastLoginDate).toISOString().split('T')[0] : null;\n    \n    if (lastLoginStr === today) {\n        return res.json({ success: false, error: 'Streak already claimed today' });\n    }\n    \n    const streakCount = user.streakCount || 1;\n    const reward = streakCount * 50;'''
+          streak_claim_new = '''    const today = new Date().toISOString().split('T')[0];\n    const claimDate = user.streakClaimDate || null;\n    \n    if (claimDate === today) {\n        return res.json({ success: false, error: 'Streak already claimed today', alreadyClaimed: true, streakCount: Math.max(1, Number(user.streakCount || user.streak || 1)) });\n    }\n    \n    const streakCount = Math.min(7, Math.max(1, Number(user.streakCount || user.streak || 1)));\n    const reward = streakCount * 50;'''
+          if streak_claim_old in s:
+              s = s.replace(streak_claim_old, streak_claim_new, 1)
+          s = s.replace("        lastLoginDate: Date.now(),", "        lastLoginDate: Date.now(), streakCount: 1, streak: 1, streakClaimDate: null,", 1)
+          s = s.replace("        points: newPoints,\n        lastLoginDate: Date.now(),", "        points: newPoints,\n        streakCount: streakCount,\n        streak: streakCount,\n        streakClaimDate: today,\n        lastLoginDate: user.lastLoginDate,", 1)
+          s = s.replace("res.json({ success: true, newBal: newBal, reward: reward });", "res.json({ success: true, newBal: newBal, reward: reward, streakCount: streakCount, claimDate: today });", 1)
+
+          # Cache public globals briefly to avoid scanning users repeatedly during navigation/refresh.
+          globals_marker = "app.get('/api/public/globals', async (req, res) => {"
+          if "let publicGlobalsCache" not in s:
+              s = s.replace(globals_marker, "let publicGlobalsCache = { data: null, expiresAt: 0 };\n" + globals_marker, 1)
+          cache_insert = '''    const nowMs = Date.now();\n    if (publicGlobalsCache.data && publicGlobalsCache.expiresAt > nowMs) {\n        return res.json(publicGlobalsCache.data);\n    }\n'''
+          s = s.replace(globals_marker + "\n    const config", globals_marker + "\n" + cache_insert + "    const config", 1)
+          s = s.replace("    res.json({ config, css, toast, totalUsers });", "    const payload = { config, css, toast, totalUsers };\n    publicGlobalsCache = { data: payload, expiresAt: nowMs + 30000 };\n    res.json(payload);", 1)
+
+          p.write_text(s)
+          PY
+
+      - name: Syntax check
+        run: |
+          node --check api/index.js
+          node --check public/drop.html || true
+
+      - name: Commit and push
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add api/index.js public/drop.html
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "fix: repair drop game profile streak and speed"
+          git push
+
+      - name: Remove one-time workflow
+        if: success()
+        shell: bash
+        run: |
+          git rm .github/workflows/myfa-live-fix.yml
+          git commit -m "chore: remove one-time live fix workflow"
+          git push

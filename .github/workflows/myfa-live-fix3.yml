@@ -1,0 +1,109 @@
+name: MYFA final fixes
+
+on:
+  push:
+    paths:
+      - '.github/workflows/myfa-live-fix3.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply final fixes
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          # api/index.js
+          p = Path('api/index.js')
+          s = p.read_text()
+          # Undo the accidental promo-response reference introduced by the previous fixer.
+          s = s.replace("res.json({ success: true, newBal: newBal, reward: reward, streakCount: streakCount, claimDate: today });",
+                        "res.json({ success: true, newBal: newBal, reward: reward });")
+
+          # Patch the real daily streak claim route by semantic markers rather than whitespace.
+          guard = "const lastLoginStr = user.lastLoginDate ? new Date(user.lastLoginDate).toISOString().split('T')[0] : null;"
+          if guard in s:
+              s = s.replace(
+                  guard + "\n    \n    if (lastLoginStr === today) {\n        return res.json({ success: false, error: 'Streak already claimed today' });\n    }\n    \n    const streakCount = user.streakCount || 1;\n    const reward = streakCount * 50;",
+                  "const claimDate = user.streakClaimDate || null;\n    \n    if (claimDate === today) {\n        return res.json({ success: false, error: 'Streak already claimed today', alreadyClaimed: true, streakCount: Math.max(1, Number(user.streakCount || user.streak || 1)) });\n    }\n    \n    const streakCount = Math.min(7, Math.max(1, Number(user.streakCount || user.streak || 1)));\n    const reward = streakCount * 50;", 1)
+
+          # In the daily-claim function, attach a dedicated claim date to the same user update.
+          idx = s.find("const claimDate = user.streakClaimDate || null;")
+          if idx >= 0:
+              end = s.find("});", idx)
+              if end >= 0:
+                  close = s.find("});", end + 3)
+                  # Find the next user update inside the same function.
+                  m = s.find("await dbUpdate(`users/${userId}`, {", idx, close if close >= 0 else len(s))
+                  if m >= 0:
+                      e = s.find("});", m)
+                      if e >= 0:
+                          block = s[m:e]
+                          if "streakClaimDate" not in block:
+                              block = block.replace("points: newPoints,", "points: newPoints,\n        streakCount: streakCount,\n        streak: streakCount,\n        streakClaimDate: today,")
+                              s = s[:m] + block + s[e:]
+
+          # Ensure all new users have the canonical streak fields and a separate claim marker.
+          s = s.replace("createdAt: Date.now(), streak: 1, lastLoginDate: Date.now(),",
+                        "createdAt: Date.now(), streak: 1, streakCount: 1, streakClaimDate: null, lastLoginDate: Date.now(),", 1)
+
+          # Cache gate checks for one minute so page-to-page profile reads don't call Telegram repeatedly.
+          gate_start = "    // TASK 1: ALWAYS ON GATE CHECK\n    if (config.gateEnabled && config.officialChannels && config.officialChannels.length > 0) {"
+          gate_repl = "    // TASK 1: GATE CHECK (short TTL cache for fast navigation)\n    if (config.gateEnabled && config.officialChannels && config.officialChannels.length > 0 && (!u.gateCheckedAt || now - Number(u.gateCheckedAt) > 60000)) {"
+          if gate_start in s:
+              s = s.replace(gate_start, gate_repl, 1)
+              s = s.replace("            u.isOfficialMember = true;\n        }\n    }",
+                            "            u.isOfficialMember = true;\n        }\n        u.gateCheckedAt = now;\n    }", 1)
+              s = s.replace("            monetagWatchedToday: 0, adsgramWatchedToday: 0, adsterraWatchedToday: 0,\n            points: u.points, escrowYield: u.escrowYield, logs: u.logs",
+                            "            monetagWatchedToday: 0, adsgramWatchedToday: 0, adsterraWatchedToday: 0,\n            points: u.points, escrowYield: u.escrowYield, logs: u.logs, gateCheckedAt: u.gateCheckedAt", 1)
+          p.write_text(s)
+
+          # public/index.html and script1.js UI fixes.
+          for name in ('public/index.html', 'script1.js'):
+              p = Path(name)
+              if not p.exists():
+                  continue
+              s = p.read_text()
+              s = s.replace("const avatarUrl = window.Telegram.WebApp.initDataUnsafe?.user?.photo_url || currentUser.avatarUrl || `https://ui-avatars.com/api/?name=${currentUser.username}&background=00F2FE&color=fff`;",
+                            "const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;\n            const avatarUrl = tgUser?.photo_url || currentUser.avatarUrl || `${window.location.origin}/api/avatar/${encodeURIComponent(userId)}`;")
+              s = s.replace("const avatarUrl = window.Telegram.WebApp.initDataUnsafe?.user?.photo_url || (currentUser ? currentUser.avatarUrl : '') || `https://ui-avatars.com/api/?name=${currentUser ? currentUser.username : 'User'}&background=00F2FE&color=fff`;",
+                            "const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;\n            const avatarUrl = tgUser?.photo_url || (currentUser && currentUser.avatarUrl) || `${window.location.origin}/api/avatar/${encodeURIComponent(typeof userId !== 'undefined' ? userId : '')}`;")
+              exact = '''<div style="text-align:center; padding: 20px 0;">\n                    <h2><i class="fa-solid fa-trophy" style="color:#F5A623; font-size: 2rem; margin-bottom: 10px; display:inline-block; filter: drop-shadow(0 0 10px rgba(245, 166, 35, 0.5));"></i><br>Top 100 Players</h2>\n                    <div class="lb-tabs">\n                        <div class="lb-tab active">All Time</div>\n                    </div>\n                </div>'''
+              s = s.replace(exact, '')
+              s = s.replace("                void activePage.offsetWidth; // Force reflow\n", '')
+              s = s.replace("let currentStreak = currentUser.streakCount || 0;", "let currentStreak = Math.max(Number(currentUser.streakCount || 0), Number(currentUser.streak || 0), 0);")
+              s = s.replace("let streakCount = currentUser.streakCount || 1;", "let streakCount = Math.max(Number(currentUser.streakCount || 0), Number(currentUser.streak || 0), 1);")
+              p.write_text(s)
+
+          # Remove only the initial artificial 2.5s loader delay when it exists.
+          p = Path('public/index.html')
+          s = p.read_text()
+          s = s.replace("}, 2500);", "}, 50);")
+          p.write_text(s)
+          PY
+      - name: Syntax check
+        run: node --check api/index.js
+      - name: Commit fixes and remove helper workflows
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f .github/workflows/myfa-live-fix2.yml
+          git add api/index.js public/index.html script1.js .github/workflows/myfa-live-fix2.yml
+          git commit -m "fix: make MYFA daily reward profile and navigation reliable"
+          git push
+      - name: Remove this one-time workflow
+        if: success()
+        shell: bash
+        run: |
+          git rm .github/workflows/myfa-live-fix3.yml
+          git commit -m "chore: remove final fix workflow"
+          git push

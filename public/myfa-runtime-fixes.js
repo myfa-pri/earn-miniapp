@@ -107,9 +107,17 @@ const startObserver = () => {
 };
 
 // ---------------------------------------------------------------------------
-// Fast navigation: put a useful page shell on screen before the original
-// network-backed renderer finishes. This keeps taps feeling instant.
+// Internal miniapp navigation performance.
+// Navigation already swaps page containers synchronously, but the first render
+// of each lazy page can do network work or heavy DOM work before the browser
+// gets a chance to paint. Give the target page a stable shell first, then defer
+// the real renderer until the next task so the tap paints immediately.
 // ---------------------------------------------------------------------------
+const fastShell = (title, icon='fa-bolt', body='Loading live data…') => c => {
+    if(!c) return;
+    c.innerHTML=`<div style="padding:18px 4px;min-height:220px"><h2 style="margin:0 0 14px;display:flex;align-items:center;gap:10px"><i class="fa-solid ${icon}" style="color:var(--color-cyan)"></i>${title}</h2><div class="cm-note" style="margin-top:10px"><i class="fa-solid fa-bolt"></i> ${body}</div></div>`;
+};
+
 const fastTasksShell = c => {
     if(!c) return;
     c.innerHTML = `
@@ -131,19 +139,25 @@ const wrapFastRenderer = (name, shell) => {
     if(typeof original !== 'function' || original.__myfaFastWrapped) return;
     const wrapped = function(container, ...args) {
         try { shell(container); } catch(e) {}
-        return original.call(this, container, ...args);
+        // Let the browser paint the destination shell before the renderer does
+        // network work or a large DOM replacement.
+        setTimeout(() => {
+            try { original.call(this, container, ...args); } catch(e) { console.error(`[MYFA ${name}]`, e); }
+        }, 0);
     };
     wrapped.__myfaFastWrapped = true;
+    wrapped.__myfaOriginal = original;
     window[name] = wrapped;
 };
 
+wrapFastRenderer('renderHome', fastShell('Home','fa-house','Your MYFA dashboard is loading…'));
+wrapFastRenderer('renderSettings', fastShell('Settings','fa-gear','Settings are loading…'));
+wrapFastRenderer('renderAds', fastShell('Ads','fa-rectangle-ad','Ads are loading…'));
+wrapFastRenderer('renderWithdraw', fastShell('Withdraw','fa-money-bill-transfer','Withdrawal options are loading…'));
 wrapFastRenderer('renderTasks', fastTasksShell);
-wrapFastRenderer('renderReferrals', c => {
-    if(c) c.innerHTML='<div style="padding:18px 4px"><h2>Invite & Earn</h2><div class="cm-note"><i class="fa-solid fa-bolt"></i> Referrals are loading…</div></div>';
-});
-wrapFastRenderer('renderLeaderboard', c => {
-    if(c) c.innerHTML='<div style="padding:18px 4px"><h2>Leaderboard</h2><div class="cm-note"><i class="fa-solid fa-bolt"></i> Rankings are loading…</div></div>';
-});
+wrapFastRenderer('renderReferrals', fastShell('Invite & Earn','fa-user-group','Referral data is loading…'));
+wrapFastRenderer('renderLeaderboard', fastShell('Leaderboard','fa-trophy','Rankings are loading…'));
+wrapFastRenderer('renderGames', fastShell('Games','fa-gamepad','Games are loading…'));
 
 // ---------------------------------------------------------------------------
 // Preload Myfa inventory immediately after the Telegram user is available.
@@ -256,7 +270,6 @@ async function claimFastMyfaAd(){
         if(!r.ok || !d.success) throw new Error(d.error||'Reward verification failed');
         myfaCompleted=true;
         finishFastMyfaUi(d);
-        const seconds=Number(myfaSession.minSeconds||10);
         claim.innerHTML='<i class="fa-solid fa-check"></i> Completed';
         const timer=ensureMyfaOverlay().querySelector('#myfaFastAdTimer');
         timer.textContent='Done';

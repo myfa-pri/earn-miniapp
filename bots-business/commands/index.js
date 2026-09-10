@@ -1,6 +1,6 @@
 /*CMD
   command: index
-  help:
+  help: MYFA BIRR WebApp
   need_reply:
   auto_retry_time:
   folder:
@@ -10,8 +10,11 @@
   group:
 CMD*/
 
-// BBDropBlastBot-compatible WebApp renderer.
-// index.html is the BB WebApp template containing the MYFA frontend.
+var apiUrl = Libs.Webhooks.getUrlFor({
+  command: "/myfa-api",
+  user_id: user.id
+});
+
 var CSSFile = WebApp.getUrl({ command: "renderCSS" });
 var JSFile = WebApp.getUrl({ command: "renderJS" });
 
@@ -19,6 +22,7 @@ WebApp.render({
   template: "index.html",
   options: {
     CSSFile: CSSFile,
-    JSFile: JSFile
+    JSFile: JSFile,
+    apiUrl: apiUrl
   }
 });

@@ -1,1 +1,0 @@
-Bots.Business migration package prepared for the main branch. Import the commands listed in commands/BB_IMPORT_ORDER.md.

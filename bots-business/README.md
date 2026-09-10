@@ -1,56 +1,48 @@
 # MYFA BIRR — Bots.Business package
 
-This directory is the self-contained Bots.Business package for the MYFA BIRR Mini App. It follows the WebApp template structure used by the reference `bots-business/BBDropBlastBot`, while using secure user-bound Webhooks for account and reward mutations.
+This directory is the Bots.Business package for the MYFA BIRR Mini App. It follows the WebApp template structure used by the reference `bots-business/BBDropBlastBot`, while using secure user-bound Webhooks for account and reward mutations.
 
-## Import these BB commands
+## Active BB WebApp
+- `commands/_start.js` — `/start`; generates per-user secure API URLs and opens MYFA BIRR.
+- `commands/index.js` — WebApp renderer.
+- `commands/index.html.js` — active MYFA BB HTML shell.
+- `commands/renderCSS.js` / `commands/script.css.js` — active CSS.
+- `commands/renderJS.js` / `commands/script.final.js.js` — active JavaScript frontend.
 
-### Main Mini App
-- `commands/_start.js` — `/start`; generates the per-user secure WebApp API URLs and opens the Mini App.
-- `commands/index.js` — WebApp renderer; receives the secure URLs from `/start` through WebApp options.
-- `commands/index.html.js` — main MYFA BIRR HTML template.
-- `commands/renderCSS.js` — CSS renderer.
-- `commands/script.css.js` — main CSS template.
-- `commands/renderJS.js` — JavaScript renderer.
-- `commands/script.final.js.js` — main MYFA BIRR frontend.
-
-### Backend
-- `commands/myfa-api-v2.js` — users, profiles, settings, daily rewards, tasks, sponsored ads, referrals, leaderboard, five core games, withdrawals, promos and admin actions.
+## BB backend
+- `commands/myfa-api-v2.js` — user/profile/settings, daily rewards, tasks, sponsored ads, referrals, leaderboard, Aviator/Drop/Multi-Ox/Sketch/Daily Combo, withdrawals, promos and admin actions.
 - `commands/myfa-games.js` — Ludo and Chicken Road backend.
+- `commands/myfa-setup.js` — initialize default MYFA BB configuration.
 - `commands/bb-api-health.js` — backend health check.
-- `commands/myfa-setup.js` — first-time MYFA BB configuration.
 
-### Admin
-- `commands/admin.js` — protected `/admin` panel entry.
-- `commands/admin.html.js` — admin template.
-- `commands/adminCSS.js` / `commands/admin.css.js` — admin CSS renderer/template.
-- `commands/adminJS.js` / `commands/admin.js.js` — admin JavaScript renderer/template.
+## BB admin
+- `commands/admin.js` — protected `/admin` entry.
+- `commands/admin.html.js`, `adminCSS.js`, `admin.css.js`, `adminJS.js`, `admin.js.js` — admin WebApp.
+
+## Original frontend source included
+`source-frontend/` contains exact copies of the main original MYFA frontend blobs from `public/` for parity/reference, including the original index, CSS, main script, How, Drop, Ludo, Ongoing, Ad Studio, Ads Center and Campaign Manager files. The active BB shell is intentionally rewritten to use BB user-bound Webhooks instead of the old Vercel API surface.
 
 ## Security
+Bots.Business documents that WebApps are not protected and recommends Webhooks for important mutations such as balances and game points. The package therefore creates user-bound backend URLs from `/start` with `Libs.Webhooks.getUrlFor()`. The browser never selects another user's account by submitting a user id.
 
-Bots.Business documents that WebApps are not protected and recommends Webhooks for important mutations such as balances and game points. The BB package therefore creates the user-bound backend URLs from `/start` with `Libs.Webhooks.getUrlFor()`. The browser does not submit a user id to choose another account.
-
-Official documentation:
+Official docs:
 - https://help.bots.business/bjs/web-app
 - https://help.bots.business/libs/webhooks-lib
 - https://help.bots.business/bjs/properties
 - https://help.bots.business/bjs/lists
 
-## BB data model
-
+## Data model
 User property: `MYFA_STATE`.
 Bot properties: `MYFA_CONFIG`, `MYFA_TASKS`, `MYFA_CAMPAIGNS`, `MYFA_WITHDRAWALS`, `MYFA_TOP`, `MYFA_PROMOS`, `MYFA_TOTAL_USERS`, `MYFA_ADMIN_TELEGRAM_ID`.
 
-The migration caps large global arrays. Bots.Business recommends Lists rather than large JSON arrays; move leaderboard, withdrawal and campaign history to BB Lists as usage grows.
+The global JSON arrays are capped; for a large production population, move long-term leaderboard, campaign and withdrawal history to BB Lists.
 
-## First-time setup
-
-1. Import the files under `commands/` into your Bots.Business bot.
+## Setup
+1. Import the BB commands in `commands/BB_IMPORT_ORDER.md` into your Bots.Business bot.
 2. Set the Bot property `MYFA_ADMIN_TELEGRAM_ID` to the administrator Telegram ID.
 3. Run `/myfa-setup` as that administrator.
-4. Run `/start`.
-5. Open the MYFA BIRR WebApp.
-6. Use `/admin` for the protected admin panel.
+4. Run `/start` and open MYFA BIRR.
+5. Run `/admin` as the configured administrator.
 
-## Vercel / Express
-
-The original `api/` and `public/` application remains in the repository as the rollback/reference implementation. The BB package does not execute Node/Express code. Its BB backend is rewritten in BJS with user/bot properties and user-bound Webhooks.
+## Original application
+The original `api/` and `public/` implementation remains in the repository for rollback/reference. The BB package does not execute Node/Express code; its backend is rewritten in BJS with BB user/bot properties and user-bound Webhooks.

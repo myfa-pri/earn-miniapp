@@ -1,0 +1,40 @@
+/* MYFA BIRR Campaign Manager — dedicated app navigation */
+.cm-workbar{position:sticky;top:0;z-index:80;display:flex;align-items:center;gap:8px;padding:10px 18px;background:linear-gradient(90deg,rgba(6,10,24,.96),rgba(16,20,45,.96),rgba(6,10,24,.96));backdrop-filter:blur(18px);border-bottom:1px solid rgba(255,255,255,.09);box-shadow:0 12px 35px rgba(0,0,0,.22)}
+.cm-workbar::before{content:"";position:absolute;inset:0;background:radial-gradient(420px 90px at 20% 0,rgba(38,231,255,.09),transparent 65%),radial-gradient(420px 90px at 80% 100%,rgba(255,85,187,.08),transparent 65%);pointer-events:none}
+.cm-workbar button{position:relative;display:flex;align-items:center;justify-content:center;gap:8px;min-width:126px;height:46px;padding:0 15px;border-radius:14px;border:1px solid transparent;background:transparent;color:#91a4bd;font:800 11px/1 Plus Jakarta Sans,sans-serif;letter-spacing:.02em;cursor:pointer;transition:transform .18s ease,border-color .18s ease,background .18s ease,color .18s ease,box-shadow .18s ease}
+.cm-workbar button svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.cm-workbar button:hover{transform:translateY(-1px);color:#f7fbff;background:rgba(255,255,255,.045);border-color:rgba(255,255,255,.08)}
+.cm-workbar button.active{color:#fff;background:linear-gradient(135deg,rgba(38,231,255,.14),rgba(99,140,255,.12),rgba(168,121,255,.12));border-color:rgba(38,231,255,.24);box-shadow:0 10px 28px rgba(38,231,255,.08),inset 0 1px 0 rgba(255,255,255,.07)}
+.cm-workbar button.active::after{content:"";position:absolute;left:22%;right:22%;bottom:-11px;height:2px;border-radius:999px;background:linear-gradient(90deg,#26e7ff,#638cff,#a879ff,#ff55bb);box-shadow:0 0 18px rgba(38,231,255,.45)}
+.cm-nav-create-badge{margin-left:auto;display:none;font-size:8px;font-weight:900;letter-spacing:.08em;color:#8fa3bd}
+.cm-create-shell{margin:0 0 18px;padding:10px 4px 0}
+.cm-create-label{display:flex;align-items:center;gap:8px;margin:0 0 9px 4px;color:#8fa3bd;font-size:9px;font-weight:900;letter-spacing:.1em;text-transform:uppercase}
+.cm-create-label i{color:#26e7ff}
+#aspContent .asp-choice.cm-create-tabs{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0!important;padding:7px;border:1px solid rgba(255,255,255,.09);border-radius:19px;background:linear-gradient(135deg,rgba(255,255,255,.045),rgba(255,255,255,.012));box-shadow:inset 0 1px 0 rgba(255,255,255,.03),0 18px 44px rgba(0,0,0,.18)}
+#aspContent .asp-choice.cm-create-tabs button{min-height:86px!important;text-align:center!important;display:grid!important;grid-template-columns:1fr!important;justify-items:center!important;align-content:center!important;gap:4px!important;padding:12px!important;border-radius:14px!important;background:transparent!important;border:1px solid transparent!important}
+#aspContent .asp-choice.cm-create-tabs button i{margin:0!important;width:42px!important;height:42px!important;border-radius:13px!important;display:grid!important;place-items:center!important;box-shadow:none!important}
+#aspContent .asp-choice.cm-create-tabs button:nth-child(1) i{background:linear-gradient(135deg,#26e7ff,#638cff)!important}
+#aspContent .asp-choice.cm-create-tabs button:nth-child(2) i{background:linear-gradient(135deg,#a879ff,#ff55bb)!important}
+#aspContent .asp-choice.cm-create-tabs button:nth-child(3) i{background:linear-gradient(135deg,#ff55bb,#ff8c6b)!important}
+#aspContent .asp-choice.cm-create-tabs button b{font-size:10px!important;color:#dbe7f5!important}
+#aspContent .asp-choice.cm-create-tabs button small{font-size:8px!important;color:#71859e!important}
+#aspContent .asp-choice.cm-create-tabs button.active{background:linear-gradient(135deg,rgba(38,231,255,.10),rgba(168,121,255,.08))!important;border-color:rgba(38,231,255,.24)!important;box-shadow:0 10px 25px rgba(38,231,255,.06),inset 0 1px 0 rgba(255,255,255,.05)!important}
+#aspContent .asp-choice.cm-create-tabs button.active b{color:#fff!important}
+#aspContent .asp-choice.cm-create-tabs button.active small{color:#9db3cb!important}
+/* Remove duplicate desktop sidebar; the manager has its own single navigation bar. */
+.asp-layout{display:block!important}
+.asp-sidebar{display:none!important}
+.asp-content{max-width:1440px!important;margin:0 auto!important;width:100%!important;padding-top:22px!important}
+@media(max-width:900px){
+  .cm-workbar{position:fixed;left:10px;right:10px;bottom:10px;top:auto;border:1px solid rgba(255,255,255,.10);border-radius:20px;padding:7px;box-shadow:0 20px 60px rgba(0,0,0,.45);overflow-x:auto;scrollbar-width:none}
+  .cm-workbar::-webkit-scrollbar{display:none}
+  .cm-workbar button{flex:1 0 92px;min-width:0;height:48px;border-radius:14px;font-size:9px;gap:5px}
+  .cm-workbar button svg{width:17px;height:17px}
+  .cm-workbar button.active::after{left:25%;right:25%;bottom:-7px}
+  .asp-content{padding:14px 12px 88px!important}
+  #aspContent .asp-choice.cm-create-tabs{grid-template-columns:1fr!important;gap:7px}
+  #aspContent .asp-choice.cm-create-tabs button{grid-template-columns:42px 1fr auto!important;justify-items:start!important;text-align:left!important;min-height:64px!important;padding:9px 12px!important}
+  #aspContent .asp-choice.cm-create-tabs button i{grid-column:1;grid-row:1 / span 2}
+  #aspContent .asp-choice.cm-create-tabs button b{grid-column:2;align-self:end}
+  #aspContent .asp-choice.cm-create-tabs button small{grid-column:2;align-self:start}
+}

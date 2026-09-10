@@ -1,0 +1,214 @@
+
+:root {
+    --asp-bg: #06101c;
+    --asp-panel: #0a1726;
+    --asp-panel-2: #0d1d2e;
+    --asp-panel-3: #102238;
+    --asp-line: rgba(150, 181, 211, .12);
+    --asp-line-strong: rgba(105, 218, 255, .24);
+    --asp-text: #f2f7fb;
+    --asp-muted: #7f94aa;
+    --asp-soft: #aab9c7;
+    --asp-accent: #48d8ff;
+    --asp-accent-2: #6c8cff;
+    --asp-green: #54e2ad;
+    --asp-red: #ff6f8f;
+    --asp-shadow: 0 28px 80px rgba(0, 0, 0, .34);
+}
+
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+body {
+    margin: 0;
+    color: var(--asp-text);
+    background:
+        radial-gradient(circle at 72% 8%, rgba(72, 216, 255, .09), transparent 28rem),
+        radial-gradient(circle at 15% 92%, rgba(108, 140, 255, .08), transparent 30rem),
+        var(--asp-bg);
+    font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+button, input, select, textarea { font: inherit; }
+button { color: inherit; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+    outline: 2px solid rgba(72, 216, 255, .72);
+    outline-offset: 2px;
+}
+.asp-app { min-height: 100vh; position: relative; overflow: hidden; }
+.asp-noise {
+    position: fixed; inset: 0; pointer-events: none; opacity: .045; z-index: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");
+}
+.asp-topbar {
+    height: 76px; padding: 0 28px; display: flex; align-items: center; gap: 18px;
+    position: sticky; top: 0; z-index: 20; border-bottom: 1px solid var(--asp-line);
+    background: rgba(6, 16, 28, .82); backdrop-filter: blur(22px);
+}
+.asp-icon-button {
+    width: 40px; height: 40px; border: 1px solid var(--asp-line); border-radius: 12px;
+    display: grid; place-items: center; background: rgba(255,255,255,.025); cursor: pointer;
+}
+.asp-icon-button svg { width: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.asp-brand { display: flex; align-items: center; gap: 12px; }
+.asp-brand-mark {
+    width: 38px; height: 38px; display: grid; place-items: center; border-radius: 12px;
+    background: linear-gradient(135deg, rgba(72,216,255,.18), rgba(108,140,255,.18));
+    border: 1px solid var(--asp-line-strong); box-shadow: 0 0 28px rgba(72,216,255,.08);
+}
+.asp-brand-mark svg { width: 23px; fill: none; stroke: var(--asp-accent); stroke-width: 1.6; }
+.asp-brand strong { display: block; font-size: 12px; letter-spacing: .18em; }
+.asp-brand span { display: block; color: var(--asp-muted); font-size: 8px; letter-spacing: .16em; margin-top: 2px; }
+.asp-top-actions { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+.asp-live { display: flex; align-items: center; gap: 7px; color: var(--asp-green); font-size: 9px; font-weight: 800; letter-spacing: .16em; }
+.asp-live i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 12px currentColor; }
+.asp-wallet {
+    min-width: 122px; height: 40px; padding: 0 12px; display: flex; align-items: center; gap: 9px;
+    border: 1px solid var(--asp-line); border-radius: 12px; background: rgba(255,255,255,.025);
+}
+.asp-wallet svg { width: 18px; fill: none; stroke: var(--asp-accent); stroke-width: 1.6; }
+.asp-wallet strong { font-size: 13px; }
+.asp-layout { position: relative; z-index: 1; display: grid; grid-template-columns: 236px minmax(0,1fr); min-height: calc(100vh - 76px); }
+.asp-sidebar {
+    border-right: 1px solid var(--asp-line); padding: 28px 16px; display: flex; flex-direction: column;
+    background: rgba(5, 14, 25, .48);
+}
+.asp-sidebar-label { color: #5f7389; font-size: 8px; letter-spacing: .2em; font-weight: 800; padding: 0 12px 12px; }
+.asp-nav { display: grid; gap: 5px; }
+.asp-nav button {
+    border: 1px solid transparent; background: transparent; border-radius: 12px; min-height: 46px;
+    display: flex; align-items: center; gap: 12px; padding: 0 12px; color: var(--asp-muted);
+    cursor: pointer; text-align: left; transition: .18s ease;
+}
+.asp-nav button svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; flex: 0 0 auto; }
+.asp-nav button span { font-size: 11px; font-weight: 700; }
+.asp-nav button:hover { color: var(--asp-text); background: rgba(255,255,255,.035); }
+.asp-nav button.active {
+    color: var(--asp-text); border-color: rgba(72,216,255,.14);
+    background: linear-gradient(90deg, rgba(72,216,255,.11), rgba(108,140,255,.04));
+    box-shadow: inset 2px 0 0 var(--asp-accent);
+}
+.asp-sidebar-bottom { margin-top: auto; padding-top: 28px; }
+.asp-security-card { padding: 15px; border: 1px solid var(--asp-line); border-radius: 16px; background: rgba(255,255,255,.018); }
+.asp-security-icon { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: rgba(84,226,173,.08); }
+.asp-security-icon svg { width: 16px; fill: none; stroke: var(--asp-green); stroke-width: 1.7; }
+.asp-security-card strong { display: block; margin-top: 12px; font-size: 10px; }
+.asp-security-card span { display: block; margin-top: 5px; color: var(--asp-muted); font-size: 8px; line-height: 1.55; }
+.asp-content { width: min(1320px, 100%); padding: 38px clamp(20px, 4vw, 58px) 70px; margin: 0 auto; }
+.asp-loading-shell {
+    min-height: 52vh; display: grid; place-items: center; align-content: center; gap: 16px; text-align: center;
+}
+.asp-loading-shell > div:last-child { display: grid; gap: 6px; }
+.asp-loading-shell strong { font-size: 14px; }
+.asp-loading-shell span { color: var(--asp-muted); font-size: 10px; }
+.asp-loading-mark { display: flex; gap: 6px; }
+.asp-loading-mark span { width: 7px; height: 7px; border-radius: 50%; background: var(--asp-accent); animation: asp-load 1s infinite ease-in-out; }
+.asp-loading-mark span:nth-child(2) { animation-delay: .12s; opacity: .7; }
+.asp-loading-mark span:nth-child(3) { animation-delay: .24s; opacity: .4; }
+@keyframes asp-load { 0%,80%,100% { transform: translateY(0); } 40% { transform: translateY(-6px); } }
+.asp-hero, .asp-card, .asp-stat, .asp-builder-card, .asp-section, .asp-analytics-card, .asp-wallet-hero-pro {
+    border: 1px solid var(--asp-line); background: linear-gradient(145deg, rgba(14,31,48,.92), rgba(8,19,31,.92));
+    box-shadow: 0 18px 55px rgba(0,0,0,.16);
+}
+.asp-hero {
+    min-height: 310px; padding: 42px; border-radius: 24px; display: flex; align-items: flex-end;
+    justify-content: space-between; gap: 30px; position: relative; overflow: hidden;
+}
+.asp-hero::before {
+    content: ""; position: absolute; width: 360px; height: 360px; right: -110px; top: -170px;
+    border-radius: 50%; border: 1px solid rgba(72,216,255,.15); box-shadow: 0 0 90px rgba(72,216,255,.08);
+}
+.asp-eyebrow, .asp-title > span { color: var(--asp-accent); font-size: 8px; font-weight: 800; letter-spacing: .18em; }
+.asp-hero h1, .asp-title h1 { font-size: clamp(34px, 4vw, 62px); line-height: .98; letter-spacing: -.055em; margin: 13px 0; max-width: 700px; }
+.asp-hero h1 em, .asp-title h1 em { color: var(--asp-accent); font-style: normal; }
+.asp-copy { color: var(--asp-muted); max-width: 650px; font-size: 11px; line-height: 1.8; }
+.asp-primary, .asp-secondary, .asp-danger {
+    border-radius: 11px; min-height: 42px; padding: 0 16px; font-size: 10px; font-weight: 800;
+    cursor: pointer; border: 1px solid var(--asp-line); transition: .18s ease;
+}
+.asp-primary { color: #02121c; border-color: transparent; background: linear-gradient(135deg, var(--asp-accent), #8de9ff); box-shadow: 0 10px 30px rgba(72,216,255,.16); }
+.asp-secondary { color: var(--asp-text); background: rgba(255,255,255,.035); }
+.asp-danger { color: #ff9ab0; border-color: rgba(255,111,143,.2); background: rgba(255,111,143,.05); }
+.asp-primary:hover, .asp-secondary:hover, .asp-danger:hover { transform: translateY(-1px); filter: brightness(1.08); }
+.asp-primary:disabled { opacity: .45; cursor: wait; transform: none; }
+.asp-stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin: 12px 0 26px; }
+.asp-stat { min-height: 120px; border-radius: 17px; padding: 20px; }
+.asp-stat > i { display: none; }
+.asp-stat strong { display: block; font-size: 28px; letter-spacing: -.04em; }
+.asp-stat span { display: block; color: var(--asp-muted); font-size: 9px; margin-top: 8px; text-transform: uppercase; letter-spacing: .12em; }
+.asp-section { padding: 22px; border-radius: 19px; margin-top: 14px; }
+.asp-section-head { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-bottom: 16px; }
+.asp-section-head small { color: var(--asp-accent); font-size: 8px; text-transform: uppercase; letter-spacing: .14em; }
+.asp-section-head h2 { margin: 5px 0 0; font-size: 18px; letter-spacing: -.035em; }
+.asp-launch { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+.asp-launch button {
+    min-height: 140px; padding: 20px; text-align: left; border: 1px solid var(--asp-line); border-radius: 16px;
+    background: rgba(255,255,255,.02); cursor: pointer; transition: .2s ease;
+}
+.asp-launch button:hover { border-color: var(--asp-line-strong); background: rgba(72,216,255,.035); transform: translateY(-2px); }
+.asp-launch button > i { display: none; }
+.asp-launch b, .asp-launch small { display: block; }
+.asp-launch b { font-size: 12px; }
+.asp-launch small { margin-top: 9px; color: var(--asp-muted); font-size: 9px; line-height: 1.55; }
+.asp-list { display: grid; gap: 10px; }
+.asp-campaign { display: grid; grid-template-columns: 190px minmax(0,1fr); overflow: hidden; border-radius: 16px; }
+.asp-media { min-height: 150px; position: relative; background: #07111d; overflow: hidden; }
+.asp-media img, .asp-media video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.asp-media > i { position: absolute; inset: 0; display: grid; place-items: center; color: var(--asp-accent); font-size: 25px; }
+.asp-body { padding: 18px; }
+.asp-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.asp-row b { font-size: 12px; }
+.asp-row small { color: var(--asp-muted); font-size: 9px; }
+.asp-tag { border: 1px solid rgba(72,216,255,.16); color: var(--asp-accent); background: rgba(72,216,255,.05); border-radius: 999px; padding: 5px 8px; font-size: 7px; font-weight: 800; letter-spacing: .12em; }
+.asp-body p { color: var(--asp-muted); font-size: 9px; line-height: 1.55; min-height: 29px; }
+.asp-metrics { display: flex; gap: 15px; color: var(--asp-soft); font-size: 9px; }
+.asp-metrics i { color: var(--asp-accent); margin-right: 4px; }
+.asp-progress { height: 3px; border-radius: 999px; background: rgba(255,255,255,.06); overflow: hidden; margin: 15px 0; }
+.asp-progress span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg,var(--asp-accent),var(--asp-accent-2)); }
+.asp-title { padding: 8px 0 20px; }
+.asp-title h1 { font-size: 42px; }
+.asp-builder-card { padding: 24px; border-radius: 19px; }
+.asp-field-pro { display: grid; gap: 7px; margin-bottom: 14px; }
+.asp-field-pro label { color: var(--asp-soft); font-size: 9px; font-weight: 700; }
+.asp-field-pro input, .asp-field-pro select, .asp-field-pro textarea {
+    width: 100%; color: var(--asp-text); background: rgba(0,0,0,.18); border: 1px solid var(--asp-line);
+    border-radius: 10px; padding: 12px; font-size: 10px;
+}
+.asp-field-pro textarea { min-height: 100px; resize: vertical; }
+.asp-field-pro input:focus, .asp-field-pro select:focus, .asp-field-pro textarea:focus { border-color: var(--asp-line-strong); }
+.asp-empty, .asp-failure { padding: 70px 25px; border: 1px solid var(--asp-line); border-radius: 20px; text-align: center; background: rgba(255,255,255,.018); }
+.asp-empty > i { display: none; }
+.asp-empty b, .asp-failure h1 { display: block; font-size: 18px; }
+.asp-empty span, .asp-failure p { display: block; max-width: 460px; margin: 10px auto 20px; color: var(--asp-muted); font-size: 10px; line-height: 1.7; }
+.asp-failure-code { color: var(--asp-red); font-size: 8px; font-weight: 800; letter-spacing: .18em; }
+.asp-toast { position: fixed; right: 24px; bottom: 24px; z-index: 50; padding: 12px 15px; border: 1px solid var(--asp-line-strong); border-radius: 11px; background: #0b1b2b; box-shadow: var(--asp-shadow); font-size: 10px; transform: translateY(20px); opacity: 0; pointer-events: none; transition: .2s; }
+.asp-toast.show { transform: translateY(0); opacity: 1; }
+.asp-modal { position: fixed; inset: 0; z-index: 40; display: none; place-items: center; padding: 20px; background: rgba(1,7,13,.76); backdrop-filter: blur(12px); }
+.asp-modal.open { display: grid; }
+.asp-modal > div { width: min(600px,100%); max-height: 90vh; overflow: auto; padding: 24px; border: 1px solid var(--asp-line-strong); border-radius: 20px; background: #091726; box-shadow: var(--asp-shadow); }
+.asp-modal-close { float: right; width: 34px; height: 34px; border: 1px solid var(--asp-line); border-radius: 9px; background: transparent; cursor: pointer; }
+.asp-modal-media { height: 220px; border-radius: 14px; overflow: hidden; background: #06101c; margin-bottom: 18px; }
+.asp-modal-media img, .asp-modal-media video { width: 100%; height: 100%; object-fit: cover; }
+.asp-actions { display: flex; gap: 8px; margin-top: 20px; }
+@media (max-width: 900px) {
+    .asp-layout { grid-template-columns: 1fr; }
+    .asp-sidebar { border-right: 0; border-bottom: 1px solid var(--asp-line); padding: 8px; }
+    .asp-sidebar-label, .asp-sidebar-bottom { display: none; }
+    .asp-nav { display: grid; grid-template-columns: repeat(5,1fr); }
+    .asp-nav button { justify-content: center; min-height: 50px; padding: 0 4px; }
+    .asp-nav button span { display: none; }
+    .asp-content { padding: 24px 16px 50px; }
+}
+@media (max-width: 680px) {
+    .asp-topbar { padding: 0 12px; height: 64px; }
+    .asp-brand span, .asp-live { display: none; }
+    .asp-brand strong { font-size: 10px; }
+    .asp-top-actions { gap: 8px; }
+    .asp-wallet { min-width: 90px; }
+    .asp-hero { min-height: 360px; padding: 25px; display: block; }
+    .asp-hero .asp-primary { margin-top: 25px; width: 100%; }
+    .asp-stats { grid-template-columns: repeat(2,1fr); }
+    .asp-launch { grid-template-columns: 1fr; }
+    .asp-campaign { grid-template-columns: 1fr; }
+    .asp-media { min-height: 190px; }
+    .asp-title h1 { font-size: 32px; }
+}

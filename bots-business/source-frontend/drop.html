@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Drop Game - MYFA BIRR</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root { --bg-main: #0B0B2A; --color-cyan: #00F2FE; --color-magenta: #FF007A; --color-gold: #FCDD09; }
+        body {
+            margin: 0; padding: 0; background: var(--bg-main); color: white;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            overflow: hidden; display: flex; flex-direction: column; height: 100vh;
+        }
+        .header {
+            display: flex; align-items: center; justify-content: space-between; padding: 15px;
+            background: rgba(11, 15, 25, 0.9); border-bottom: 1px solid rgba(255,255,255,0.1); z-index: 10;
+        }
+        .back-btn {
+            background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white;
+            padding: 8px 15px; border-radius: 8px; font-size: 0.95rem; cursor: pointer;
+        }
+        #gameArea {
+            flex: 1; position: relative; overflow: hidden; background: linear-gradient(180deg, #0B0B2A 0%, #1a1a3e 100%);
+        }
+        .catcher {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            width: 68px; height: 68px; background: rgba(0,242,254,0.2); border: 2px solid var(--color-cyan);
+            border-radius: 20px 20px 40px 40px; display: flex; justify-content: center; align-items: center;
+            font-size: 2rem; z-index: 5; box-shadow: 0 0 20px rgba(0,242,254,0.5);
+            transition: left 0.1s;
+        }
+        .drop-item {
+            position: absolute; width: 50px; height: 50px; background-size: contain; background-repeat: no-repeat;
+            background-position: center; border-radius: 50%; z-index: 4;
+            display: flex; justify-content: center; align-items: center; font-size: 30px;
+        }
+        .overlay {
+            position: absolute; inset: 0; background: rgba(0,0,0,0.8); z-index: 20;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            backdrop-filter: blur(5px);
+        }
+        .quantum-btn {
+            background: linear-gradient(45deg, #00F2FE, #4FACFE); border: none; color: black; font-weight: bold;
+            padding: 12px 25px; border-radius: 10px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px;
+            font-size: 1.1rem; margin-top: 20px; box-shadow: 0 0 15px rgba(0,242,254,0.5);
+        }
+        #scoreDisplay { font-size: 1.5rem; font-weight: bold; color: var(--color-gold); text-shadow: 0 0 10px rgba(252,221,9,0.5); }
+        #timeDisplay { font-size: 1.2rem; font-weight: bold; color: var(--color-magenta); }
+        .frozen-overlay {
+            position: absolute; inset: 0; background: rgba(0,242,254,0.3); z-index: 15; pointer-events: none;
+            display: none; animation: pulse 1s infinite alternate;
+        }
+        @keyframes pulse { from { opacity: 0.3; } to { opacity: 0.6; } }
+        .smoke-effect {
+            position: absolute; background: rgba(255,255,255,0.8); border-radius: 50%;
+            pointer-events: none; animation: smokeFade 0.5s forwards;
+        }
+        @keyframes smokeFade {
+            0% { transform: scale(0.5); opacity: 1; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <button class="back-btn" onclick="window.location.href='/index.html?userId=' + encodeURIComponent(userId || '')">Back to MYFA BIRR Hub</button>
+        <div id="scoreDisplay"><i class="fa-solid fa-gem"></i> <span id="score">0</span></div>
+        <div id="levelDisplay" style="font-size:1rem;font-weight:900;color:var(--color-cyan);">LV <span id="level">1</span></div><div id="timeDisplay"><i class="fa-solid fa-clock"></i> <span id="time">15</span>s</div>
+    </div>
+
+    <div id="gameArea">
+        <div class="frozen-overlay" id="frozenOverlay"></div>
+        <div class="catcher" id="catcher" aria-label="Gem catcher"><i class="fa-solid fa-basket-shopping"></i></div>
+    </div>
+
+    <div class="overlay" id="startOverlay">
+        <h1 style="color:var(--color-cyan); margin-bottom:10px; text-shadow:0 0 10px rgba(0,242,254,0.5);">DROP GAME</h1>
+        <p style="text-align:center; max-width:80%; margin-bottom:20px;">Catch flowers (gems). Avoid bombs! Grab snowflakes to slow time.</p>
+        <p style="color:var(--color-gold); margin-bottom: 20px;">Chances remaining: <span id="chancesDisplay">Loading...</span></p>
+        <button class="quantum-btn" id="startBtn" onclick="startGame()" style="display:none;">Play Now</button>
+        <p id="noChancesMsg" style="color:var(--color-magenta); display:none;">No chances left today! Complete tasks to earn more.</p>
+    </div>
+
+    <div class="overlay" id="endOverlay" style="display:none;">
+        <h1 style="color:var(--color-gold); margin-bottom:10px;">Time's Up!</h1>
+        <h2 style="margin-bottom:20px;">You caught: <span id="finalScore" style="color:var(--color-cyan);">0</span> Gems</h2>
+        <button class="quantum-btn" onclick="claimReward()">Claim Reward</button>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        let userId = urlParams.get('userId');
+
+        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
+            userId = window.Telegram.WebApp.initDataUnsafe.user.id.toString();
+        }
+
+        const API_BASE_URL = window.location.origin;
+        let score = 0;
+        let timeLeft = 15;
+        let gameLevel = 1;
+        let gameInterval;
+        let dropInterval;
+        let isPlaying = false;
+        let isFrozen = false;
+        let dropSpeedMultiplier = 1;
+        let gameChances = 0;
+
+        const catcher = document.getElementById('catcher');
+        const gameArea = document.getElementById('gameArea');
+        let catcherX = gameArea.clientWidth / 2;
+
+        const flowerImgUrl = "https://i.ibb.co/gpMFrYr/image.png";
+
+        async function init() {
+            if(!userId) {
+                document.getElementById('chancesDisplay').innerText = "Error: No User ID";
+                return;
+            }
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/dropgame/status/${encodeURIComponent(userId)}`);
+                const data = await res.json();
+                if(res.ok && data.success) {
+                    gameChances = Number(data.chancesRemaining || 0);
+                    document.getElementById('chancesDisplay').innerText = gameChances;
+                    document.getElementById('startBtn').style.display = gameChances > 0 ? 'block' : 'none';
+                    document.getElementById('noChancesMsg').style.display = gameChances > 0 ? 'none' : 'block';
+                } else {
+                    throw new Error(data.error || 'Unable to load game chances');
+                }
+            } catch(e) {
+                console.error("Init error", e);
+                document.getElementById('chancesDisplay').innerText = "Network Error";
+            }
+        }
+        init();
+
+        // Mobile touch handling for catcher
+        gameArea.addEventListener('touchmove', (e) => {
+            if(!isPlaying) return;
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = gameArea.getBoundingClientRect();
+            catcherX = touch.clientX - rect.left;
+
+            // Bounds
+            const halfWidth = catcher.clientWidth / 2;
+            if(catcherX < halfWidth) catcherX = halfWidth;
+            if(catcherX > rect.width - halfWidth) catcherX = rect.width - halfWidth;
+
+            catcher.style.left = catcherX + 'px';
+        }, {passive: false});
+
+        // Mouse handling for desktop
+        gameArea.addEventListener('mousemove', (e) => {
+            if(!isPlaying) return;
+            const rect = gameArea.getBoundingClientRect();
+            catcherX = e.clientX - rect.left;
+
+            const halfWidth = catcher.clientWidth / 2;
+            if(catcherX < halfWidth) catcherX = halfWidth;
+            if(catcherX > rect.width - halfWidth) catcherX = rect.width - halfWidth;
+
+            catcher.style.left = catcherX + 'px';
+        });
+
+        async function startGame() {
+            if(gameChances <= 0) return;
+
+            try {
+                // Deduct chance on backend
+                const res = await fetch(`${API_BASE_URL}/api/dropgame/start`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({userId})
+                });
+                const data = await res.json();
+                if(data.success) {
+                    window.dropSessionId = data.sessionId;
+                } else {
+                    showDropError(data.error || 'Unknown error starting game');
+                    return;
+                }
+            } catch(e) {
+                showDropError('Network error starting game');
+                return;
+            }
+
+            document.getElementById('startOverlay').style.display = 'none';
+            score = 0;
+            timeLeft = 15;
+            gameLevel = 1;
+            document.getElementById('level').innerText = gameLevel;
+            isFrozen = false;
+            dropSpeedMultiplier = 1;
+            document.getElementById('score').innerText = score;
+            document.getElementById('time').innerText = timeLeft;
+            document.getElementById('frozenOverlay').style.display = 'none';
+
+            // Clear existing items
+            document.querySelectorAll('.drop-item').forEach(el => el.remove());
+
+            isPlaying = true;
+
+            gameInterval = setInterval(() => {
+                timeLeft--;
+                gameLevel = Math.min(5, 1 + Math.floor(score / 20) + Math.floor((15 - timeLeft) / 5));
+                document.getElementById('time').innerText = timeLeft;
+                document.getElementById('level').innerText = gameLevel;
+                if(timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+
+            spawnLoop();
+        }
+
+        function spawnLoop() {
+            if(!isPlaying) return;
+            spawnItem();
+            const delay = isFrozen ? Math.max(650, 1000 - gameLevel*60) : Math.max(260, 500 - gameLevel*45);
+            dropInterval = setTimeout(spawnLoop, delay);
+        }
+
+        function spawnItem() {
+            const item = document.createElement('div');
+            item.className = 'drop-item';
+
+            const rand = Math.random();
+            let type = 'flower';
+            const bombChance = Math.min(0.48, 0.28 + (gameLevel - 1) * 0.05);
+            const freezeChance = Math.max(0.04, 0.10 - (gameLevel - 1) * 0.01);
+            if(rand < bombChance) type = 'bomb';
+            else if(rand < bombChance + freezeChance) type = 'freeze';
+
+            if(type === 'flower') {
+                item.style.backgroundImage = `url('${flowerImgUrl}')`;
+                item.dataset.type = 'flower';
+            } else if(type === 'bomb') {
+                item.innerText = '💣';
+                item.dataset.type = 'bomb';
+            } else {
+                item.innerText = '❄️';
+                item.dataset.type = 'freeze';
+            }
+
+            const maxLeft = gameArea.clientWidth - 50;
+            const startX = Math.random() * maxLeft;
+            item.style.left = startX + 'px';
+            item.style.top = '-50px';
+
+            gameArea.appendChild(item);
+
+            animateItem(item, type);
+        }
+
+        function animateItem(item, type) {
+            let top = -50;
+            const speed = (Math.random() * (3 + gameLevel) + 3 + gameLevel * 0.6) * dropSpeedMultiplier;
+
+            function step() {
+                if(!isPlaying) { item.remove(); return; }
+
+                // Freeze logic slows down current items
+                const currentSpeed = isFrozen ? speed * 0.3 : speed;
+                top += currentSpeed;
+                item.style.top = top + 'px';
+
+                // Check collision
+                const itemRect = item.getBoundingClientRect();
+                const catcherRect = catcher.getBoundingClientRect();
+
+                if (itemRect.bottom >= catcherRect.top &&
+                    itemRect.top <= catcherRect.bottom &&
+                    itemRect.right >= catcherRect.left &&
+                    itemRect.left <= catcherRect.right) {
+
+                    handleCatch(item, type);
+                    return;
+                }
+
+                if(top > gameArea.clientHeight) {
+                    item.remove();
+                } else {
+                    requestAnimationFrame(step);
+                }
+            }
+            requestAnimationFrame(step);
+        }
+
+        function handleCatch(item, type) {
+            const rect = item.getBoundingClientRect();
+            createSmoke(rect.left + rect.width/2, rect.top + rect.height/2);
+            item.remove();
+
+            if(type === 'flower') {
+                score += Math.min(8, 4 + gameLevel); // higher levels reward fewer safe catches but keep progression
+                document.getElementById('score').innerText = score;
+            } else if(type === 'bomb') {
+                score = Math.max(0, score - (10 + gameLevel * 2));
+                document.getElementById('score').innerText = score;
+                // Shake effect
+                gameArea.style.transform = 'translate(5px, 5px)';
+                setTimeout(() => gameArea.style.transform = 'translate(-5px, -5px)', 50);
+                setTimeout(() => gameArea.style.transform = 'translate(5px, -5px)', 100);
+                setTimeout(() => gameArea.style.transform = 'translate(0, 0)', 150);
+            } else if(type === 'freeze') {
+                isFrozen = true;
+                document.getElementById('frozenOverlay').style.display = 'block';
+                setTimeout(() => {
+                    isFrozen = false;
+                    document.getElementById('frozenOverlay').style.display = 'none';
+                }, 3000);
+            }
+        }
+
+        function createSmoke(x, y) {
+            const smoke = document.createElement('div');
+            smoke.className = 'smoke-effect';
+            smoke.style.width = '30px';
+            smoke.style.height = '30px';
+            smoke.style.left = (x - 15) + 'px';
+            smoke.style.top = (y - 15) + 'px';
+            document.body.appendChild(smoke);
+            setTimeout(() => smoke.remove(), 500);
+        }
+
+        function endGame() {
+            isPlaying = false;
+            clearInterval(gameInterval);
+            clearTimeout(dropInterval);
+            document.getElementById('endOverlay').style.display = 'flex';
+            document.getElementById('finalScore').innerText = score;
+        }
+
+        function showDropError(message) {
+            console.error('[MYFA Drop]', message);
+            document.getElementById('chancesDisplay').innerText = '—';
+            const noMsg = document.getElementById('noChancesMsg');
+            if(noMsg) { noMsg.textContent = message; noMsg.style.display = 'block'; }
+        }
+
+        async function claimReward() {
+            if(score <= 0) {
+                window.location.href = '/index.html?userId=' + encodeURIComponent(userId || '');
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/dropgame/claim`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({userId, score, sessionId: window.dropSessionId})
+                });
+                const data = await res.json();
+                if(data.success) {
+                    window.location.href = '/index.html?userId=' + encodeURIComponent(userId || '');
+                } else {
+                    alert("Error claiming reward: " + (data.error || "Unknown"));
+                    window.location.href = '/index.html?userId=' + encodeURIComponent(userId || '');
+                }
+            } catch(e) {
+                alert("Network error");
+                window.location.href = '/index.html?userId=' + encodeURIComponent(userId || '');
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#070b18">
+<meta name="color-scheme" content="dark">
+<meta http-equiv="Cache-Control" content="no-store">
+<title>MYFA BIRR — Campaign Manager</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg?v=20260909-8">
+<link rel="shortcut icon" href="/favicon.svg?v=20260909-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="stylesheet" href="/campaign-manager-app.css?v=20260909-13">
+</head>
+<body>
+<div id="adStudioApp" class="asp-app">
+  <header class="asp-topbar">
+    <button class="asp-icon-button" id="cmBack" aria-label="Go back"><svg viewBox="0 0 24 24"><path d="M15 18 9 12l6-6M9 12h10"/></svg></button>
+    <div class="asp-brand"><div class="asp-brand-mark"><svg viewBox="0 0 32 32"><path d="M7 11.5 16 7l9 4.5-9 4.5-9-4.5Z"/><path d="M9 14.5v6.2L16 24l7-3.3v-6.2"/><path d="M16 16v8"/></svg></div><div><strong>MYFA BIRR</strong><span>CAMPAIGN CONTROL CENTER</span></div></div>
+    <div class="asp-top-actions"><div class="asp-live"><i></i><span>LIVE</span></div><div class="asp-wallet"><svg viewBox="0 0 24 24"><path d="m12 3 8 4.5-8 4.5-8-4.5L12 3Z"/><path d="m4 12 8 4.5 8-4.5"/><path d="m4 16.5 8 4.5 8-4.5"/></svg><strong id="aspBalance">0</strong></div></div>
+  </header>
+  <main id="aspContent" class="asp-content" aria-live="polite"><div class="cm-app-page"><section class="cm-app-hero"><div><span class="cm-kicker"><i class="fa-solid fa-bolt"></i> CAMPAIGN CONTROL</span><h1>Welcome to MYFA.</h1><p>Loading your live campaign workspace…</p></div></section></div></main>
+  <div id="aspModal" class="asp-modal" aria-hidden="true"></div>
+</div>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="/campaign-manager-app.js?v=20260909-13"></script>
+<script src="/campaign-remove-ui.js?v=20260909-14"></script>
+<script>
+(function(){const b=document.getElementById('cmBack');if(b)b.addEventListener('click',()=>{if(history.length>1)history.back();else location.href='/'});})();
+</script>
+</body>
+</html>

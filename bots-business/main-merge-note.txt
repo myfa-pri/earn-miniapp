@@ -1,1 +1,0 @@
-The complete Bots.Business migration package is merged from the bots-business-full-migration branch. See bots-business/README.md and commands/BB_IMPORT_ORDER.md.

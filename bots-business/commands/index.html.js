@@ -40,7 +40,7 @@ CMD*/
 </div>
 <div id="toast" class="toast"></div>
 <div id="modal" class="modal hidden"><div class="modal-card glass"><button class="modal-x" onclick="closeModal()">×</button><div id="modalBody"></div></div></div>
-<script>window.MYFA_CONFIG={apiUrl:"<% options.apiUrl %>",ref:"<% options.ref %>"};</script>
+<script>window.MYFA_CONFIG={apiUrl:"<% options.apiUrl %>",gameApiUrl:"<% options.gameApiUrl %>",ref:"<% options.ref %>"};</script>
 <script src="<% options.JSFile %>"></script>
 </body>
 </html>

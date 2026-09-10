@@ -151,7 +151,7 @@ export default async function handler(req, res) {
       if (!user) return json(res, 404, { success: false, error: 'User not found' });
       const config = await get('config') || {};
       const today = todayKey();
-      if (network === 'monetag' && !(config.monetagZoneId || process.env.MONETAG_ZONE_ID || '41731')) return json(res, 503, { success: false, error: 'Monetag is not configured' });
+      if (network === 'monetag' && !(config.monetagZoneId || process.env.MONETAG_ZONE_ID || '11759807')) return json(res, 503, { success: false, error: 'Monetag is not configured' });
       if (network === 'adsgram' && !config.adsgramBlockId) return json(res, 503, { success: false, error: 'Adsgram is not configured' });
       if (network === 'adsterra' && !config.adsterraLink) return json(res, 503, { success: false, error: 'Premium Ads are not configured' });
       const limit = providerLimit(config, network);
@@ -191,7 +191,7 @@ export default async function handler(req, res) {
       const user = await get(`users/${userId}`);
       const session = await get(`adSessions/${userId}/${data.sessionId}`);
       if (!user || !session || session.completed || session.userId !== userId) return json(res, 409, { success: false, error: 'Reward session already used' });
-      const minimumElapsed = data.network === 'myfa' ? 5000 : 15000;
+      const minimumElapsed = data.network === 'myfa' ? 5000 : 5000;
       if (Date.now() - safeNumber(session.startedAt) < minimumElapsed) return json(res, 400, { success: false, error: 'Ad view not completed' });
 
       const config = await get('config') || {};

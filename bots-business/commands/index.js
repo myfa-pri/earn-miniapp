@@ -10,20 +10,18 @@
   group:
 CMD*/
 
-var apiUrl = Libs.Webhooks.getUrlFor({
-  command: "/myfa-api-v2",
-  user_id: user.id
-});
-
-var CSSFile = WebApp.getUrl({ command: "renderCSS" });
-var JSFile = WebApp.getUrl({ command: "renderJS" });
+var apiUrl = Libs.Webhooks.getUrlFor({command:"/myfa-api-v2",user_id:user.id});
+var gameApiUrl = Libs.Webhooks.getUrlFor({command:"/myfa-games",user_id:user.id});
+var CSSFile = WebApp.getUrl({command:"renderCSS"});
+var JSFile = WebApp.getUrl({command:"renderJS"});
 
 WebApp.render({
-  template: "index.html",
-  options: {
-    CSSFile: CSSFile,
-    JSFile: JSFile,
-    apiUrl: apiUrl,
-    ref: options && options.ref ? options.ref : ""
+  template:"index.html",
+  options:{
+    CSSFile:CSSFile,
+    JSFile:JSFile,
+    apiUrl:apiUrl,
+    gameApiUrl:gameApiUrl,
+    ref:(options&&options.ref)?options.ref:""
   }
 });

@@ -1,36 +1,56 @@
-# MYFA BIRR — Bots.Business deployment
+# MYFA BIRR — Bots.Business package
 
-This folder is the Bots.Business WebApp layer for `earn-miniapp`, following the same `WebApp.getUrl()` + `WebApp.render()` pattern used by `bots-business/BBDropBlastBot`.
+This directory is the self-contained Bots.Business package for the MYFA BIRR Mini App. It follows the WebApp template structure used by the reference `bots-business/BBDropBlastBot`, while using secure user-bound Webhooks for account and reward mutations.
 
-## BB commands
+## Import these BB commands
 
-Import these commands into Bots.Business:
+### Main Mini App
+- `commands/_start.js` — `/start`; generates the per-user secure WebApp API URLs and opens the Mini App.
+- `commands/index.js` — WebApp renderer; receives secure URLs from `/start` through WebApp options.
+- `commands/index.html.js` — main MYFA BIRR HTML template.
+- `commands/renderCSS.js` — CSS renderer.
+- `commands/script.css.js` — main CSS template.
+- `commands/renderJS.js` — JavaScript renderer.
+- `commands/script.final.js.js` — main MYFA BIRR frontend.
 
-- `commands/_start.js` — opens the Mini App.
-- `commands/index.js` — renders `index.html` and injects CSS/JS URLs.
-- `commands/renderCSS.js` — serves `script.css` as CSS.
-- `commands/renderJS.js` — serves `script.js` as JavaScript.
+### Backend
+- `commands/myfa-api-v2.js` — users, profiles, settings, daily rewards, tasks, sponsored ads, referrals, leaderboard, core games, withdrawals, promos and admin actions.
+- `commands/myfa-games.js` — secure Ludo and Chicken Road backend.
+- `commands/bb-api-health.js` — backend health check.
+- `commands/myfa-setup.js` — first-time MYFA BB configuration.
 
-## BB WebApp templates
+### Admin
+- `commands/admin.js` — protected `/admin` panel entry.
+- `commands/admin.html.js` — admin template.
+- `commands/adminCSS.js` / `commands/admin.css.js` — admin CSS renderer/template.
+- `commands/adminJS.js` / `commands/admin.js.js` — admin JavaScript renderer/template.
 
-The existing production frontend is under `public/`. For the BB WebApp template editor/import, map:
+## Security
 
-- `public/index.html` -> BB template `index.html`
-- `public/index.css` -> BB template `script.css`
-- `script1.js` -> BB template `script.js`
+Bots.Business documents that WebApps are not protected and recommends Webhooks for important mutations such as balances and game points. The BB package therefore creates user-bound backend URLs from `/start` with `Libs.Webhooks.getUrlFor()`. The browser does not submit a user id to select another account.
 
-Also make the referenced static assets available to the WebApp template (images, game pages, CSS/JS assets, and other files under `public/`). Do not expose server-only files from `api/`.
+Official documentation:
+- https://help.bots.business/bjs/web-app
+- https://help.bots.business/libs/webhooks-lib
+- https://help.bots.business/bjs/properties
+- https://help.bots.business/bjs/lists
 
-## API origin
+## Data model
 
-The current frontend intentionally uses same-origin API URLs (`/api/...`). That is safe only when the WebApp and API are served from the same origin. If BB is only the frontend host while the API remains elsewhere, the frontend must be configured with an explicit trusted API origin before deployment.
+User property: `MYFA_STATE`.
+Bot properties: `MYFA_CONFIG`, `MYFA_TASKS`, `MYFA_CAMPAIGNS`, `MYFA_WITHDRAWALS`, `MYFA_TOP`, `MYFA_PROMOS`, `MYFA_TOTAL_USERS`, `MYFA_ADMIN_TELEGRAM_ID`.
 
-Do **not** put Firebase admin credentials, bot tokens, admin secrets, or withdrawal authorization in BB WebApp templates. Browser WebApps are user-accessible and cannot be treated as a trusted backend.
+The migration caps global JSON arrays. Bots.Business recommends Lists instead of large JSON arrays, so move long-term leaderboard, withdrawal and campaign history to Lists as the bot grows.
 
-## Critical security rule
+## First-time setup
 
-Balance changes, withdrawals, reward claims, game rewards, ad rewards, referral credits, campaign actions and admin operations must remain server-side and must verify Telegram WebApp `initData`/user identity. Do not move these mutations into browser JavaScript or public BB WebApp code.
+1. Import the files under `commands/` into the Bots.Business bot.
+2. Set the Bot property `MYFA_ADMIN_TELEGRAM_ID` to the administrator Telegram ID.
+3. Run `/myfa-setup` as that administrator.
+4. Run `/start`.
+5. Open the MYFA BIRR Mini App.
+6. Use `/admin` for the protected admin panel.
 
-## Migration status
+## Original application
 
-This layer makes the project BB-WebApp-shaped without deleting the existing Express/Firebase backend. A true no-external-backend migration requires rewriting each backend endpoint to a protected Bots.Business webhook/command flow and migrating persistent state; that is a backend migration, not a static hosting change.
+The original `api/` and `public/` application remains in the repository as rollback/reference code. The BB package does not execute Node/Express code. Its backend is rewritten in BJS with BB user/bot properties and user-bound Webhooks.

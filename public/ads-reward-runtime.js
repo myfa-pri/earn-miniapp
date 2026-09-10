@@ -7,7 +7,6 @@
   const pending = new Map();
   const MONETAG_ZONE = '11759807';
   let monetagSdkPromise = null;
-  let monetagInAppConfigured = false;
   let monetagOfferObserver = null;
   let premiumUiObserver = null;
 
@@ -118,7 +117,7 @@
       const poll = setInterval(() => {
         if (typeof window.show_11759807 === 'function') finish();
       }, 50);
-      const timeout = setTimeout(() => finish(new Error('Monetag ad is not available right now.')), 12000);
+      const timeout = setTimeout(() => finish(new Error('Monetag ad is not available right now.')), 20000);
 
       const existing = document.querySelector('script[data-sdk="show_11759807"][data-zone="11759807"]');
       if (!existing) {
@@ -127,6 +126,7 @@
         script.dataset.zone = MONETAG_ZONE;
         script.dataset.sdk = `show_${MONETAG_ZONE}`;
         script.async = true;
+        script.setAttribute('data-cfasync', 'false');
         script.onload = () => {
           if (typeof window.show_11759807 === 'function') finish();
         };
@@ -139,6 +139,14 @@
     });
 
     return monetagSdkPromise;
+  };
+
+  const preloadMonetag = async () => {
+    try {
+      const show = await ensureMonetagSdk();
+      const id = getUserId();
+      await show({ type: 'preload', ymid: id || `myfa-${Date.now()}` });
+    } catch {}
   };
 
   const refreshCurrentUser = async id => {
@@ -178,16 +186,18 @@
     }
 
     try {
-      await ensureMonetagSdk();
-      await startProviderSession('monetag');
+      const show = await ensureMonetagSdk();
+      const session = await startProviderSession('monetag');
+      const ymid = `${id}-${session.startedAt}`;
       const providerResult = format === 'popup'
-        ? await window.show_11759807('pop')
-        : await window.show_11759807();
+        ? await show({ type: 'pop', ymid, requestVar: 'quick_offer' })
+        : await show({ type: 'end', ymid, requestVar: 'watch_ad' });
 
       const response = await finishProviderSession('monetag', {
         done: true,
         providerCallback: 'monetag-sdk',
         format: format === 'popup' ? 'rewarded-popup' : 'rewarded-interstitial',
+        ymid,
         providerResult: providerResult && typeof providerResult === 'object'
           ? providerResult
           : String(providerResult ?? '')
@@ -218,8 +228,6 @@
     window.triggerMonetagAd = rewarded;
   };
 
-  // Deliberately NO Monetag initialization here.
-  // Ads are loaded only after an explicit user action (watch/open offer).
   const configureMonetagInApp = () => {};
 
   const officialTasksActive = () => {
@@ -318,13 +326,14 @@
     else boot();
   };
 
-  // Remove any legacy auto-ad script tag, but never load a new ad SDK during startup.
   removeOldMonetagTag();
 
   const install = () => {
+    try { window.Telegram?.WebApp?.ready?.(); } catch {}
     installMonetagRewardFunctions();
     hidePremiumAds();
     startPermanentOfferWatcher();
+    preloadMonetag();
   };
 
   document.addEventListener('DOMContentLoaded', () => {

@@ -1,7 +1,13 @@
 # BB build status
 
-The Bots.Business package contains the main MYFA BIRR WebApp, user-bound backend Webhooks, games, ads/tasks/referrals/leaderboard, withdrawals, promos, admin panel, setup and import checklist.
+The Bots.Business package contains:
 
-The original Vercel/Express application remains outside `bots-business/` for rollback/reference.
+- Main MYFA BIRR WebApp templates and renderer commands.
+- User-bound MYFA backend Webhook for profile, rewards, tasks, sponsored ads, referrals, leaderboard, games, withdrawals, promos and admin actions.
+- Separate user-bound game backend for Ludo and Chicken Road.
+- Protected admin WebApp and setup command.
+- BB import order/checklist.
 
-Runtime note: the BB commands still need to be imported into the target Bots.Business bot; GitHub access cannot execute a live Bots.Business runtime here.
+The original Vercel/Express implementation remains outside `bots-business/` for rollback/reference.
+
+Runtime note: Bots.Business runtime installation/import must be performed in the target BB bot; this repository can validate the package structure and source but cannot execute inside the BB service from GitHub.

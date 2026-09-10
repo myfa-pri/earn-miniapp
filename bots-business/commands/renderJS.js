@@ -1,16 +1,15 @@
 /*CMD
   command: renderJS
-  help:
+  help: MYFA BIRR JS renderer
   need_reply:
   auto_retry_time:
-  folder:
+  folder: MYFA WEBAPP
   answer:
   keyboard:
   aliases:
   group:
 CMD*/
-
 WebApp.render({
-  template: "script.js",
+  template: "script.bb.js",
   mime_type: "application/javascript"
 });

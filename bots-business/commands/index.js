@@ -11,7 +11,7 @@
 CMD*/
 
 var apiUrl = Libs.Webhooks.getUrlFor({
-  command: "/myfa-api",
+  command: "/myfa-api-v2",
   user_id: user.id
 });
 
@@ -23,6 +23,7 @@ WebApp.render({
   options: {
     CSSFile: CSSFile,
     JSFile: JSFile,
-    apiUrl: apiUrl
+    apiUrl: apiUrl,
+    ref: options && options.ref ? options.ref : ""
   }
 });

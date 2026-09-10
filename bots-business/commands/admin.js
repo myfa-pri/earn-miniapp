@@ -1,5 +1,5 @@
 /*CMD
-  command: myfa-admin
+  command: /admin
   help: MYFA BIRR admin WebApp
   need_reply: false
   auto_retry_time:

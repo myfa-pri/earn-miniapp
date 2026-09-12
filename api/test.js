@@ -813,6 +813,8 @@ app.post('/api/first-open-complete', async (req, res) => {
         } catch (e) {
             console.error(e);
             res.json({ success: false, error: "Server error." });
+        }
+});
 
 app.post('/api/ensure-user', async (req, res) => {
     const { userId, username, refParam } = req.body;

@@ -13,7 +13,7 @@ async function db(path, method = 'GET', data) {
 const get = path => db(path, 'GET');
 const update = (path, value) => db(path, 'PATCH', value);
 
-function cleanCode(value) {
+export function cleanCode(value) {
   return String(value || '').trim().toUpperCase();
 }
 

@@ -1,11 +1,19 @@
 import crypto from 'crypto';
 
-const ADMIN_USERNAME = 'admin';
-const ADMIN_PASSWORD = 'admin';
-const SESSION_KEY = 'myfa-admin-session-v1-2026';
 const TTL_MS = 12 * 60 * 60 * 1000;
 
+function getConfig() {
+  const env = typeof process !== 'undefined' && process.env ? process.env : {};
+  return {
+    ADMIN_USERNAME: env.ADMIN_USERNAME,
+    ADMIN_PASSWORD: env.ADMIN_PASSWORD,
+    SESSION_KEY: env.ADMIN_SESSION_KEY
+  };
+}
+
 function sign(value) {
+  const { SESSION_KEY } = getConfig();
+  if (!SESSION_KEY) throw new Error('Missing SESSION_KEY');
   return crypto.createHmac('sha256', SESSION_KEY).update(value).digest('base64url');
 }
 
@@ -16,6 +24,7 @@ function issueToken(username) {
 
 function verifyToken(token) {
   try {
+    const { ADMIN_USERNAME } = getConfig();
     const [payload, signature] = String(token || '').split('.');
     if (!payload || !signature || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(sign(payload)))) return false;
     const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
@@ -33,6 +42,11 @@ export default async function handler(req, res) {
     return res.status(204).end();
   }
   if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Method not allowed' });
+
+  const { ADMIN_USERNAME, ADMIN_PASSWORD, SESSION_KEY } = getConfig();
+  if (!ADMIN_USERNAME || !ADMIN_PASSWORD || !SESSION_KEY) {
+    return res.status(500).json({ success: false, error: 'Admin configuration is incomplete on the server.' });
+  }
 
   const { action = 'login', username, password, token } = req.body || {};
   if (action === 'verify') return res.json({ success: verifyToken(token) });

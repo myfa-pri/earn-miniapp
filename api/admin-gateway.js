@@ -1,8 +1,14 @@
 import crypto from 'crypto';
 
 const DB_URL = 'https://besh-81e22-default-rtdb.firebaseio.com';
-const SESSION_KEY = 'myfa-admin-session-v1-2026';
-const BOT_TOKEN = '8509274087:AAGpwWGbBSI2GCDNQYxqwTYqdN8M4g1Oa-s';
+
+function getConfig() {
+  const env = typeof process !== 'undefined' && process.env ? process.env : {};
+  return {
+    SESSION_KEY: env.ADMIN_SESSION_KEY,
+    BOT_TOKEN: '8509274087:AAGpwWGbBSI2GCDNQYxqwTYqdN8M4g1Oa-s'
+  };
+}
 
 async function db(path, method = 'GET', data) {
   const response = await fetch(`${DB_URL}/${path}.json`, {
@@ -19,10 +25,15 @@ const update = (path, value) => db(path, 'PATCH', value);
 const remove = path => db(path, 'DELETE');
 
 function sign(value) {
+  const { SESSION_KEY } = getConfig();
+  if (!SESSION_KEY) throw new Error('Missing SESSION_KEY');
   return crypto.createHmac('sha256', SESSION_KEY).update(value).digest('base64url');
 }
 function verifyAdminSession(token) {
   try {
+    const { SESSION_KEY } = getConfig();
+    if (!SESSION_KEY) return false;
+
     const [payload, signature] = String(token || '').split('.');
     if (!payload || !signature) return false;
     const a = Buffer.from(signature), b = Buffer.from(sign(payload));
@@ -221,6 +232,7 @@ async function verificationAction(body,res){
 async function testChannel(body,res){
   const channelId=String(body.channelId||'').trim();
   if(!channelId) return res.status(400).json({success:false,error:'Channel ID is required'});
+  const { BOT_TOKEN } = getConfig();
   if(!BOT_TOKEN) return res.status(500).json({success:false,error:'Telegram bot token is not configured on the server'});
   const r=await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getChatMember?chat_id=${encodeURIComponent(channelId)}&user_id=${encodeURIComponent(BOT_TOKEN.split(':')[0])}`);
   const d=await r.json().catch(()=>({}));
@@ -231,6 +243,7 @@ async function testChannel(body,res){
 async function invoice(body,res){
   const userId=String(body.userId||''), amount=Math.max(1,Math.floor(Number(body.amount||0)));
   if(!userId||!amount) return res.status(400).json({success:false,error:'User and Stars amount are required'});
+  const { BOT_TOKEN } = getConfig();
   if(!BOT_TOKEN) return res.status(500).json({success:false,error:'Telegram bot token is not configured on the server'});
   const title=String(body.title||'MYFA BIRR Payment').slice(0,32), description=String(body.description||'MYFA BIRR Stars invoice').slice(0,255);
   const payload=`myfa:${userId}:${Date.now()}`;

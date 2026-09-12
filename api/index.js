@@ -50,7 +50,13 @@ app.use(cors());
 // ============================================================================
 async function dbCall(path, method, data = null) {
     try {
-        const url = `${firebaseConfig.databaseURL}/${path}.json`;
+        let p = path;
+        let query = "";
+        if (p.includes('?')) {
+            [p, query] = p.split('?');
+            query = '?' + query;
+        }
+        const url = `${firebaseConfig.databaseURL}/${p}.json${query}`;
         const options = { method: method, headers: { "Content-Type": "application/json" } };
         if (data) options.body = JSON.stringify(data);
         
@@ -2018,7 +2024,7 @@ app.post('/api/admin/broadcast-telegram', checkAdmin, async (req, res) => {
     let users = [];
     
     if (target === 'all') {
-        const allUsers = await dbGet('users') || {};
+        const allUsers = await dbGet('users?shallow=true') || {};
         users = Object.keys(allUsers);
     } else {
         users = targetIds.split(',').map(id => id.trim()).filter(id => id);

@@ -248,7 +248,11 @@ app.post('/api/webhook', async (req, res) => {
                 const host = req.headers.host;
                 const fallbackUrl = `${protocol}://${host}`;
                 let webUrl = (config && config.webAppUrl) ? config.webAppUrl : fallbackUrl;
-                webUrl = webUrl.split('?userId=')[0];
+                try {
+                    let parsedUrl = new URL(webUrl);
+                    parsedUrl.searchParams.delete('userId');
+                    webUrl = parsedUrl.toString();
+                } catch(e) {}
                 const caption = `<b>${accountName} እንኳን ወደ MYFA BIRR መጡ! </b>\n\nከታች ያለውን MYFA BIRR የሚለውን ይጫኑ ገንዘብ ለማግኘት እና መተግበሪያውን ለመጀመር።`;
 
                 // TASK 1 FIX: Strictly use pure webUrl, NEVER append ?userId=
@@ -268,7 +272,11 @@ app.post('/api/webhook', async (req, res) => {
                 const host = req.headers.host;
                 const fallbackUrl = `${protocol}://${host}`;
                 let webUrl = (config && config.webAppUrl) ? config.webAppUrl : fallbackUrl;
-                webUrl = webUrl.split('?userId=')[0];
+                try {
+                    let parsedUrl = new URL(webUrl);
+                    parsedUrl.searchParams.delete('userId');
+                    webUrl = parsedUrl.toString();
+                } catch(e) {}
                 const adminIds = (config.adminTelegramIds || '').split(',').map(id => id.trim());
                 
                 if (adminIds.includes(chatId)) {

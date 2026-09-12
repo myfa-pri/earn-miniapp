@@ -1,7 +1,6 @@
 import TelegramBot from 'node-telegram-bot-api';
 import express from 'express';
 import cors from 'cors';
-import fetch from 'node-fetch';
 import crypto from 'crypto';
 
 // ============================================================================
@@ -2209,7 +2208,9 @@ app.post('/api/admin/css-inject', checkAdmin, async (req, res) => {
     res.json({ success: true });
 });
 
-// export default app;
+//
+
+
 
 
 // ============================================================================
@@ -2914,6 +2915,5 @@ app.post('/api/campaign-manager/campaigns/:id/validate', async (req,res)=>{
 app.get('/api/campaign-manager/audit/:id', async (req,res)=>{try{const c=await cmReadOwned(String(req.params.id),String(req.query.userId||''));if(!c)return res.status(404).json({success:false,error:'Campaign not found'});res.json({success:true,audit:(c.auditLog||[]).slice().reverse()});}catch(e){res.status(500).json({success:false,error:'Audit unavailable'});}});
 
 app.get('/api/campaign-manager/export/:id', async (req,res)=>{try{const c=await cmReadOwned(String(req.params.id),String(req.query.userId||''));if(!c)return res.status(404).json({success:false,error:'Campaign not found'});res.set('Content-Disposition',`attachment; filename="${String(c.name||'campaign').replace(/[^a-z0-9_-]+/gi,'_')}.json"`);res.json(cmNormalize(c,c.id));}catch(e){res.status(500).json({success:false,error:'Export failed'});}});
-
-
+export { nativeTelegramCheck };
 export default app;

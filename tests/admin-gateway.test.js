@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert';
-import { sign, verifyAdminSession } from './admin-gateway.js';
+import { sign, verifyAdminSession } from '../api/admin-gateway.js';
 
 test('verifyAdminSession testing', async (t) => {
   await t.test('valid token passes', () => {

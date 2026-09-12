@@ -89,6 +89,7 @@ async function loadCampaign(userId, ua = '') {
   return campaign;
 }
 
+export { makeToken, sign, readToken };
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');

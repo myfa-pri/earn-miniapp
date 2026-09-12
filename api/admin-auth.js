@@ -1,8 +1,13 @@
 import crypto from 'crypto';
 
-const ADMIN_USERNAME = 'admin';
-const ADMIN_PASSWORD = 'admin';
-const SESSION_KEY = 'myfa-admin-session-v1-2026';
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+const SESSION_KEY = process.env.ADMIN_SESSION_KEY;
+
+if (!ADMIN_USERNAME || !ADMIN_PASSWORD || !SESSION_KEY) {
+  throw new Error('FATAL: Admin credentials and session key must be configured securely without defaults');
+}
+
 const TTL_MS = 12 * 60 * 60 * 1000;
 
 function sign(value) {

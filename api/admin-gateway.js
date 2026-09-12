@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 
 const DB_URL = 'https://besh-81e22-default-rtdb.firebaseio.com';
-const SESSION_KEY = process.env.ADMIN_SESSION_KEY;
+const SESSION_KEY = process.env.ADMIN_SESSION_KEY || '';
 const BOT_TOKEN = '8509274087:AAGpwWGbBSI2GCDNQYxqwTYqdN8M4g1Oa-s';
 
 async function db(path, method = 'GET', data) {

@@ -20,7 +20,7 @@ const firebaseConfig = {
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN || '';
 const BOT_TOKEN_CONFIGURED = Boolean(BOT_TOKEN);
 const ADMIN_SECRET = "Yichu123";
-const ADMIN_SESSION_KEY = process.env.ADMIN_SESSION_KEY;
+const ADMIN_SESSION_KEY = process.env.ADMIN_SESSION_KEY || '';
 const WELCOME_IMG = "https://i.ibb.co/GQxC1zDf/Resized-Image-2026-01-11-09-14-06-1.png";
 const IMAGE_API_URL = "https://welcomeapi.vercel.app/api";
 

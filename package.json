@@ -26,5 +26,8 @@
     "express": "^5.2.1",
     "node-fetch": "^3.3.2",
     "node-telegram-bot-api": "^1.2.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.131.1"
   }
 }

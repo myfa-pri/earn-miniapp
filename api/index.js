@@ -2,7 +2,7 @@ import TelegramBot from 'node-telegram-bot-api';
 import express from 'express';
 import cors from 'cors';
 import fetch from 'node-fetch';
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 
 // ============================================================================
 // 1. SYSTEM CONFIGURATION & SECURITY

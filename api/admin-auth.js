@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 
 const ADMIN_USERNAME = 'admin';
 const ADMIN_PASSWORD = 'admin';

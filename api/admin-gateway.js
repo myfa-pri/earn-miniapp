@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 
 const DB_URL = 'https://besh-81e22-default-rtdb.firebaseio.com';
 const SESSION_KEY = 'myfa-admin-session-v1-2026';

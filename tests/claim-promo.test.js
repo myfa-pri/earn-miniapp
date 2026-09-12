@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert';
-import { cleanCode } from './claim-promo.js';
+import { cleanCode } from '../api/claim-promo.js';
 
 test('cleanCode', async (t) => {
   await t.test('handles basic string', () => {

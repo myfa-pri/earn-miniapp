@@ -20,6 +20,8 @@ const firebaseConfig = {
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN || '';
 const BOT_TOKEN_CONFIGURED = Boolean(BOT_TOKEN);
 const ADMIN_SECRET = "Yichu123";
+const ADMIN_SESSION_KEY = process.env.ADMIN_SESSION_KEY;
+if (!ADMIN_SESSION_KEY) throw new Error('FATAL: ADMIN_SESSION_KEY environment variable is not configured');
 const WELCOME_IMG = "https://i.ibb.co/GQxC1zDf/Resized-Image-2026-01-11-09-14-06-1.png";
 const IMAGE_API_URL = "https://welcomeapi.vercel.app/api";
 
@@ -1889,7 +1891,7 @@ const checkAdmin = (req, res, next) => {
         try {
             const [payload, signature] = String(token || '').split('.');
             if (payload && signature) {
-                const sign = (val) => crypto.createHmac('sha256', 'myfa-admin-session-v1-2026').update(val).digest('base64url');
+                const sign = (val) => crypto.createHmac('sha256', ADMIN_SESSION_KEY).update(val).digest('base64url');
                 const a = Buffer.from(signature);
                 const b = Buffer.from(sign(payload));
                 if (a.length === b.length && crypto.timingSafeEqual(a, b)) {

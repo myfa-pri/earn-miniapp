@@ -1117,13 +1117,42 @@ app.get('/api/cron/process-withdrawals', async (req, res) => {
 // 6.5 DECENTRALIZED AD NETWORK & ESCROW SYSTEM
 // ============================================================================
 
+async function getUserCampaigns(userId) {
+    let index = await dbGet(`userCampaigns/${userId}`);
+
+    if (index === null) {
+        // Fallback: build index for legacy users to prevent full table scans in the future
+        const all = await dbGet('campaigns') || {};
+        index = {};
+        for (const [id, c] of Object.entries(all)) {
+            if (c.userId === userId || String(c.ownerId || c.userId || '') === userId) {
+                index[id] = true;
+            }
+        }
+        if (Object.keys(index).length > 0) {
+            await dbUpdate(`userCampaigns/${userId}`, index);
+        } else {
+            await dbUpdate(`userCampaigns/${userId}`, { _exists: true });
+        }
+    }
+
+    const userCampaigns = {};
+    const ids = Object.keys(index).filter(k => k !== '_exists' && index[k] !== null);
+    await Promise.all(ids.map(async id => {
+        const c = await dbGet(`campaigns/${id}`);
+        if (c) {
+            userCampaigns[id] = c;
+        } else {
+            // Clean up orphaned index entry
+            await dbUpdate(`userCampaigns/${userId}`, { [id]: null });
+        }
+    }));
+    return userCampaigns;
+}
+
 app.get('/api/campaigns/:userId', async (req, res) => {
     const { userId } = req.params;
-    const campaigns = await dbGet('campaigns') || {};
-    const userCampaigns = {};
-    Object.keys(campaigns).forEach(id => {
-        if(campaigns[id].userId === userId) userCampaigns[id] = campaigns[id];
-    });
+    const userCampaigns = await getUserCampaigns(userId);
     res.json(userCampaigns);
 });
 
@@ -1145,6 +1174,7 @@ app.post('/api/campaigns/create', async (req, res) => {
     };
 
     await dbSet(`campaigns/${campaignId}`, campaignData);
+    await dbUpdate(`userCampaigns/${userId}`, { [campaignId]: true });
     
     await dbUpdate(`users/${userId}`, {
         points: u.points - totalEscrow,
@@ -1187,6 +1217,7 @@ app.post('/api/campaigns/liquidate', async (req, res) => {
     }
 
     await dbRemove(`campaigns/${campaignId}`);
+    await dbUpdate(`userCampaigns/${c.userId}`, { [campaignId]: null });
     res.json({success: true, refunded: remainingGems});
 });
 
@@ -1966,6 +1997,7 @@ app.post('/api/campaign/create', async (req, res) => {
     data.stuckBalance = parseFloat(data.budget);
     data.impressions = 0;
     await dbSet(`campaigns/${id}`, data);
+    await dbUpdate(`userCampaigns/${data.userId}`, { [id]: true });
     res.json({ success: true, id });
 });
 

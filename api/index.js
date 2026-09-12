@@ -2891,11 +2891,22 @@ app.post('/api/campaign-manager/campaigns/:id/track', async (req,res)=>{
     }catch(e){res.status(500).json({success:false,error:'Tracking failed'});}
 });
 
+let adCandidatesCache = { candidates: [], expiresAt: 0 };
 app.get('/api/campaign-manager/serve/:userId', async (req,res)=>{
     try{
         const userId=String(req.params.userId),device=String(req.query.device||'all').toLowerCase(),country=String(req.query.country||'').toLowerCase(),test=req.query.test==='1';
-        const all=await dbGet('campaigns')||{}; const now=Date.now(); const candidates=[];
-        for(const [id,raw] of Object.entries(all)){const c=cmNormalize(raw,id);if(c.archived||c.paused||c.mode==='task')continue;if(c.startDate&&now<new Date(c.startDate).getTime())continue;if(c.endDate&&now>new Date(c.endDate).getTime())continue;if(c.budgetState.ad<=0)continue;const ds=(c.devices||[]).map(x=>String(x).toLowerCase());if(ds.length&&!ds.includes('all')&&!ds.includes(device))continue;const cs=(c.countries||[]).map(x=>String(x).toLowerCase());if(country&&cs.length&&!cs.includes(country))continue;candidates.push(c)}
+        const now=Date.now();
+        if(now > adCandidatesCache.expiresAt){
+            const all=await dbGet('campaigns')||{}; const cacheList=[];
+            for(const [id,raw] of Object.entries(all)){const c=cmNormalize(raw,id);if(c.archived||c.paused||c.mode==='task')continue;if(c.startDate&&now<new Date(c.startDate).getTime())continue;if(c.endDate&&now>new Date(c.endDate).getTime())continue;if(c.budgetState.ad<=0)continue;cacheList.push(c);}
+            adCandidatesCache = { candidates: cacheList, expiresAt: now + 30000 };
+        }
+        const candidates=[];
+        for(const c of adCandidatesCache.candidates){
+            const ds=(c.devices||[]).map(x=>String(x).toLowerCase());if(ds.length&&!ds.includes('all')&&!ds.includes(device))continue;
+            const cs=(c.countries||[]).map(x=>String(x).toLowerCase());if(country&&cs.length&&!cs.includes(country))continue;
+            candidates.push(c);
+        }
         if(!candidates.length)return res.json({success:true,ad:null});
         candidates.sort((a,b)=>cmNum(a.impressions)-cmNum(b.impressions)); const c=candidates[0];
         const selectedImage=(c.abEnabled!==false&&c.imageUrlB)?((parseInt(userId.slice(-1),10)||0)%2===0?c.imageUrl:c.imageUrlB):c.imageUrl;

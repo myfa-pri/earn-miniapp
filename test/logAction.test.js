@@ -1,5 +1,20 @@
 import assert from 'assert';
-import { logAction } from '../api/index.js';
+import fs from 'fs';
+import path from 'path';
+
+// Extract logAction from the source using regex instead of importing to avoid
+// breaking Cloudflare workers with unrecognised exports.
+const source = fs.readFileSync(path.join(process.cwd(), 'api', 'index.js'), 'utf8');
+const fnMatch = source.match(/function logAction\(user, actionStr\) {[\s\S]*?\n}/);
+
+if (!fnMatch) {
+    console.error("logAction function not found in api/index.js");
+    process.exit(1);
+}
+
+// Evaluate the function in the current scope
+let logAction;
+eval(`logAction = ${fnMatch[0]}`);
 
 try {
     let user1 = {};

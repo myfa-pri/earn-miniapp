@@ -274,3 +274,4 @@ export default async function handler(req, res) {
     return json(res, 500, { success: false, error: 'Ads service error' });
   }
 }
+export { makeToken, readToken };

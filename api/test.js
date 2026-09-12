@@ -599,19 +599,26 @@ app.post('/api/sponsor/verify-manual', async (req, res) => {
     if(c.paused || c.claims >= c.maxUsers) return res.json({success: false, error: "Campaign is closed or full"});
 
     // Add to Campaign Queue
-    const queue = c.queue || [];
+    let queue = c.queue || {};
+    if (Array.isArray(queue)) {
+        // Migrate array to object map
+        const newQueue = {};
+        for (const q of queue) newQueue[q.userId] = q;
+        queue = newQueue;
+    }
+
     // Check if already in queue
-    if(queue.find(q => q.userId === userId)) {
+    if(queue[userId]) {
         return res.json({success: false, error: "Verification already pending"});
     }
 
     const submissionId = 'sub_' + Date.now();
-    queue.push({
+    queue[userId] = {
         id: submissionId,
         userId: userId,
         imgUrl: imageBase64, // In a real app we'd upload to S3, but Base64 is fine for this demo
         submittedAt: Date.now()
-    });
+    };
 
     await dbUpdate(`campaigns/${taskId}`, { queue });
 
@@ -1141,7 +1148,7 @@ app.post('/api/campaigns/create', async (req, res) => {
         id: campaignId,
         userId, type, icon, name, link, desc, maxUsers, reward,
         claims: 0, views: 0, paused: false, autoRenew: false,
-        queue: [], createdAt: Date.now()
+        queue: {}, createdAt: Date.now()
     };
 
     await dbSet(`campaigns/${campaignId}`, campaignData);
@@ -1195,11 +1202,26 @@ app.post('/api/campaigns/review', async (req, res) => {
     const c = await dbGet(`campaigns/${campaignId}`);
     if(!c || c.userId !== userId) return res.status(403).json({error: "Unauthorized"});
 
-    const queue = c.queue || [];
-    const itemIndex = queue.findIndex(q => q.id === submissionId);
-    if(itemIndex === -1) return res.status(404).json({error: "Not found"});
-    const item = queue[itemIndex];
-    queue.splice(itemIndex, 1);
+    let queue = c.queue || {};
+    let item = null;
+
+    if (Array.isArray(queue)) {
+        const itemIndex = queue.findIndex(q => q.id === submissionId);
+        if(itemIndex !== -1) {
+            item = queue[itemIndex];
+            queue.splice(itemIndex, 1);
+        }
+    } else {
+        for (const uid in queue) {
+            if (queue[uid].id === submissionId) {
+                item = queue[uid];
+                delete queue[uid];
+                break;
+            }
+        }
+    }
+
+    if(!item) return res.status(404).json({error: "Not found"});
     
     await dbUpdate(`campaigns/${campaignId}`, { queue });
 

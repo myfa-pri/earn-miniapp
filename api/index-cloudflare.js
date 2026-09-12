@@ -1312,54 +1312,65 @@ app.get('/api/cron/process-withdrawals', async (req, res) => {
         const withdrawals = await dbGet('withdrawals') || {};
         let processedCount = 0;
 
-        for (const [wid, wData] of Object.entries(withdrawals)) {
-            if (wData.status === 'pending' && wData.method === 'Telebirr') {
-                if (now - wData.date >= delayMs) {
-                    // It's time to process
-                    let paymentSuccess = true;
-                    let txid = wData.id;
+        const entries = Object.entries(withdrawals).filter(([wid, wData]) => {
+            return wData.status === 'pending' && wData.method === 'Telebirr' && (now - wData.date >= delayMs);
+        });
 
-                    // Mock Payment API Call if configured
-                    if (c.paymentApiEndpoint) {
+        const chunkSize = 10;
+        const userMutexes = {};
+
+        const lockUser = async (userId, task) => {
+            const prev = userMutexes[userId] || Promise.resolve();
+            const next = prev.catch(() => {}).then(task);
+            userMutexes[userId] = next;
+            return next;
+        };
+
+        for (let i = 0; i < entries.length; i += chunkSize) {
+            const chunk = entries.slice(i, i + chunkSize);
+
+            const chunkPromises = chunk.map(async ([wid, wData]) => {
+                let paymentSuccess = true;
+                let txid = wData.id;
+
+                if (c.paymentApiEndpoint) {
+                    try {
+                        const pRes = await fetch(c.paymentApiEndpoint, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ amount: wData.amount, account: wData.account, name: wData.accountName })
+                        });
+                        if (!pRes.ok) paymentSuccess = false;
+                        const pData = await pRes.json().catch(()=>({}));
+                        if (pData.txid) txid = pData.txid;
+                        if (pData.success === false) paymentSuccess = false;
+                    } catch (e) {
+                        paymentSuccess = false;
+                    }
+                }
+
+                if (paymentSuccess) {
+                    wData.status = 'paid';
+
+                    if (c.withdrawalChannelId && c.enableWithdrawalNotification) {
+                        const d = new Date();
+                        d.setUTCHours(d.getUTCHours() + 3);
+                        const timeStr = d.toISOString().replace('T', ' ').substring(0, 19);
+                        const receiptUrl = `https://withdrawapi.vercel.app/api/generate?amount=${wData.amount}&name=${encodeURIComponent(wData.accountName)}&txid=${txid}&time=${encodeURIComponent(timeStr)}`;
+                        const caption = `<b>MYFA BIRR WITHDRAWAL</b>\n\nAmount: ${wData.amount} Birr\nAccount Holder: ${wData.accountName}\nMethod: Telebirr\nDate: ${timeStr}\nStatus: PAID\nTransaction: ${txid}\n`;
+                        
                         try {
-                            const pRes = await fetch(c.paymentApiEndpoint, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ amount: wData.amount, account: wData.account, name: wData.accountName })
-                            });
-                            if (!pRes.ok) paymentSuccess = false;
-                            const pData = await pRes.json().catch(()=>({}));
-                            if (pData.txid) txid = pData.txid;
-                            if (pData.success === false) paymentSuccess = false;
-                        } catch (e) {
-                            paymentSuccess = false;
+                            const response = await fetch(receiptUrl);
+                            const imgBuffer = await response.buffer();
+                            await bot.sendPhoto(c.withdrawalChannelId, imgBuffer, { caption, parse_mode: 'HTML' });
+                        } catch(e) {
+                            console.error('Failed to post withdrawal channel notif:', e);
                         }
                     }
-
-                    if (paymentSuccess) {
-                        wData.status = 'paid';
-                        
-                        // Generate Receipt and Send to Channel
-                        if (c.withdrawalChannelId && c.enableWithdrawalNotification) {
-                            const d = new Date();
-                            d.setUTCHours(d.getUTCHours() + 3); // UTC+3 Ethiopian time
-                            const timeStr = d.toISOString().replace('T', ' ').substring(0, 19);
-                            
-                            const receiptUrl = `https://withdrawapi.vercel.app/api/generate?amount=${wData.amount}&name=${encodeURIComponent(wData.accountName)}&txid=${txid}&time=${encodeURIComponent(timeStr)}`;
-                            
-                            const caption = `<b>MYFA BIRR WITHDRAWAL</b>\n\nAmount: ${wData.amount} Birr\nAccount Holder: ${wData.accountName}\nMethod: Telebirr\nDate: ${timeStr}\nStatus: PAID\nTransaction: ${txid}\n`;
-                            
-                            try {
-                                const response = await fetch(receiptUrl);
-                                const imgBuffer = await response.buffer();
-                                await bot.sendPhoto(c.withdrawalChannelId, imgBuffer, { caption, parse_mode: 'HTML' });
-                            } catch(e) {
-                                console.error('Failed to post withdrawal channel notif:', e);
-                            }
-                        }
-                    } else {
-                        wData.status = 'failed';
-                        // Refund user if failed
+                } else {
+                    wData.status = 'failed';
+                    // Sequence refund operations per-user to prevent race conditions
+                    await lockUser(wData.userId, async () => {
                         const u = await dbGet(`users/${wData.userId}`);
                         if (u) {
                             await dbUpdate(`users/${wData.userId}`, {
@@ -1367,13 +1378,17 @@ app.get('/api/cron/process-withdrawals', async (req, res) => {
                                 logs: logAction(u, `Withdrawal Failed: ${wData.amount} refunded`)
                             });
                         }
-                    }
-
-                    await dbSet(`withdrawals/${wid}`, wData);
-                    processedCount++;
+                    });
                 }
-            }
+
+                await dbSet(`withdrawals/${wid}`, wData);
+                return 1;
+            });
+
+            const results = await Promise.all(chunkPromises);
+            processedCount += results.reduce((a, b) => a + b, 0);
         }
+
         res.json({ success: true, processedCount });
     } catch(e) {
         res.status(500).json({ error: e.message });

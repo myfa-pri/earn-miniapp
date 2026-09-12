@@ -1992,23 +1992,36 @@ app.post('/api/admin/promos', checkAdmin, async (req, res) => {
 });
 
 app.post('/api/admin/withdrawals', checkAdmin, async (req, res) => {
-    const { action, ids, reason } = req.body;
-    for(const id of ids) {
-        const w = await dbGet(`withdrawals/${id}`);
-        if(!w) continue;
-        if(action === 'approve') {
+    const { action, ids, reason, adminId } = req.body;
+
+    // Fetch all withdrawals in parallel to reduce N+1 delay on reads
+    const withdrawals = await Promise.all(ids.map(id => dbGet(`withdrawals/${id}`)));
+
+    if (action === 'approve') {
+        // Approvals are safe to parallelize as they don't involve read-modify-write on user balance
+        await Promise.all(ids.map(async (id, i) => {
+            const w = withdrawals[i];
+            if(!w) return;
             await dbUpdate(`withdrawals/${id}`, { status: 'approved' });
-            // Alert user via bot
             bot.sendMessage(w.userId, `✅ Your withdrawal of $${w.amount} to ${w.method} has been approved!`).catch(()=>{});
-        } else if(action === 'reject') {
+        }));
+    } else if (action === 'reject') {
+        // Rejects MUST be sequential to prevent race conditions when refunding multiple withdrawals to the same user
+        for (let i = 0; i < ids.length; i++) {
+            const id = ids[i];
+            const w = withdrawals[i];
+            if(!w) continue;
+
             await dbUpdate(`withdrawals/${id}`, { status: 'rejected', reason: reason || 'Violation of terms' });
             await addAdminLog(adminId, `Rejected withdrawal ${id}`);
-            // Refund realBalance
+
+            // Refund realBalance sequentially to prevent lost updates
             const u = await dbGet(`users/${w.userId}`);
             if(u) await dbUpdate(`users/${w.userId}`, { realBalance: (u.realBalance||0) + w.amount });
             bot.sendMessage(w.userId, `❌ Your withdrawal was rejected. Reason: ${reason || 'Violation of terms'}. Funds refunded.`).catch(()=>{});
         }
     }
+
     res.json({success:true});
 });
 

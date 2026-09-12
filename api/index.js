@@ -1041,8 +1041,11 @@ app.get('/api/avatar/:userId', async (req, res) => {
 // ============================================================================
 // 6. ECONOMY API (Ads, Promo, Exchange, Withdraw)
 // ============================================================================
-const MYFA_AD_REWARD_SECRET = process.env.ADS_REWARD_SECRET || 'MYFA-ADS-REWARD-ENGINE-2026';
+const MYFA_AD_REWARD_SECRET = process.env.ADS_REWARD_SECRET;
 const verifyLegacyAdToken = (token) => {
+    if (!MYFA_AD_REWARD_SECRET) {
+        throw new Error('FATAL: ADS_REWARD_SECRET environment variable is missing.');
+    }
     try {
         const parts = String(token || '').split('.');
         if (parts.length !== 2) return null;

@@ -26,11 +26,11 @@ function todayKey() { return new Date().toISOString().slice(0, 10); }
 function sign(payload) {
   return crypto.createHmac('sha256', REWARD_SECRET).update(payload).digest('hex');
 }
-export function makeToken(data) {
+function makeToken(data) {
   const payload = Buffer.from(JSON.stringify(data)).toString('base64url');
   return `${payload}.${sign(payload)}`;
 }
-export function readToken(token) {
+function readToken(token) {
   if (!token || !token.includes('.')) return null;
   const [payload, sig] = token.split('.');
   if (sign(payload) !== sig) return null;
@@ -274,3 +274,4 @@ export default async function handler(req, res) {
     return json(res, 500, { success: false, error: 'Ads service error' });
   }
 }
+export { makeToken, readToken };

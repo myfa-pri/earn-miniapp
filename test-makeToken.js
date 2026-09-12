@@ -1,7 +1,29 @@
-import { makeToken, readToken } from './ads.js';
+import fs from 'fs';
+import vm from 'vm';
 import crypto from 'crypto';
 
+const code = fs.readFileSync('./api/ads.js', 'utf8');
 const REWARD_SECRET = process.env.ADS_REWARD_SECRET || 'MYFA-ADS-REWARD-ENGINE-2026';
+
+// Run in VM to avoid exports breaking Cloudflare or Regex issues
+const sandbox = {
+  crypto,
+  process,
+  Buffer,
+  console,
+  setTimeout,
+  clearTimeout,
+  require: () => ({}),
+  fetch: async () => ({ ok: true, json: async () => ({}) })
+};
+
+// We create a script that removes the ES modules import/export syntax so VM can compile it directly
+const executableCode = code
+  .replace(/import .*? from '.*?';/g, '')
+  .replace(/export default async function handler[\s\S]*$/, ''); // Strip out the main handler and bottom code
+
+vm.createContext(sandbox);
+vm.runInContext(executableCode, sandbox);
 
 let passed = 0;
 let total = 0;
@@ -18,6 +40,8 @@ function assert(condition, message) {
 }
 
 console.log("Starting makeToken tests...\n");
+
+const { makeToken, readToken } = sandbox;
 
 // Test 1: Should output a valid string
 const data = { userId: "user123", network: "myfa" };

@@ -2209,7 +2209,7 @@ app.post('/api/admin/css-inject', checkAdmin, async (req, res) => {
     res.json({ success: true });
 });
 
-// export default app;
+// export { app as default, logAction };
 
 
 // ============================================================================
@@ -2916,4 +2916,4 @@ app.get('/api/campaign-manager/audit/:id', async (req,res)=>{try{const c=await c
 app.get('/api/campaign-manager/export/:id', async (req,res)=>{try{const c=await cmReadOwned(String(req.params.id),String(req.query.userId||''));if(!c)return res.status(404).json({success:false,error:'Campaign not found'});res.set('Content-Disposition',`attachment; filename="${String(c.name||'campaign').replace(/[^a-z0-9_-]+/gi,'_')}.json"`);res.json(cmNormalize(c,c.id));}catch(e){res.status(500).json({success:false,error:'Export failed'});}});
 
 
-export default app;
+export { app as default, logAction };

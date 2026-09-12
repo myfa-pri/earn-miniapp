@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 
 const DB_URL = 'https://besh-81e22-default-rtdb.firebaseio.com';
-const SESSION_KEY = 'myfa-admin-session-v1-2026';
+const SESSION_KEY = process.env.ADMIN_SESSION_KEY || '';
 const BOT_TOKEN = '8509274087:AAGpwWGbBSI2GCDNQYxqwTYqdN8M4g1Oa-s';
 
 async function db(path, method = 'GET', data) {
@@ -19,6 +19,7 @@ const update = (path, value) => db(path, 'PATCH', value);
 const remove = path => db(path, 'DELETE');
 
 function sign(value) {
+  if (!SESSION_KEY) throw new Error('FATAL: ADMIN_SESSION_KEY environment variable is not configured');
   return crypto.createHmac('sha256', SESSION_KEY).update(value).digest('base64url');
 }
 function verifyAdminSession(token) {

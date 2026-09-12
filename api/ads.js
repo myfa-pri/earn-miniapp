@@ -2,7 +2,10 @@ import crypto from 'crypto';
 import fetch from 'node-fetch';
 
 const DB_URL = 'https://besh-81e22-default-rtdb.firebaseio.com';
-const REWARD_SECRET = process.env.ADS_REWARD_SECRET || 'MYFA-ADS-REWARD-ENGINE-2026';
+const REWARD_SECRET = process.env.ADS_REWARD_SECRET;
+if (!REWARD_SECRET) {
+  throw new Error('FATAL: ADS_REWARD_SECRET environment variable is missing.');
+}
 const SESSION_TTL_MS = 90 * 1000;
 const HISTORY_LIMIT = 50;
 

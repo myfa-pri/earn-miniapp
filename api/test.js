@@ -1,6 +1,7 @@
 import TelegramBot from 'node-telegram-bot-api';
 import express from 'express';
 import cors from 'cors';
+import fetch from 'node-fetch';
 import crypto from 'crypto';
 
 // ============================================================================
@@ -812,6 +813,8 @@ app.post('/api/first-open-complete', async (req, res) => {
         } catch (e) {
             console.error(e);
             res.json({ success: false, error: "Server error." });
+        }
+});
 
 app.post('/api/ensure-user', async (req, res) => {
     const { userId, username, refParam } = req.body;
@@ -2195,5 +2198,5 @@ app.post('/api/campaigns/:id/track', async (req, res) => {
         res.json({ success: false, error: e.message });
     }
 });
-export { nativeTelegramCheck };
+
 export default app;

@@ -3,9 +3,6 @@ import fetch from 'node-fetch';
 
 const DB_URL = 'https://besh-81e22-default-rtdb.firebaseio.com';
 const REWARD_SECRET = process.env.ADS_REWARD_SECRET;
-if (!REWARD_SECRET) {
-  throw new Error('FATAL: ADS_REWARD_SECRET environment variable is missing.');
-}
 const SESSION_TTL_MS = 90 * 1000;
 const HISTORY_LIMIT = 50;
 
@@ -27,6 +24,9 @@ const update = (p, v) => db(p, 'PATCH', v);
 function json(res, code, body) { res.status(code).json(body); }
 function todayKey() { return new Date().toISOString().slice(0, 10); }
 function sign(payload) {
+  if (!REWARD_SECRET) {
+    throw new Error('FATAL: ADS_REWARD_SECRET environment variable is missing.');
+  }
   return crypto.createHmac('sha256', REWARD_SECRET).update(payload).digest('hex');
 }
 function makeToken(data) {

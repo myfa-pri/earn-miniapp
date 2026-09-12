@@ -38,10 +38,10 @@ def patch_index():
         raise SystemExit('Unable to locate legacy /api/watch-ad route')
 
     secure = r'''const MYFA_AD_REWARD_SECRET = process.env.ADS_REWARD_SECRET;
-if (!MYFA_AD_REWARD_SECRET) {
-    throw new Error('FATAL: ADS_REWARD_SECRET environment variable is missing.');
-}
 const verifyLegacyAdToken = (token) => {
+    if (!MYFA_AD_REWARD_SECRET) {
+        throw new Error('FATAL: ADS_REWARD_SECRET environment variable is missing.');
+    }
     try {
         const parts = String(token || '').split('.');
         if (parts.length !== 2) return null;

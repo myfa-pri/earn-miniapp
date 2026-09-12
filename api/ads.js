@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import fetch from 'node-fetch';
 
 const DB_URL = 'https://besh-81e22-default-rtdb.firebaseio.com';
-const REWARD_SECRET = process.env.ADS_REWARD_SECRET || 'MYFA-ADS-REWARD-ENGINE-2026';
+const REWARD_SECRET = process.env.ADS_REWARD_SECRET;
 const SESSION_TTL_MS = 90 * 1000;
 const HISTORY_LIMIT = 50;
 
@@ -24,16 +24,20 @@ const update = (p, v) => db(p, 'PATCH', v);
 function json(res, code, body) { res.status(code).json(body); }
 function todayKey() { return new Date().toISOString().slice(0, 10); }
 function sign(payload) {
+  if (!REWARD_SECRET) return null;
   return crypto.createHmac('sha256', REWARD_SECRET).update(payload).digest('hex');
 }
 function makeToken(data) {
   const payload = Buffer.from(JSON.stringify(data)).toString('base64url');
-  return `${payload}.${sign(payload)}`;
+  const signature = sign(payload);
+  if (!signature) throw new Error('REWARD_SECRET is not configured');
+  return `${payload}.${signature}`;
 }
 function readToken(token) {
   if (!token || !token.includes('.')) return null;
   const [payload, sig] = token.split('.');
-  if (sign(payload) !== sig) return null;
+  const expectedSig = sign(payload);
+  if (!expectedSig || expectedSig !== sig) return null;
   try { return JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')); } catch { return null; }
 }
 function cleanHistory(history) {

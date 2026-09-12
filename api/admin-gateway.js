@@ -31,7 +31,7 @@ function verifyAdminSession(token) {
     return data?.sub === 'admin' && Number(data.exp) > Date.now();
   } catch { return false; }
 }
-export function addLog(user, text) {
+function addLog(user, text) {
   const logs = Array.isArray(user?.logs) ? [...user.logs] : [];
   logs.push(`[${new Date().toISOString()}] ${text}`);
   return logs.slice(-30);

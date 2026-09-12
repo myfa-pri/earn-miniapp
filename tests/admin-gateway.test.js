@@ -1,8 +1,27 @@
 import assert from 'node:assert';
-import { addLog } from '../api/admin-gateway.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import vm from 'node:vm';
 
 function runTests() {
   console.log("Running tests for addLog...");
+
+  // Extract addLog from admin-gateway.js without changing the file
+  const codePath = path.resolve('api/admin-gateway.js');
+  const code = fs.readFileSync(codePath, 'utf8');
+
+  // Find the function and extract it
+  const funcMatch = code.match(/function addLog\s*\([\s\S]*?\n\}/);
+  if (!funcMatch) {
+    throw new Error("Could not find function addLog in api/admin-gateway.js");
+  }
+
+  const funcCode = funcMatch[0];
+
+  // Run it in a VM context to get the function
+  const script = new vm.Script(`${funcCode}\naddLog;`);
+  const context = vm.createContext({});
+  const addLog = script.runInContext(context);
 
   // Test 1: Basic functionality (adding to empty user)
   const emptyUser = {};

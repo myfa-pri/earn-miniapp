@@ -6,7 +6,7 @@ global.document = {
   addEventListener: () => {}
 };
 
-await import('./ad-studio-pro.js');
+await import('../api/ad-studio-pro.js');
 
 const safeInteger = global.window.AdStudioPRODeep.safeInteger;
 

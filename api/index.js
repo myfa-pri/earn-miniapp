@@ -1387,13 +1387,42 @@ app.get('/api/cron/process-withdrawals', async (req, res) => {
 // 6.5 DECENTRALIZED AD NETWORK & ESCROW SYSTEM
 // ============================================================================
 
+async function getUserCampaigns(userId) {
+    let index = await dbGet(`userCampaigns/${userId}`);
+
+    if (index === null) {
+        // Fallback: build index for legacy users to prevent full table scans in the future
+        const all = await dbGet('campaigns') || {};
+        index = {};
+        for (const [id, c] of Object.entries(all)) {
+            if (c.userId === userId || String(c.ownerId || c.userId || '') === userId) {
+                index[id] = true;
+            }
+        }
+        if (Object.keys(index).length > 0) {
+            await dbUpdate(`userCampaigns/${userId}`, index);
+        } else {
+            await dbUpdate(`userCampaigns/${userId}`, { _exists: true });
+        }
+    }
+
+    const userCampaigns = {};
+    const ids = Object.keys(index).filter(k => k !== '_exists' && index[k] !== null);
+    await Promise.all(ids.map(async id => {
+        const c = await dbGet(`campaigns/${id}`);
+        if (c) {
+            userCampaigns[id] = c;
+        } else {
+            // Clean up orphaned index entry
+            await dbUpdate(`userCampaigns/${userId}`, { [id]: null });
+        }
+    }));
+    return userCampaigns;
+}
+
 app.get('/api/campaigns/:userId', async (req, res) => {
     const { userId } = req.params;
-    const campaigns = await dbGet('campaigns') || {};
-    const userCampaigns = {};
-    Object.keys(campaigns).forEach(id => {
-        if(campaigns[id].userId === userId) userCampaigns[id] = campaigns[id];
-    });
+    const userCampaigns = await getUserCampaigns(userId);
     res.json(userCampaigns);
 });
 
@@ -1474,6 +1503,7 @@ app.post('/api/campaigns/create', async (req, res) => {
     };
 
     await dbSet(`campaigns/${campaignId}`, campaignData);
+    await dbUpdate(`userCampaigns/${userId}`, { [campaignId]: true });
     
     await dbUpdate(`users/${userId}`, {
         points: u.points - totalEscrow,
@@ -1516,6 +1546,7 @@ app.post('/api/campaigns/liquidate', async (req, res) => {
     }
 
     await dbRemove(`campaigns/${campaignId}`);
+    await dbUpdate(`userCampaigns/${c.userId}`, { [campaignId]: null });
     res.json({success: true, refunded: remainingGems});
 });
 
@@ -2338,6 +2369,7 @@ app.post('/api/campaign/create', async (req, res) => {
     data.stuckBalance = parseFloat(data.budget);
     data.impressions = 0;
     await dbSet(`campaigns/${id}`, data);
+    await dbUpdate(`userCampaigns/${data.userId}`, { [id]: true });
     res.json({ success: true, id });
 });
 
@@ -2767,6 +2799,7 @@ app.post('/api/campaign-manager/campaigns', async (req, res) => {
         };
         cmSetCompatibility(campaign);
         await dbSet(`campaigns/${id}`, campaign);
+        await dbUpdate(`userCampaigns/${userId}`, { [id]: true });
         await dbUpdate(`users/${userId}`, { points:cmNum(u.points) - total, campaignReserved:cmNum(u.campaignReserved) + total, logs:logAction(u, `Campaign created: ${name} (-${total} Gems, +${total} campaign reserve)`) });
         const all = await dbGet('campaigns') || {};
         res.json({ success:true, campaign:cmNormalize(campaign,id), user:{...u,points:cmNum(u.points)-total}, campaigns:Object.entries(all).map(([cid,c])=>cmNormalize(c,cid)).filter(c=>cmOwner(c)===userId && !c.archived) });
@@ -2861,7 +2894,7 @@ app.post('/api/campaign-manager/campaigns/:id/action', async (req,res)=>{
             if(total<=0)return res.status(400).json({success:false,error:'Nothing to duplicate'});
             if(cmNum(u.points)<total)return res.status(400).json({success:false,error:`Need ${total} Gems to duplicate this campaign`});
             const nid=`cm_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
-            const dup={...c,id:nid,name:`${c.name} Copy`,createdAt:Date.now(),updatedAt:Date.now(),archived:false,paused:false,status:'active',impressions:0,adClicks:0,conversions:0,claims:0,adSpend:0,budgetRemaining:total,escrowReserved:total,adBudgetRemaining:state.ad,taskBudgetRemaining:state.task,eventIds:[],auditLog:[{timestamp:Date.now(),action:'duplicated',userId,meta:{source:id}}]}; cmSetCompatibility(dup); await dbSet(`campaigns/${nid}`,dup); await dbUpdate(`users/${userId}`,{points:cmNum(u.points)-total,campaignReserved:cmNum(u.campaignReserved)+total,logs:logAction(u,`Campaign duplicated: ${c.name}`)}); const all=await dbGet('campaigns')||{}; return res.json({success:true,campaign:cmNormalize(dup,nid),user:{...u,points:cmNum(u.points)-total},campaigns:Object.entries(all).map(([cid,x])=>cmNormalize(x,cid)).filter(x=>cmOwner(x)===String(userId)&&!x.archived)});
+            const dup={...c,id:nid,name:`${c.name} Copy`,createdAt:Date.now(),updatedAt:Date.now(),archived:false,paused:false,status:'active',impressions:0,adClicks:0,conversions:0,claims:0,adSpend:0,budgetRemaining:total,escrowReserved:total,adBudgetRemaining:state.ad,taskBudgetRemaining:state.task,eventIds:[],auditLog:[{timestamp:Date.now(),action:'duplicated',userId,meta:{source:id}}]}; cmSetCompatibility(dup); await dbSet(`campaigns/${nid}`,dup); await dbUpdate(`userCampaigns/${userId}`, { [nid]: true }); await dbUpdate(`users/${userId}`,{points:cmNum(u.points)-total,campaignReserved:cmNum(u.campaignReserved)+total,logs:logAction(u,`Campaign duplicated: ${c.name}`)}); const all=await dbGet('campaigns')||{}; return res.json({success:true,campaign:cmNormalize(dup,nid),user:{...u,points:cmNum(u.points)-total},campaigns:Object.entries(all).map(([cid,x])=>cmNormalize(x,cid)).filter(x=>cmOwner(x)===String(userId)&&!x.archived)});
         } else return res.status(400).json({success:false,error:'Unknown campaign action'});
         next.auditLog=cmAudit(c,action,userId,{refund}); next.updatedAt=Date.now(); cmSetCompatibility(next); await dbUpdate(`campaigns/${id}`,next); if(refund)await dbUpdate(`users/${userId}`,{points:cmNum(u.points)+refund,campaignReserved:Math.max(0,cmNum(u.campaignReserved)-refund),logs:logAction(u,`Campaign refunded: ${c.name} (+${refund} Gems)`)}); const latestUser=await dbGet(`users/${userId}`); res.json({success:true,campaign:cmNormalize(next,id),refunded:refund,user:{...u,points:cmNum(latestUser?.points)}});
     }catch(e){res.status(500).json({success:false,error:e.message||'Campaign action failed'});}

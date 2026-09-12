@@ -18,10 +18,10 @@ const set = (path, value) => db(path, 'PUT', value);
 const update = (path, value) => db(path, 'PATCH', value);
 const remove = path => db(path, 'DELETE');
 
-function sign(value) {
+export function sign(value) {
   return crypto.createHmac('sha256', SESSION_KEY).update(value).digest('base64url');
 }
-function verifyAdminSession(token) {
+export function verifyAdminSession(token) {
   try {
     const [payload, signature] = String(token || '').split('.');
     if (!payload || !signature) return false;

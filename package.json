@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node server.js",
     "build": "echo Vercel deployment uses the native api functions directly",
-    "test": "node --check api/index.js && node --check api/ads.js && node --check api/games.js && node --check api/ad-studio-pro.js && node --check public/ad-studio-pro.js"
+    "test": "node --check api/index.js && node --check api/ads.js && node --check api/games.js && node --check api/ad-studio-pro.js && node --check public/ad-studio-pro.js && node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
   "repository": {
     "type": "git",
@@ -26,5 +26,9 @@
     "express": "^5.2.1",
     "node-fetch": "^3.3.2",
     "node-telegram-bot-api": "^1.2.0"
+  },
+  "devDependencies": {
+    "jest": "^30.5.1",
+    "jest-environment-jsdom": "^30.5.1"
   }
 }

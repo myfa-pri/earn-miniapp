@@ -742,8 +742,8 @@
                                 styleTag.id = 'admin-injected-css';
                                 document.head.appendChild(styleTag);
                             }
-                            if(styleTag.innerHTML !== data.css.css) {
-                                styleTag.innerHTML = data.css.css;
+                            if(styleTag.textContent !== data.css.css) {
+                                styleTag.textContent = data.css.css;
                             }
                         }
                         // Handle Toast Broadcast

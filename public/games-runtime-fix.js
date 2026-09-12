@@ -98,15 +98,12 @@
     ];
 
     // Remove any earlier renderer wrappers and keep the real renderers.
-    rendererNames.forEach(name => {
+    const cleanRenderers = rendererNames.reduce((acc, name) => {
       const fn = window[name];
       if (fn && fn.__myfaOriginal) window[name] = fn.__myfaOriginal;
-    });
-
-    const cleanRenderers = {};
-    rendererNames.forEach(name => {
-      if (typeof window[name] === 'function') cleanRenderers[name] = window[name];
-    });
+      if (typeof window[name] === 'function') acc[name] = window[name];
+      return acc;
+    }, {});
 
     const existingNav = window.nav;
     const baseNav = existingNav && existingNav.__myfaOriginal ? existingNav.__myfaOriginal : existingNav;

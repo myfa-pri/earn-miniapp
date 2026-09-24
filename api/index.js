@@ -17,9 +17,11 @@ const firebaseConfig = {
   appId: "1:324768534552:web:dcfc91e34509c3e104336d"
 };
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN || '';
+const BOT_TOKEN = (typeof process !== 'undefined' && process.env ? process.env.TELEGRAM_BOT_TOKEN : '') || (typeof process !== 'undefined' && process.env ? process.env.BOT_TOKEN : '') || '';
 const BOT_TOKEN_CONFIGURED = Boolean(BOT_TOKEN);
-const ADMIN_SECRET = "Yichu123";
+let _adminSecret = "";
+try { _adminSecret = process.env.ADMIN_SECRET; } catch(e){}
+const ADMIN_SECRET = _adminSecret || "";
 const WELCOME_IMG = "https://i.ibb.co/GQxC1zDf/Resized-Image-2026-01-11-09-14-06-1.png";
 const IMAGE_API_URL = "https://welcomeapi.vercel.app/api";
 
@@ -83,6 +85,21 @@ function logAction(user, actionStr) {
 // ============================================================================
 // 3. USER MANAGEMENT & REFERRAL SYSTEM
 // ============================================================================
+function calculateStreak(existingUser, now) {
+    let streakCount = existingUser.streakCount || 1;
+    const lastLogin = existingUser.lastLoginTimestamp || existingUser.lastLoginDate;
+    if (lastLogin) {
+        const diff = now - lastLogin;
+        const hours = diff / (1000 * 60 * 60);
+        if (hours >= 24 && hours <= 48) {
+            streakCount++;
+        } else if (hours > 48) {
+            streakCount = 1;
+        }
+    }
+    return streakCount;
+}
+
 async function ensureUserExists(userId, username, refParam) {
     const existingUser = await dbGet(`users/${userId}`);
     // UPDATE: Even if user exists, we can update their display name to latest Real Account Name if we wanted, 
@@ -92,17 +109,9 @@ async function ensureUserExists(userId, username, refParam) {
         if (!existingUser.accountName || existingUser.accountName === 'Unknown User') {
             existingUser.accountName = username;
         }
-        let streakCount = existingUser.streakCount || 1;
-        const lastLogin = existingUser.lastLoginTimestamp || existingUser.lastLoginDate;
-        if (lastLogin) {
-            const diff = now - lastLogin;
-            const hours = diff / (1000 * 60 * 60);
-            if (hours >= 24 && hours <= 48) {
-                streakCount++;
-            } else if (hours > 48) {
-                streakCount = 1;
-            }
-        }
+
+        const streakCount = calculateStreak(existingUser, now);
+
         // Auto-claim logic
         if (existingUser.settings?.autoClaimDaily) {
             const bonus = streakCount * 50;
@@ -120,7 +129,7 @@ async function ensureUserExists(userId, username, refParam) {
         existingUser.streakCount = streakCount;
         existingUser.lastLoginTimestamp = now;
         return existingUser;
-}
+    }
 
     const config = (await dbGet('config')) || {};
     const referrerId = refParam ? refParam.replace(/^ref/, '') : null;
@@ -183,7 +192,7 @@ app.get('/api/setup', async (req, res) => {
             return res.status(500).json({ success: false, error: 'TELEGRAM_BOT_TOKEN is not configured on this Worker.' });
         }
         const host = req.headers.host;
-        const configuredBase = (process.env.PUBLIC_APP_URL || `https://${host}`).replace(/\/+$/, '');
+        const configuredBase = ((typeof process !== 'undefined' && process.env ? process.env.PUBLIC_APP_URL : '') || `https://${host}`).replace(/\/+$/, '');
         const webhookUrl = `${configuredBase}/api/webhook`;
         const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/setWebhook?url=${encodeURIComponent(webhookUrl)}`;
         const response = await fetch(telegramUrl);
@@ -403,6 +412,28 @@ app.get('/api/user/:id', async (req, res) => {
 
         if (audits.length > 0) {
             const results = await Promise.all(audits);
+
+            // Collect dependencies to fetch concurrently
+            const dependenciesToFetch = [];
+            for (let i = 0; i < results.length; i++) {
+                if (results[i].status !== 'error' && !results[i].success) {
+                    dependenciesToFetch.push({
+                        sponsorPromise: dbGet(`users/${auditIndices[i].sponsorUserId}`),
+                        campaignPromise: dbGet(`campaigns/${auditIndices[i].taskId}`),
+                        index: i
+                    });
+                }
+            }
+
+            const fetchedDeps = await Promise.all(
+                dependenciesToFetch.map(async (dep) => {
+                    const [sponsor, campaign] = await Promise.all([dep.sponsorPromise, dep.campaignPromise]);
+                    return { sponsor, campaign, index: dep.index };
+                })
+            );
+
+            let depCounter = 0;
+
             for (let i = 0; i < results.length; i++) {
                 const escrow = auditIndices[i];
                 const member = results[i];
@@ -412,8 +443,9 @@ app.get('/api/user/:id', async (req, res) => {
                     u.points = (u.points || 0) - escrow.reward;
                     u.logs = logAction(u, `Penalty: Left Sponsored Channel early. (-${escrow.reward} Gems)`);
 
+                    const { sponsor, campaign } = fetchedDeps[depCounter++];
+
                     // Refund Sponsor
-                    const sponsor = await dbGet(`users/${escrow.sponsorUserId}`);
                     if (sponsor) {
                         await dbUpdate(`users/${escrow.sponsorUserId}`, {
                             stuckBalance: (sponsor.stuckBalance || 0) + escrow.reward
@@ -421,7 +453,6 @@ app.get('/api/user/:id', async (req, res) => {
                     }
                     
                     // Decrement Claims
-                    const campaign = await dbGet(`campaigns/${escrow.taskId}`);
                     if (campaign) {
                         await dbUpdate(`campaigns/${escrow.taskId}`, {
                             claims: Math.max(0, (campaign.claims || 0) - 1)
@@ -1041,7 +1072,7 @@ app.get('/api/avatar/:userId', async (req, res) => {
 // ============================================================================
 // 6. ECONOMY API (Ads, Promo, Exchange, Withdraw)
 // ============================================================================
-const MYFA_AD_REWARD_SECRET = process.env.ADS_REWARD_SECRET || 'MYFA-ADS-REWARD-ENGINE-2026';
+const MYFA_AD_REWARD_SECRET = (typeof process !== 'undefined' && process.env ? process.env.ADS_REWARD_SECRET : '') || 'MYFA-ADS-REWARD-ENGINE-2026';
 const verifyLegacyAdToken = (token) => {
     try {
         const parts = String(token || '').split('.');
@@ -1273,6 +1304,12 @@ app.post('/api/request-withdrawal', async (req, res) => {
     if (method !== 'Telebirr') return res.status(400).json({ error: 'Only Telebirr is supported' });
 
     const u = await dbGet(`users/${userId}`);
+
+    const sessionId = req.body.sessionId || req.query.sessionId;
+    if (!sessionId || !u || !u.activeSessions || !u.activeSessions.includes(sessionId)) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
     const c = (await dbGet('config')) || {};
 
     if (c.minWithdraw && amount < c.minWithdraw) return res.status(400).json({ error: `Minimum withdrawal is ${c.minWithdraw}` });
@@ -1312,67 +1349,68 @@ app.get('/api/cron/process-withdrawals', async (req, res) => {
         const withdrawals = await dbGet('withdrawals') || {};
         let processedCount = 0;
 
-        for (const [wid, wData] of Object.entries(withdrawals)) {
-            if (wData.status === 'pending' && wData.method === 'Telebirr') {
-                if (now - wData.date >= delayMs) {
-                    // It's time to process
-                    let paymentSuccess = true;
-                    let txid = wData.id;
+        const pendingWithdrawals = Object.entries(withdrawals).filter(([wid, wData]) =>
+            wData.status === 'pending' && wData.method === 'Telebirr' && (now - wData.date >= delayMs)
+        );
 
-                    // Mock Payment API Call if configured
-                    if (c.paymentApiEndpoint) {
-                        try {
-                            const pRes = await fetch(c.paymentApiEndpoint, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ amount: wData.amount, account: wData.account, name: wData.accountName })
-                            });
-                            if (!pRes.ok) paymentSuccess = false;
-                            const pData = await pRes.json().catch(()=>({}));
-                            if (pData.txid) txid = pData.txid;
-                            if (pData.success === false) paymentSuccess = false;
-                        } catch (e) {
-                            paymentSuccess = false;
-                        }
-                    }
+        const paymentResults = await Promise.all(pendingWithdrawals.map(async ([wid, wData]) => {
+            let paymentSuccess = true;
+            let txid = wData.id;
 
-                    if (paymentSuccess) {
-                        wData.status = 'paid';
-                        
-                        // Generate Receipt and Send to Channel
-                        if (c.withdrawalChannelId && c.enableWithdrawalNotification) {
-                            const d = new Date();
-                            d.setUTCHours(d.getUTCHours() + 3); // UTC+3 Ethiopian time
-                            const timeStr = d.toISOString().replace('T', ' ').substring(0, 19);
-                            
-                            const receiptUrl = `https://withdrawapi.vercel.app/api/generate?amount=${wData.amount}&name=${encodeURIComponent(wData.accountName)}&txid=${txid}&time=${encodeURIComponent(timeStr)}`;
-                            
-                            const caption = `<b>MYFA BIRR WITHDRAWAL</b>\n\nAmount: ${wData.amount} Birr\nAccount Holder: ${wData.accountName}\nMethod: Telebirr\nDate: ${timeStr}\nStatus: PAID\nTransaction: ${txid}\n`;
-                            
-                            try {
-                                const response = await fetch(receiptUrl);
-                                const imgBuffer = await response.buffer();
-                                await bot.sendPhoto(c.withdrawalChannelId, imgBuffer, { caption, parse_mode: 'HTML' });
-                            } catch(e) {
-                                console.error('Failed to post withdrawal channel notif:', e);
-                            }
-                        }
-                    } else {
-                        wData.status = 'failed';
-                        // Refund user if failed
-                        const u = await dbGet(`users/${wData.userId}`);
-                        if (u) {
-                            await dbUpdate(`users/${wData.userId}`, {
-                                realBalance: (u.realBalance || 0) + wData.amount,
-                                logs: logAction(u, `Withdrawal Failed: ${wData.amount} refunded`)
-                            });
-                        }
-                    }
-
-                    await dbSet(`withdrawals/${wid}`, wData);
-                    processedCount++;
+            if (c.paymentApiEndpoint) {
+                try {
+                    const pRes = await fetch(c.paymentApiEndpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ amount: wData.amount, account: wData.account, name: wData.accountName })
+                    });
+                    if (!pRes.ok) paymentSuccess = false;
+                    const pData = await pRes.json().catch(()=>({}));
+                    if (pData.txid) txid = pData.txid;
+                    if (pData.success === false) paymentSuccess = false;
+                } catch (e) {
+                    paymentSuccess = false;
                 }
             }
+            return { wid, wData, paymentSuccess, txid };
+        }));
+
+        for (const { wid, wData, paymentSuccess, txid } of paymentResults) {
+            if (paymentSuccess) {
+                wData.status = 'paid';
+
+                // Generate Receipt and Send to Channel
+                if (c.withdrawalChannelId && c.enableWithdrawalNotification) {
+                    const d = new Date();
+                    d.setUTCHours(d.getUTCHours() + 3); // UTC+3 Ethiopian time
+                    const timeStr = d.toISOString().replace('T', ' ').substring(0, 19);
+
+                    const receiptUrl = `https://withdrawapi.vercel.app/api/generate?amount=${wData.amount}&name=${encodeURIComponent(wData.accountName)}&txid=${txid}&time=${encodeURIComponent(timeStr)}`;
+
+                    const caption = `<b>MYFA BIRR WITHDRAWAL</b>\n\nAmount: ${wData.amount} Birr\nAccount Holder: ${wData.accountName}\nMethod: Telebirr\nDate: ${timeStr}\nStatus: PAID\nTransaction: ${txid}\n`;
+
+                    try {
+                        const response = await fetch(receiptUrl);
+                        const imgBuffer = await response.buffer();
+                        await bot.sendPhoto(c.withdrawalChannelId, imgBuffer, { caption, parse_mode: 'HTML' });
+                    } catch(e) {
+                        console.error('Failed to post withdrawal channel notif:', e);
+                    }
+                }
+            } else {
+                wData.status = 'failed';
+                // Refund user if failed
+                const u = await dbGet(`users/${wData.userId}`);
+                if (u) {
+                    await dbUpdate(`users/${wData.userId}`, {
+                        realBalance: (u.realBalance || 0) + wData.amount,
+                        logs: logAction(u, `Withdrawal Failed: ${wData.amount} refunded`)
+                    });
+                }
+            }
+
+            await dbSet(`withdrawals/${wid}`, wData);
+            processedCount++;
         }
         res.json({ success: true, processedCount });
     } catch(e) {
@@ -1671,6 +1709,12 @@ app.post('/api/combo', async (req, res) => {
 app.post('/api/ox/result', async (req, res) => {
     const { userId, bet, result } = req.body; // result = 'win', 'loss', 'draw'
     const user = await dbGet(`users/${userId}`);
+
+    const sessionId = req.body.sessionId || req.query.sessionId;
+    if (!sessionId || !user || !user.activeSessions || !user.activeSessions.includes(sessionId)) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
     const stats = await dbGet('stats') || { oxWagered: 0, oxBotProfit: 0 };
     const c = await dbGet('config') || {};
     

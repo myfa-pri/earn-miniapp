@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 
 const ADMIN_USERNAME = 'admin';
-const ADMIN_PASSWORD = 'admin';
+const ADMIN_PASSWORD = (typeof process !== 'undefined' && process.env ? process.env.ADMIN_PASSWORD : '') || '';
 const SESSION_KEY = 'myfa-admin-session-v1-2026';
 const TTL_MS = 12 * 60 * 60 * 1000;
 

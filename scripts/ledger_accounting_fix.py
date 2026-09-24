@@ -124,4 +124,4 @@ if old not in s: raise SystemExit('api/ads.js completion block not found')
 s=s.replace(old,new,1)
 p.write_text(s)
 PY
-node --check scripts/ledger_accounting_fix.py 2>/dev/null || true
+# node --check scripts/ledger_accounting_fix.py 2>/dev/null || true

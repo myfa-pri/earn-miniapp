@@ -17,9 +17,11 @@ const firebaseConfig = {
   appId: "1:324768534552:web:dcfc91e34509c3e104336d"
 };
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN || '';
+const BOT_TOKEN = (typeof process !== 'undefined' && process.env ? process.env.TELEGRAM_BOT_TOKEN : '') || (typeof process !== 'undefined' && process.env ? process.env.BOT_TOKEN : '') || '';
 const BOT_TOKEN_CONFIGURED = Boolean(BOT_TOKEN);
-const ADMIN_SECRET = "Yichu123";
+let _adminSecret = "";
+try { _adminSecret = process.env.ADMIN_SECRET; } catch(e){}
+const ADMIN_SECRET = _adminSecret || "";
 const WELCOME_IMG = "https://i.ibb.co/GQxC1zDf/Resized-Image-2026-01-11-09-14-06-1.png";
 const IMAGE_API_URL = "https://welcomeapi.vercel.app/api";
 
@@ -190,7 +192,7 @@ app.get('/api/setup', async (req, res) => {
             return res.status(500).json({ success: false, error: 'TELEGRAM_BOT_TOKEN is not configured on this Worker.' });
         }
         const host = req.headers.host;
-        const configuredBase = (process.env.PUBLIC_APP_URL || `https://${host}`).replace(/\/+$/, '');
+        const configuredBase = ((typeof process !== 'undefined' && process.env ? process.env.PUBLIC_APP_URL : '') || `https://${host}`).replace(/\/+$/, '');
         const webhookUrl = `${configuredBase}/api/webhook`;
         const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/setWebhook?url=${encodeURIComponent(webhookUrl)}`;
         const response = await fetch(telegramUrl);
@@ -1070,7 +1072,7 @@ app.get('/api/avatar/:userId', async (req, res) => {
 // ============================================================================
 // 6. ECONOMY API (Ads, Promo, Exchange, Withdraw)
 // ============================================================================
-const MYFA_AD_REWARD_SECRET = process.env.ADS_REWARD_SECRET || 'MYFA-ADS-REWARD-ENGINE-2026';
+const MYFA_AD_REWARD_SECRET = (typeof process !== 'undefined' && process.env ? process.env.ADS_REWARD_SECRET : '') || 'MYFA-ADS-REWARD-ENGINE-2026';
 const verifyLegacyAdToken = (token) => {
     try {
         const parts = String(token || '').split('.');

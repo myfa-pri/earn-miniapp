@@ -18,7 +18,9 @@ const firebaseConfig = {
 };
 
 const BOT_TOKEN = '8509274087:AAGpwWGbBSI2GCDNQYxqwTYqdN8M4g1Oa-s'; 
-const ADMIN_SECRET = "Yichu123";
+let _adminSecret = "";
+try { _adminSecret = process.env.ADMIN_SECRET; } catch(e){}
+const ADMIN_SECRET = _adminSecret || "";
 const WELCOME_IMG = "https://i.ibb.co/GQxC1zDf/Resized-Image-2026-01-11-09-14-06-1.png";
 const IMAGE_API_URL = "https://welcomeapi.vercel.app/api";
 

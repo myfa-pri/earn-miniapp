@@ -1,5 +1,5 @@
 const DB_URL = 'https://besh-81e22-default-rtdb.firebaseio.com';
-const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
+const ADMIN_SECRET = (typeof process !== 'undefined' && process.env ? process.env.ADMIN_SECRET : '') || '';
 
 async function db(path, method = 'GET', data) {
   const r = await fetch(`${DB_URL}/${path}.json`, {

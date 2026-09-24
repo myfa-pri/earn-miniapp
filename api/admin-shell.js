@@ -64,9 +64,9 @@ function buildRuntime() {
   const refreshAfterWrite = target => {
     if (['data','logs','backup'].includes(target)) return;
     setTimeout(async () => {
-      try { if (typeof window.fetchAdminData === 'function') await window.fetchAdminData(); } catch (_) {}
+      try { if (typeof window.fetchAdminData === 'function') await window.fetchAdminData(); } catch (e) { console.error(e); }
       if (target === 'channel/post') {
-        try { if (typeof window.loadChannelPosts === 'function') await window.loadChannelPosts(); } catch (_) {}
+        try { if (typeof window.loadChannelPosts === 'function') await window.loadChannelPosts(); } catch (e) { console.error(e); }
       }
     }, 0);
   };

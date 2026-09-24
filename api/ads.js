@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import fetch from 'node-fetch';
 
 const DB_URL = 'https://besh-81e22-default-rtdb.firebaseio.com';
-const REWARD_SECRET = process.env.ADS_REWARD_SECRET || 'MYFA-ADS-REWARD-ENGINE-2026';
+const REWARD_SECRET = (typeof process !== 'undefined' && process.env ? process.env.ADS_REWARD_SECRET : '') || 'MYFA-ADS-REWARD-ENGINE-2026';
 const SESSION_TTL_MS = 90 * 1000;
 const HISTORY_LIMIT = 50;
 
@@ -151,7 +151,7 @@ export default async function handler(req, res) {
       if (!user) return json(res, 404, { success: false, error: 'User not found' });
       const config = await get('config') || {};
       const today = todayKey();
-      if (network === 'monetag' && !(config.monetagZoneId || process.env.MONETAG_ZONE_ID || '11759807')) return json(res, 503, { success: false, error: 'Monetag is not configured' });
+      if (network === 'monetag' && !(config.monetagZoneId || (typeof process !== 'undefined' && process.env ? process.env.MONETAG_ZONE_ID : '') || '11759807')) return json(res, 503, { success: false, error: 'Monetag is not configured' });
       if (network === 'adsgram' && !config.adsgramBlockId) return json(res, 503, { success: false, error: 'Adsgram is not configured' });
       if (network === 'adsterra' && !config.adsterraLink) return json(res, 503, { success: false, error: 'Premium Ads are not configured' });
       const limit = providerLimit(config, network);

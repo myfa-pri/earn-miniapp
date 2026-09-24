@@ -2473,10 +2473,11 @@ function renderWithdraw(c) {
             const ctx = canvas.getContext('2d');
             const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
             let clearCount = 0;
-            for (let i = 3; i < pixels.length; i += 4) {
+            const stride = 16;
+            for (let i = 3; i < pixels.length; i += stride) {
                 if (pixels[i] === 0) clearCount++;
             }
-            const percent = (clearCount / (canvas.width * canvas.height)) * 100;
+            const percent = (clearCount / (Math.floor(pixels.length / stride))) * 100;
             if (percent > 40) {
                 window.scratchActive = false;
                 canvas.style.opacity = '0'; // fade out the rest

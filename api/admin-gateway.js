@@ -162,14 +162,28 @@ async function withdrawals(body, res) {
   const ids = Array.isArray(body.ids) ? body.ids : [];
   if (!ids.length) return res.status(400).json({success:false,error:'Select at least one withdrawal'});
   const action = body.action, results=[];
-  for (const id of ids) {
+
+  // Pre-fetch all withdrawals concurrently
+  const wResults = await Promise.all(ids.map(async id => {
     const w = await get(`withdrawals/${id}`);
+    return { id, w };
+  }));
+
+  // If rejecting, pre-fetch all associated users concurrently
+  let userMap = {};
+  if (action === 'reject') {
+    const userIds = [...new Set(wResults.filter(({w}) => w && w.status === 'pending').map(({w}) => w.userId))];
+    const users = await Promise.all(userIds.map(uid => get(`users/${uid}`).then(u => ({uid, u}))));
+    users.forEach(({uid, u}) => userMap[uid] = u);
+  }
+
+  for (const { id, w } of wResults) {
     if (!w || w.status !== 'pending') continue;
     if (action === 'approve') {
       await update(`withdrawals/${id}`,{status:'approved',approvedAt:Date.now()});
       results.push({id,status:'approved'});
     } else if (action === 'reject') {
-      const u=await get(`users/${w.userId}`);
+      const u = userMap[w.userId];
       if(u) await update(`users/${w.userId}`,{realBalance:Number(u.realBalance||0)+Number(w.amount||0),logs:addLog(u,`Withdrawal ${id} rejected; funds returned`)});
       await update(`withdrawals/${id}`,{status:'rejected',rejectionReason:body.reason||'Rejected by admin',rejectedAt:Date.now()});
       results.push({id,status:'rejected'});

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node server.js",
     "build": "echo Vercel deployment uses the native api functions directly",
-    "test": "node --check api/index.js && node --check api/ads.js && node --check api/games.js && node --check api/ad-studio-pro.js && node --check public/ad-studio-pro.js"
+    "test": "node --check api/index.js && node --check api/ads.js && node --check api/games.js && node --check api/ad-studio-pro.js && node --check public/ad-studio-pro.js && node __tests__/admin-auth.test.js && node __tests__/admin-promos.test.js && node __tests__/drop.test.js && node __tests__/ads.test.js"
   },
   "repository": {
     "type": "git",

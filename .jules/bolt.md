@@ -27,3 +27,7 @@
 **Action:** Implement a TTL-based cache check (e.g. `expiresAt: Date.now() + 60000`) at the beginning of the endpoint. If the cache is valid, return it. Only fetch the `users` table and perform the sort when the cache expires. This will drastically improve backend response time and reduce Firebase bandwidth for popular endpoints.
 
 Let's do this one!
+
+## 2024-05-18 - [Fixing test.js parity]
+**Learning:** `api/test.js` is a separate entry point used for something (maybe CI/CD) and it ALSO contains the same code. If `index.js` and `index-cloudflare.js` are updated, `test.js` must also be updated.
+**Action:** Always verify if `test.js` exists and update it alongside `index.js`.

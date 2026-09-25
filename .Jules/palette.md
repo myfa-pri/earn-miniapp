@@ -1,0 +1,1 @@
+## 2024-09-25 - [Add ARIA labels to icon-only buttons]\n**Learning:** This app uses many FontAwesome icon-only buttons in modals and games (like Aviator) without ARIA labels, which degrades screen reader accessibility.\n**Action:** Add `aria-label` attributes describing the action to all icon-only buttons to improve accessibility without changing visual design.

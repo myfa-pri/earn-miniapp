@@ -458,16 +458,21 @@ app.get('/api/user/:id', async (req, res) => {
     res.json(u);
 });
 
-let leaderboardCache = { byPoints: [] };
+let leaderboardCache = { byPoints: [], expiresAt: 0 };
 app.get('/api/leaderboard/:id', async (req, res) => {
     const userId = req.params.id;
     const config = await dbGet('config') || {};
     
     let u = await dbGet(`users/${userId}`);
-    let userRank = '-';
+    let userRank = u ? (u.rank || '-') : '-';
     
     if (config.leaderboardFreeze) {
-        return res.json({ frozen: true, byPoints: leaderboardCache.byPoints, userRankPoints: u ? u.rank : '-' });
+        return res.json({ frozen: true, byPoints: leaderboardCache.byPoints, userRankPoints: userRank });
+    }
+
+    const nowMs = Date.now();
+    if (leaderboardCache.expiresAt > nowMs && leaderboardCache.byPoints.length > 0) {
+        return res.json({ frozen: false, byPoints: leaderboardCache.byPoints, userRankPoints: userRank });
     }
 
     const usersObj = await dbGet('users');
@@ -494,7 +499,8 @@ app.get('/api/leaderboard/:id', async (req, res) => {
         avatarUrl: user.avatarUrl || null
     }));
     
-    leaderboardCache = { byPoints: top100 };
+    // ⚡ Bolt: Cache leaderboard for 60 seconds to prevent O(N) DB read and O(N log N) sort on every view
+    leaderboardCache = { byPoints: top100, expiresAt: nowMs + 60000 };
     res.json({ frozen: false, byPoints: top100, userRankPoints: userRank });
 });
 
@@ -949,11 +955,13 @@ app.post('/api/verify-gate', async (req, res) => {
 app.get('/api/referrer/:id', async (req, res) => {
     const userId = req.params.id;
     const u = await dbGet(`users/${userId}`);
-    if(!u) return res.json([]);
+    if(!u || !u.referredUsers || !u.referredUsers.length) return res.json([]);
     
-    const usersObj = await dbGet('users') || {};
-    const refs = (u.referredUsers || []).map(refId => {
-        const refU = usersObj[refId];
+    // ⚡ Bolt: Fetch only referred users via Promise.all instead of full DB scan
+    const refPromises = u.referredUsers.map(refId => dbGet(`users/${refId}`).then(refU => ({ refId, refU })));
+    const refResults = await Promise.all(refPromises);
+
+    const refs = refResults.map(({ refId, refU }) => {
         return {
             id: refId,
             accountName: refU ? (refU.accountName || refU.username) : 'Unknown',
